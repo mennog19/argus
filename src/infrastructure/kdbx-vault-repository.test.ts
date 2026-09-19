@@ -90,4 +90,17 @@ describe("KdbxVaultRepository", () => {
     const rawUntouched = rawReloaded.getDefaultGroup().entries.find((e) => e.fields.get("Title") === "Untouched Site");
     expect(rawUntouched?.icon).toBe(12);
   });
+
+  it("creates a brand-new vault that can be saved and reopened", async () => {
+    const repository = new KdbxVaultRepository();
+
+    const vault = await repository.createVault("Brand New Vault", MASTER_PASSWORD);
+
+    expect(vault.name).toBe("Brand New Vault");
+    expect(vault.rootGroup.entries).toEqual([]);
+
+    const savedBytes = await repository.saveVault(vault);
+    const reopened = await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD);
+    expect(reopened.name).toBe("Brand New Vault");
+  });
 });

@@ -9,5 +9,6 @@ import { Vault } from "../domain";
  */
 export interface VaultRepository {
   openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<Vault>;
+  createVault(name: string, masterPassword: string): Promise<Vault>;
   saveVault(vault: Vault): Promise<ArrayBuffer>;
 }
