@@ -1,51 +1,102 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useEffect, useState } from "react";
+import { Vault } from "../domain";
+import { OpenedVault, VaultAccessService } from "../application/vault-access-service";
+import { AppSettings, DEFAULT_SETTINGS, recordVaultOpened, SettingsStore } from "../application/settings";
+import { UrlOpener } from "../application/url-opener";
+import { WelcomeScreen } from "./screens/WelcomeScreen";
+import { LockedScreen } from "./screens/LockedScreen";
+import { VaultShell } from "./screens/VaultShell";
+import "./styles/theme.css";
+import "./styles/shell.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+interface AppProps {
+  vaultAccessService: VaultAccessService;
+  settingsStore: SettingsStore;
+  urlOpener: UrlOpener;
+}
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+type Screen =
+  | { kind: "welcome" }
+  | { kind: "locked"; filePath: string }
+  | { kind: "unlocked"; vault: Vault; filePath: string };
+
+function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
+
+  useEffect(() => {
+    void settingsStore
+      .load()
+      .then((loaded) => {
+        setSettings(loaded);
+        const mostRecent = loaded.recentVaults[0];
+        if (mostRecent) {
+          setScreen({ kind: "locked", filePath: mostRecent.path });
+        }
+      })
+      .catch(() => {
+        // Stay on the welcome screen with default settings if loading fails.
+      });
+  }, [settingsStore]);
+
+  async function rememberAndUnlock(vault: Vault, filePath: string) {
+    const updated = recordVaultOpened(settings, filePath);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Recency tracking is best-effort; don't block unlocking on it.
+    }
+    setScreen({ kind: "unlocked", vault, filePath });
   }
 
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+  function handleOpened(opened: OpenedVault) {
+    void rememberAndUnlock(opened.vault, opened.filePath);
+  }
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+  function handleUnlocked(filePath: string) {
+    return (vault: Vault) => {
+      void rememberAndUnlock(vault, filePath);
+    };
+  }
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+  function handleSelectRecent(filePath: string) {
+    setScreen({ kind: "locked", filePath });
+  }
+
+  function handleChooseDifferentVault() {
+    setScreen({ kind: "welcome" });
+  }
+
+  function handleLock(filePath: string) {
+    return () => {
+      setScreen({ kind: "locked", filePath });
+    };
+  }
+
+  if (screen.kind === "welcome") {
+    return (
+      <WelcomeScreen
+        recentVaults={settings.recentVaults}
+        vaultAccessService={vaultAccessService}
+        onOpened={handleOpened}
+        onSelectRecent={handleSelectRecent}
+      />
+    );
+  }
+
+  if (screen.kind === "locked") {
+    return (
+      <LockedScreen
+        filePath={screen.filePath}
+        vaultAccessService={vaultAccessService}
+        onUnlocked={handleUnlocked(screen.filePath)}
+        onChooseDifferentVault={handleChooseDifferentVault}
+      />
+    );
+  }
+
+  return <VaultShell vault={screen.vault} urlOpener={urlOpener} onLock={handleLock(screen.filePath)} />;
 }
 
 export default App;

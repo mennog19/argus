@@ -52,15 +52,37 @@ Pure domain logic first (no Tauri, no UI) — this is where DDD and TDD matter m
 - [x] `feature/vault-domain-model`: `Vault` aggregate root, `Group` (nested), `Entry`, value objects for fields (title/username/password/URL/notes/tags/custom fields). No persistence — pure in-memory model with full unit test coverage. Merged via PR #2.
 - [x] `feature/password-policy`: domain rules for password generation constraints (length, character sets, passphrase mode) and for the local health checks (duplicate/weak/stale detection logic), as pure functions/value objects. Merged via PR #3.
 - [x] `feature/kdbx-repository`: infrastructure layer wrapping `kdbxweb` behind a repository interface defined in `domain`/`application` — `openVault(bytes, masterPassword)`, `saveVault(vault)`. Merged via PR #4. Note: the round-trip test fixture is a `.kdbx` file generated in-test via `kdbxweb` itself (KDBX4/Argon2), not a file produced by a real KeePass/KeePassXC install — none was available on this machine. Worth swapping in an actual KeePassXC-exported file before relying on this for real compatibility claims.
-- [ ] `feature/vault-unlock-create`: application layer — open an existing `.kdbx` with a master password, create a brand-new vault with a chosen master password. Wired to Tauri's file-open dialog via the Rust shell. **Implemented, not yet merged** — `VaultAccessService` (application) orchestrates the open/create flows against new `FileStorage`/`VaultFileDialog` ports and `VaultRepository.createVault`; `TauriFileStorage`/`TauriVaultFileDialog` (infrastructure) implement those ports on `@tauri-apps/plugin-fs`/`@tauri-apps/plugin-dialog`, with the Rust shell just registering the two plugins and granting minimal capabilities (dialog-picked paths are auto-scoped for fs access). 100% coverage/lint/typecheck/`cargo clippy`/`cargo test`/build all passing locally; pushed to `origin/feature/vault-unlock-create` — needs PR open (https://github.com/mennog19/argus/pull/new/feature/vault-unlock-create) + CI + squash-merge. Not wired into any UI yet — that's `feature/main-shell-ui` in Phase 2.
+- [x] `feature/vault-unlock-create`: application layer — open an existing `.kdbx` with a master password, create a brand-new vault with a chosen master password. Wired to Tauri's file-open dialog via the Rust shell. `VaultAccessService` (application) orchestrates the open/create flows against new `FileStorage`/`VaultFileDialog` ports and `VaultRepository.createVault`; `TauriFileStorage`/`TauriVaultFileDialog` (infrastructure) implement those ports on `@tauri-apps/plugin-fs`/`@tauri-apps/plugin-dialog`, with the Rust shell just registering the two plugins and granting minimal capabilities (dialog-picked paths are auto-scoped for fs access). Merged via PR #5. Not wired into any UI yet — that's `feature/main-shell-ui` in Phase 2.
 
 ## Phase 2 — Application Shell & UI
 Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
 
-- [ ] `feature/app-settings`: local JSON settings file (theme, auto-lock timeouts, recent-files list) in the OS app-data dir via Tauri's path API; read/write service in `infrastructure`.
-- [ ] `feature/main-shell-ui`: main window shell per the design — navigation, unlock screen, empty/locked states. Recent-files list wired to `app-settings`.
-- [ ] `feature/entry-list-detail-ui`: browse groups, view entry details, read-only first.
-- [ ] `feature/single-instance-lock`: Rust shell enforces one running instance; second launch focuses the existing window instead of opening a duplicate.
+Built as a single branch, `feature/app-shell`, covering all four items below (deviation from the
+one-branch-per-item convention, at the user's request). Scope was deliberately narrower than the
+full design: only what these four bullets cover was built — nav rail shows the Vault view only (no
+inert Generator/Health/Settings icons), entry detail is read-only with a reveal/hide toggle but no
+Copy buttons (clipboard write + auto-clear ship together in `feature/clipboard-security`, Phase 4).
+No favorites, health dots, entry CRUD, or search — those are Phase 3/4. Fonts (`Plus Jakarta Sans`,
+`JetBrains Mono`) are self-hosted from files extracted from the design (OFL-licensed) rather than
+loaded from Google Fonts, to keep the "no network calls" rule intact.
+
+- [x] `feature/app-settings`: local JSON settings file (`recentVaults` only for now — `theme`/
+      `auto-lock timeouts` will be added when Phase 4 features need them) in the OS app-data dir via
+      `@tauri-apps/plugin-fs` (`JsonSettingsStore`), port defined in `application/settings.ts`.
+- [x] `feature/main-shell-ui`: `App.tsx` welcome/locked/unlocked screen state machine, `WelcomeScreen`
+      (open/create, recent-vaults quick-pick) and `LockedScreen` (password prompt for a known path) per
+      the design's visual language. Recent-files list wired to `app-settings`.
+- [x] `feature/entry-list-detail-ui`: `VaultShell` — flat top-level group sidebar, "All Items"
+      (recursive), entry list, read-only entry detail (username/password with reveal toggle, URL via a
+      new `UrlOpener` port so links open in the OS browser instead of the webview, notes, group name).
+- [x] `feature/single-instance-lock`: `tauri-plugin-single-instance` registered first in the builder;
+      second launch focuses/shows the existing window. Verified manually — launching `tauri-app.exe` a
+      second time while the first was running did not spawn a second process.
+
+Manually verified: `pnpm tauri dev` boots without errors under the "Argus" window title, and the
+single-instance behavior was confirmed via a direct second-launch process check. Full interactive
+click-through (create vault → browse → lock) wasn't captured in this session (no GUI-automation
+tool available) — worth a manual pass before merging.
 
 ## Phase 3 — Entry Management
 

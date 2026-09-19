@@ -94,4 +94,35 @@ describe("VaultAccessService", () => {
       expect(result).toEqual({ vault, filePath: "C:/vaults/new.kdbx" });
     });
   });
+
+  describe("openVaultAtPath", () => {
+    it("reads the given path and opens it through the repository, without the dialog", async () => {
+      const vault = Vault.create("My Vault");
+      const fileBytes = new ArrayBuffer(4);
+      const repository = fakeRepository({ openVault: vi.fn().mockResolvedValue(vault) });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(fileBytes) });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      const result = await service.openVaultAtPath("C:/vaults/mine.kdbx", "master password");
+
+      expect(fileStorage.readFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
+      expect(repository.openVault).toHaveBeenCalledWith(fileBytes, "master password");
+      expect(dialog.pickVaultToOpen).not.toHaveBeenCalled();
+      expect(result).toBe(vault);
+    });
+
+    it("propagates errors from the repository (e.g. wrong master password)", async () => {
+      const repository = fakeRepository({
+        openVault: vi.fn().mockRejectedValue(new Error("Invalid credentials")),
+      });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await expect(service.openVaultAtPath("C:/vaults/mine.kdbx", "wrong")).rejects.toThrow(
+        "Invalid credentials",
+      );
+    });
+  });
 });

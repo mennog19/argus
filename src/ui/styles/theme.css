@@ -1,0 +1,87 @@
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("../../assets/fonts/plus-jakarta-sans-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../../assets/fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+
+:root {
+  --color-bg: #0a0b0d;
+  --color-panel: #14161a;
+  --color-nav: #111318;
+  --color-surface: #1a1d23;
+  --color-input: #1c1f26;
+  --color-avatar: #242830;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.1);
+  --color-text: #eceef1;
+  --color-text-dim: rgba(236, 238, 241, 0.5);
+  --color-text-dimmer: rgba(236, 238, 241, 0.4);
+  --color-accent: #5b8def;
+  --color-accent-hover: #7ea4f2;
+  --color-accent-on: #0b0c0f;
+  --color-danger: oklch(64% 0.17 25);
+  --color-danger-strong: oklch(70% 0.17 25);
+  --font-ui: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+#root {
+  height: 100vh;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(236, 238, 241, 0.32);
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
