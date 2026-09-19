@@ -49,7 +49,7 @@ Not a "feature" in the product sense — one setup branch (`chore/scaffolding`) 
 
 Pure domain logic first (no Tauri, no UI) — this is where DDD and TDD matter most.
 
-- [ ] `feature/vault-domain-model`: `Vault` aggregate root, `Group` (nested), `Entry`, value objects for fields (title/username/password/URL/notes/tags/custom fields). No persistence — pure in-memory model with full unit test coverage. **Implemented, not yet merged** — committed on the branch with 100% coverage/lint/build passing locally; still needs push + PR + CI + squash-merge per the Definition of Done.
+- [x] `feature/vault-domain-model`: `Vault` aggregate root, `Group` (nested), `Entry`, value objects for fields (title/username/password/URL/notes/tags/custom fields). No persistence — pure in-memory model with full unit test coverage. Merged via PR #2.
 - [ ] `feature/password-policy`: domain rules for password generation constraints (length, character sets, passphrase mode) and for the local health checks (duplicate/weak/stale detection logic), as pure functions/value objects.
 - [ ] `feature/kdbx-repository`: infrastructure layer wrapping `kdbxweb` behind a repository interface defined in `domain`/`application` — `openVault(bytes, masterPassword)`, `saveVault(vault)`. Round-trips a real KeePass-created `.kdbx` file with full field/custom-icon fidelity and KeePassXC TOTP/custom-field conventions preserved byte-for-byte where untouched.
 - [ ] `feature/vault-unlock-create`: application layer — open an existing `.kdbx` with a master password, create a brand-new vault with a chosen master password. Wired to Tauri's file-open dialog via the Rust shell.
