@@ -55,6 +55,7 @@ Pure domain logic first (no Tauri, no UI) — this is where DDD and TDD matter m
 - [ ] `feature/vault-unlock-create`: application layer — open an existing `.kdbx` with a master password, create a brand-new vault with a chosen master password. Wired to Tauri's file-open dialog via the Rust shell. **Implemented, not yet merged** — `VaultAccessService` (application) orchestrates the open/create flows against new `FileStorage`/`VaultFileDialog` ports and `VaultRepository.createVault`; `TauriFileStorage`/`TauriVaultFileDialog` (infrastructure) implement those ports on `@tauri-apps/plugin-fs`/`@tauri-apps/plugin-dialog`, with the Rust shell just registering the two plugins and granting minimal capabilities (dialog-picked paths are auto-scoped for fs access). 100% coverage/lint/typecheck/`cargo clippy`/`cargo test`/build all passing locally; pushed to `origin/feature/vault-unlock-create` — needs PR open (https://github.com/mennog19/argus/pull/new/feature/vault-unlock-create) + CI + squash-merge. Not wired into any UI yet — that's `feature/main-shell-ui` in Phase 2.
 
 ## Phase 2 — Application Shell & UI
+Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
 
 - [ ] `feature/app-settings`: local JSON settings file (theme, auto-lock timeouts, recent-files list) in the OS app-data dir via Tauri's path API; read/write service in `infrastructure`.
 - [ ] `feature/main-shell-ui`: main window shell per the design — navigation, unlock screen, empty/locked states. Recent-files list wired to `app-settings`.
