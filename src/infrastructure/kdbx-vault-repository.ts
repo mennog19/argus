@@ -21,6 +21,13 @@ export class KdbxVaultRepository implements VaultRepository {
     return vaultFromKdbx(this.db);
   }
 
+  async createVault(name: string, masterPassword: string): Promise<Vault> {
+    configureKdbxCrypto();
+    const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
+    this.db = Kdbx.create(credentials, name);
+    return vaultFromKdbx(this.db);
+  }
+
   async saveVault(vault: Vault): Promise<ArrayBuffer> {
     if (!this.db) {
       throw new Error("No vault is open; call openVault before saveVault");
