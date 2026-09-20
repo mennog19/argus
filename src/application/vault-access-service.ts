@@ -44,4 +44,13 @@ export class VaultAccessService {
     await this.fileStorage.writeFile(filePath, fileBytes);
     return { vault, filePath };
   }
+
+  /**
+   * Re-opens a previously-opened vault at a known path without prompting the
+   * file dialog again, for unlocking a remembered/recent vault.
+   */
+  async openVaultAtPath(filePath: string, masterPassword: string): Promise<Vault> {
+    const fileBytes = await this.fileStorage.readFile(filePath);
+    return this.repository.openVault(fileBytes, masterPassword);
+  }
 }
