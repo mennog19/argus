@@ -103,17 +103,35 @@ Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhy
       `RecycleBinPanel` listing deleted groups/entries with Restore and confirm-gated Delete
       Forever, plus a confirm-gated Empty Recycle Bin action.
 - [x] `feature/search`: search across title/username/URL/notes/tags/custom field keys and values. Merged via PR #9/#10.
-- [ ] `feature/password-generator`: dedicated generator settings screen (length, character-set toggles, exclude-ambiguous, passphrase mode) per the design; "generate for new entry" reuses the same settings.
+- [x] `feature/password-generator`: dedicated generator settings screen (length, character-set toggles, exclude-ambiguous, passphrase mode) per the design; "generate for new entry" reuses the same settings. Merged via PR #11.
 
 ## Phase 4 — Security & Data Safety
 
 Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
 
+Built as a single branch, `feature/phase-4-security-safety`, covering all four items below (deviation
+from the one-branch-per-item convention, at the user's request, same as Phase 2's `feature/app-shell`).
 
-- [ ] `feature/auto-lock`: idle timeout, lock on minimize, lock on OS sleep — each independently configurable in settings.
-- [ ] `feature/clipboard-security`: copy username/password to clipboard, auto-clear after a configurable delay.
-- [ ] `feature/save-data-safety`: rolling backups (last 3 copies) on every save; pre-save modified-time check that warns instead of silently overwriting when the file changed on disk since it was opened/last saved.
-- [ ] `feature/password-health-check`: local, offline view flagging duplicate, weak, and stale passwords across the open vault.
+- [x] `feature/save-data-safety`: rolling 3-copy backups (`.bak1`/`.bak2`/`.bak3`, most-recent-first)
+      rotated on every save; `VaultAccessService` now tracks each open vault's last-known on-disk
+      mtime and throws `VaultSaveConflictError` instead of silently overwriting when the file changed
+      since it was last opened/saved here — surfaced in the UI as a "Vault changed on disk" overlay
+      offering Overwrite (force-save) or Discard & Lock (re-unlock reads the fresh file; chosen over a
+      raw in-memory reload so the master password is never retained past unlock).
+- [x] `feature/password-health-check`: dedicated Health nav screen flagging duplicate/weak/stale
+      passwords via the already-complete `password-health.ts` domain logic. Password-changed times
+      come from a new `VaultRepository.getPasswordChangedTimes()`, derived by walking each KDBX
+      entry's own history (oldest → current, first snapshot whose password differs from the one
+      before it) rather than adding a new field to the domain model.
+- [x] `feature/clipboard-security`: copy buttons on username/password (new `ClipboardWriter` port /
+      `TauriClipboard` adapter over `@tauri-apps/plugin-clipboard-manager`), auto-clearing the
+      clipboard after a configurable delay (Settings screen; default 20s) via a per-copy token so an
+      older copy's clear can't wipe a newer one.
+- [x] `feature/auto-lock`: idle timeout, lock on minimize, lock on OS sleep, each independently
+      toggleable in the Settings screen and off by default. Idle timeout and sleep detection are pure
+      timer/clock-drift logic (`src/ui/auto-lock.ts` — a `setInterval` heartbeat whose actual elapsed
+      time vs. expected interval reveals a suspend/resume, needing no native Rust code); lock-on-
+      minimize uses a new `WindowEvents` port / `TauriWindowEvents` adapter over the Tauri window API.
 
 ## Phase 5 — Polish & Distribution
 
