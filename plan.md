@@ -88,6 +88,9 @@ tool available) — worth a manual pass before merging.
 
 ## Phase 3 — Entry Management
 
+Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
+
+
 - [x] `feature/entry-crud`: create/edit/delete entries and groups (including nested groups), tags, custom fields — full read/write through the domain model and repository. Merged via PR #7.
 - [x] `feature/recycle-bin`: soft-delete for entries/groups instead of hard delete; restore and
       permanent-empty actions. `Vault` tracks a `recycleBinId` (created lazily on first delete, or
@@ -99,10 +102,13 @@ tool available) — worth a manual pass before merging.
       Groups tree and from "All Items"/group pickers); selecting it swaps in a dedicated
       `RecycleBinPanel` listing deleted groups/entries with Restore and confirm-gated Delete
       Forever, plus a confirm-gated Empty Recycle Bin action.
-- [ ] `feature/search`: search across title/username/URL/notes/tags/custom field keys and values.
+- [x] `feature/search`: search across title/username/URL/notes/tags/custom field keys and values. Merged via PR #9/#10.
 - [ ] `feature/password-generator`: dedicated generator settings screen (length, character-set toggles, exclude-ambiguous, passphrase mode) per the design; "generate for new entry" reuses the same settings.
 
 ## Phase 4 — Security & Data Safety
+
+Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
+
 
 - [ ] `feature/auto-lock`: idle timeout, lock on minimize, lock on OS sleep — each independently configurable in settings.
 - [ ] `feature/clipboard-security`: copy username/password to clipboard, auto-clear after a configurable delay.
@@ -110,6 +116,9 @@ tool available) — worth a manual pass before merging.
 - [ ] `feature/password-health-check`: local, offline view flagging duplicate, weak, and stale passwords across the open vault.
 
 ## Phase 5 — Polish & Distribution
+
+Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
+
 
 - [ ] `feature/update-check`: manual "check for updates" action, compares current version against the latest GitHub Release, opens the release page if newer — no auto-download.
 - [ ] `feature/packaging`: Tauri bundler config for a Windows `.exe`/`.msi` (NSIS) artifact; GitHub Actions job to attach the built installer to a GitHub Release on tag push.
