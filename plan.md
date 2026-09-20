@@ -86,7 +86,7 @@ tool available) — worth a manual pass before merging.
 
 ## Phase 3 — Entry Management
 
-- [ ] `feature/entry-crud`: create/edit/delete entries and groups (including nested groups), tags, custom fields — full read/write through the domain model and repository.
+- [x] `feature/entry-crud`: create/edit/delete entries and groups (including nested groups), tags, custom fields — full read/write through the domain model and repository. Merged via PR #7.
 - [ ] `feature/recycle-bin`: soft-delete for entries/groups instead of hard delete; restore and permanent-empty actions.
 - [ ] `feature/search`: search across title/username/URL/notes/tags/custom field keys and values.
 - [ ] `feature/password-generator`: dedicated generator settings screen (length, character-set toggles, exclude-ambiguous, passphrase mode) per the design; "generate for new entry" reuses the same settings.
