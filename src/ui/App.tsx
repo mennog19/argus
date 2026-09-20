@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { Vault } from "../domain";
+import { PasswordPolicyOptions, Vault } from "../domain";
 import { OpenedVault, VaultAccessService } from "../application/vault-access-service";
-import { AppSettings, DEFAULT_SETTINGS, recordVaultOpened, SettingsStore } from "../application/settings";
+import {
+  AppSettings,
+  DEFAULT_SETTINGS,
+  recordVaultOpened,
+  SettingsStore,
+  withGeneratorPolicy,
+} from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { LockedScreen } from "./screens/LockedScreen";
@@ -81,6 +87,16 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
     };
   }
 
+  async function handleGeneratorPolicyChange(policy: PasswordPolicyOptions) {
+    const updated = withGeneratorPolicy(settings, policy);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a generator settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -107,8 +123,10 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
     <VaultShell
       vault={screen.vault}
       urlOpener={urlOpener}
+      generatorPolicy={settings.generatorPolicy ?? {}}
       onLock={handleLock(screen.filePath)}
       onSave={handleVaultSave(screen.filePath)}
+      onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
     />
   );
 }

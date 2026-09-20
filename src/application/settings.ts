@@ -1,3 +1,5 @@
+import { PasswordPolicyOptions } from "../domain";
+
 /** One vault the user has previously opened or created, most-recent first. */
 export interface RecentVaultEntry {
   readonly path: string;
@@ -6,6 +8,11 @@ export interface RecentVaultEntry {
 
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
+  /** Shared password generator settings, used by both the dedicated generator
+   * screen and "generate for new entry". Undefined until the user changes a
+   * setting for the first time, at which point `PasswordPolicy`'s own
+   * defaults apply. */
+  readonly generatorPolicy?: PasswordPolicyOptions;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -37,4 +44,12 @@ export function recordVaultOpened(
     maxEntries,
   );
   return { ...settings, recentVaults };
+}
+
+/** Returns settings with `policy` recorded as the shared generator settings. */
+export function withGeneratorPolicy(
+  settings: AppSettings,
+  policy: PasswordPolicyOptions,
+): AppSettings {
+  return { ...settings, generatorPolicy: policy };
 }

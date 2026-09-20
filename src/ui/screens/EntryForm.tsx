@@ -1,5 +1,14 @@
 import { FormEvent, useState } from "react";
-import { CustomFields, Entry, GroupId, Password, Tags } from "../../domain";
+import {
+  CustomFields,
+  Entry,
+  generatePassword,
+  GroupId,
+  Password,
+  PasswordPolicy,
+  PasswordPolicyOptions,
+  Tags,
+} from "../../domain";
 import { GroupOption } from "../vault-browsing";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { TagsEditor } from "./TagsEditor";
@@ -8,11 +17,19 @@ interface EntryFormProps {
   initialEntry?: Entry;
   initialGroupId: string;
   groupOptions: readonly GroupOption[];
+  generatorPolicy: PasswordPolicyOptions;
   onSubmit: (entry: Entry, groupId: GroupId) => Promise<void>;
   onCancel: () => void;
 }
 
-export function EntryForm({ initialEntry, initialGroupId, groupOptions, onSubmit, onCancel }: EntryFormProps) {
+export function EntryForm({
+  initialEntry,
+  initialGroupId,
+  groupOptions,
+  generatorPolicy,
+  onSubmit,
+  onCancel,
+}: EntryFormProps) {
   const [title, setTitle] = useState(initialEntry?.title ?? "");
   const [username, setUsername] = useState(initialEntry?.username ?? "");
   const [password, setPassword] = useState(initialEntry?.password.reveal() ?? "");
@@ -24,6 +41,12 @@ export function EntryForm({ initialEntry, initialGroupId, groupOptions, onSubmit
   const [customFields, setCustomFields] = useState(initialEntry?.customFields ?? new CustomFields());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+
+  function handleGenerate() {
+    const generated = generatePassword(new PasswordPolicy(generatorPolicy));
+    setPassword(generated.reveal());
+    setRevealed(true);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -94,6 +117,9 @@ export function EntryForm({ initialEntry, initialGroupId, groupOptions, onSubmit
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
+          <button type="button" onClick={handleGenerate}>
+            Generate
+          </button>
           <button type="button" onClick={() => setRevealed((value) => !value)}>
             {revealed ? "Hide" : "Show"}
           </button>

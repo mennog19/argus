@@ -200,4 +200,56 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "GitHub" })).toBeInTheDocument();
     expect(saveVault).toHaveBeenCalledWith(expect.anything(), "C:/vaults/personal.kdbx");
   });
+
+  it("persists a generator policy change made in the vault shell's generator screen", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settingsStore = fakeSettingsStore();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={settingsStore}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Password generator" }));
+    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+
+    expect(settingsStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ generatorPolicy: expect.objectContaining({ mode: "passphrase" }) }),
+    );
+  });
+
+  it("keeps the generator policy change even if persisting it fails", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settingsStore = fakeSettingsStore({ save: vi.fn().mockRejectedValue(new Error("disk full")) });
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={settingsStore}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Password generator" }));
+    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+
+    expect(await screen.findByRole("heading", { name: "Password Generator" })).toBeInTheDocument();
+  });
 });

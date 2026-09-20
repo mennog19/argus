@@ -1,7 +1,16 @@
 import { useState } from "react";
-import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
+import { Entry, EntryId, Group, GroupId, PasswordPolicyOptions, Vault } from "../../domain";
 import { UrlOpener } from "../../application/url-opener";
-import { EditIcon, LockIcon, PlusIcon, SearchIcon, TrashIcon, XIcon } from "../icons";
+import {
+  EditIcon,
+  GeneratorIcon,
+  LockIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+  VaultIcon,
+  XIcon,
+} from "../icons";
 import { initialOf } from "../format";
 import {
   collectAllEntries,
@@ -11,21 +20,33 @@ import {
   searchEntries,
 } from "../vault-browsing";
 import { EntryForm } from "./EntryForm";
+import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
 import { RecycleBinPanel } from "./RecycleBinPanel";
 
 interface VaultShellProps {
   vault: Vault;
   urlOpener: UrlOpener;
+  generatorPolicy: PasswordPolicyOptions;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
+  onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
 }
 
 const ALL_ITEMS = "__all__";
 
 type FormMode = { kind: "none" } | { kind: "create" } | { kind: "edit" };
+type View = "vault" | "generator";
 
-export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps) {
+export function VaultShell({
+  vault,
+  urlOpener,
+  generatorPolicy,
+  onLock,
+  onSave,
+  onGeneratorPolicyChange,
+}: VaultShellProps) {
+  const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
   const [selectedEntryId, setSelectedEntryId] = useState<string | undefined>(undefined);
   const [revealed, setRevealed] = useState(false);
@@ -148,117 +169,143 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
     <div className="vault-shell">
       <nav className="nav-rail">
         <div className="nav-logo">A</div>
+        <div className="nav-rail-icons">
+          <button
+            type="button"
+            className={`icon-button${view === "vault" ? " active" : ""}`}
+            aria-label="Vault"
+            onClick={() => setView("vault")}
+          >
+            <VaultIcon />
+          </button>
+          <button
+            type="button"
+            className={`icon-button${view === "generator" ? " active" : ""}`}
+            aria-label="Password generator"
+            onClick={() => setView("generator")}
+          >
+            <GeneratorIcon />
+          </button>
+        </div>
         <button type="button" className="icon-button" onClick={onLock} aria-label="Lock vault">
           <LockIcon />
         </button>
       </nav>
 
-      <GroupTree
-        rootGroup={rootGroup}
-        recycleBin={recycleBin}
-        selectedGroupId={effectiveGroupId}
-        allItemsId={ALL_ITEMS}
-        allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
-        onSelect={selectGroup}
-        onCreateGroup={handleCreateGroup}
-        onRenameGroup={handleRenameGroup}
-        onDeleteGroup={handleDeleteGroup}
-      />
-
-      {isRecycleBinSelected && recycleBin ? (
-        <RecycleBinPanel
-          binGroup={recycleBin}
-          onRestoreEntry={handleRestoreEntry}
-          onDeleteEntryForever={handleDeleteEntryForever}
-          onRestoreGroup={handleRestoreGroup}
-          onDeleteGroupForever={handleDeleteGroupForever}
-          onEmptyRecycleBin={handleEmptyRecycleBin}
-        />
+      {view === "generator" ? (
+        <GeneratorScreen policyOptions={generatorPolicy} onPolicyChange={onGeneratorPolicyChange} />
       ) : (
         <>
-          <div className="entry-list-panel">
-            <div className="entry-list-header">
-              <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
-              <button type="button" className="btn-secondary" onClick={startCreateEntry}>
-                <PlusIcon size={13} /> New Entry
-              </button>
-            </div>
-            <div className="entry-search">
-              <SearchIcon size={14} />
-              <input
-                type="text"
-                className="entry-search-input"
-                placeholder="Search entries…"
-                aria-label="Search entries"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-              {isSearching && (
-                <button
-                  type="button"
-                  className="entry-search-clear"
-                  aria-label="Clear search"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <XIcon size={12} />
-                </button>
-              )}
-            </div>
-            <div className="entry-list">
-              {visibleEntries.length === 0 && (
-                <div className="entry-list-empty">
-                  {isSearching ? `No entries match "${trimmedQuery}".` : "No entries in this group."}
-                </div>
-              )}
-              {visibleEntries.map(({ entry }) => (
-                <button
-                  key={entry.id.toString()}
-                  type="button"
-                  className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}`}
-                  onClick={() => selectEntry(entry.id.toString())}
-                >
-                  <div className="entry-avatar">{initialOf(entry.title)}</div>
-                  <div className="entry-row-text">
-                    <div className="entry-row-title">{entry.title || "(untitled)"}</div>
-                    <div className="entry-row-username">{entry.username}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          <GroupTree
+            rootGroup={rootGroup}
+            recycleBin={recycleBin}
+            selectedGroupId={effectiveGroupId}
+            allItemsId={ALL_ITEMS}
+            allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
+            onSelect={selectGroup}
+            onCreateGroup={handleCreateGroup}
+            onRenameGroup={handleRenameGroup}
+            onDeleteGroup={handleDeleteGroup}
+          />
 
-          <div className="detail-pane">
-            {formMode.kind === "create" && (
-              <EntryForm
-                initialGroupId={newEntryGroupId}
-                groupOptions={groupOptions}
-                onSubmit={handleCreateEntry}
-                onCancel={() => setFormMode({ kind: "none" })}
-              />
-            )}
-            {formMode.kind === "edit" && selected && (
-              <EntryForm
-                initialEntry={selected.entry}
-                initialGroupId={selected.group.id.toString()}
-                groupOptions={groupOptions}
-                onSubmit={(entry, groupId) => handleUpdateEntry(entry, groupId, selected.group.id)}
-                onCancel={() => setFormMode({ kind: "none" })}
-              />
-            )}
-            {formMode.kind === "none" && !selected && (
-              <div className="detail-empty">Select an entry to view details</div>
-            )}
-            {formMode.kind === "none" && selected && (
-              <EntryDetail
-                entryWithGroup={selected}
-                urlOpener={urlOpener}
-                revealed={revealed}
-                onToggleReveal={() => setRevealed((value) => !value)}
-                onEdit={() => setFormMode({ kind: "edit" })}
-                onDelete={() => handleDeleteEntry(selected.entry.id)}
-              />
-            )}
-          </div>
+          {isRecycleBinSelected && recycleBin ? (
+            <RecycleBinPanel
+              binGroup={recycleBin}
+              onRestoreEntry={handleRestoreEntry}
+              onDeleteEntryForever={handleDeleteEntryForever}
+              onRestoreGroup={handleRestoreGroup}
+              onDeleteGroupForever={handleDeleteGroupForever}
+              onEmptyRecycleBin={handleEmptyRecycleBin}
+            />
+          ) : (
+            <>
+              <div className="entry-list-panel">
+                <div className="entry-list-header">
+                  <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
+                  <button type="button" className="btn-secondary" onClick={startCreateEntry}>
+                    <PlusIcon size={13} /> New Entry
+                  </button>
+                </div>
+                <div className="entry-search">
+                  <SearchIcon size={14} />
+                  <input
+                    type="text"
+                    className="entry-search-input"
+                    placeholder="Search entries…"
+                    aria-label="Search entries"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
+                  {isSearching && (
+                    <button
+                      type="button"
+                      className="entry-search-clear"
+                      aria-label="Clear search"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <XIcon size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="entry-list">
+                  {visibleEntries.length === 0 && (
+                    <div className="entry-list-empty">
+                      {isSearching ? `No entries match "${trimmedQuery}".` : "No entries in this group."}
+                    </div>
+                  )}
+                  {visibleEntries.map(({ entry }) => (
+                    <button
+                      key={entry.id.toString()}
+                      type="button"
+                      className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}`}
+                      onClick={() => selectEntry(entry.id.toString())}
+                    >
+                      <div className="entry-avatar">{initialOf(entry.title)}</div>
+                      <div className="entry-row-text">
+                        <div className="entry-row-title">{entry.title || "(untitled)"}</div>
+                        <div className="entry-row-username">{entry.username}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="detail-pane">
+                {formMode.kind === "create" && (
+                  <EntryForm
+                    initialGroupId={newEntryGroupId}
+                    groupOptions={groupOptions}
+                    generatorPolicy={generatorPolicy}
+                    onSubmit={handleCreateEntry}
+                    onCancel={() => setFormMode({ kind: "none" })}
+                  />
+                )}
+                {formMode.kind === "edit" && selected && (
+                  <EntryForm
+                    initialEntry={selected.entry}
+                    initialGroupId={selected.group.id.toString()}
+                    groupOptions={groupOptions}
+                    generatorPolicy={generatorPolicy}
+                    onSubmit={(entry, groupId) => handleUpdateEntry(entry, groupId, selected.group.id)}
+                    onCancel={() => setFormMode({ kind: "none" })}
+                  />
+                )}
+                {formMode.kind === "none" && !selected && (
+                  <div className="detail-empty">Select an entry to view details</div>
+                )}
+                {formMode.kind === "none" && selected && (
+                  <EntryDetail
+                    entryWithGroup={selected}
+                    urlOpener={urlOpener}
+                    revealed={revealed}
+                    onToggleReveal={() => setRevealed((value) => !value)}
+                    onEdit={() => setFormMode({ kind: "edit" })}
+                    onDelete={() => handleDeleteEntry(selected.entry.id)}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

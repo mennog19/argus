@@ -228,6 +228,7 @@
   border: none;
   cursor: pointer;
   background: transparent;
+  color: var(--color-text-dimmer);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -235,6 +236,7 @@
 
 .icon-button:hover {
   background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
 }
 
 .group-sidebar {
@@ -823,4 +825,68 @@
 
 .custom-field-row .icon-button:hover {
   color: var(--color-danger);
+}
+
+/* Nav rail view icons */
+
+.nav-rail-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.icon-button.active {
+  background: var(--color-surface);
+  color: var(--color-accent);
+}
+
+/* Password generator */
+
+.generator-screen .detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.generator-output {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.generator-password {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  word-break: break-all;
+}
+
+.generator-mode-toggle {
+  display: flex;
+  gap: 10px;
+}
+
+.generator-mode-toggle .btn-secondary.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.generator-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.generator-options input[type="range"] {
+  width: 100%;
+  accent-color: var(--color-accent);
+}
+
+.generator-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
 }
