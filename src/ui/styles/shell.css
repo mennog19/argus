@@ -890,3 +890,42 @@
   gap: 10px;
   font-size: 13.5px;
 }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-card {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.modal-card p {
+  margin: 0;
+  color: var(--color-text-dim);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

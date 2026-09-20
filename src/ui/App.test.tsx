@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Vault } from "../domain";
-import { OpenedVault, VaultAccessService } from "../application/vault-access-service";
+import { OpenedVault, VaultAccessService, VaultSaveConflictError } from "../application/vault-access-service";
 import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
 import App from "./App";
@@ -251,5 +251,131 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Passphrase" }));
 
     expect(await screen.findByRole("heading", { name: "Password Generator" })).toBeInTheDocument();
+  });
+
+  it("propagates a non-conflict save error so the entry form can show it, without opening the conflict overlay", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const saveVault = vi.fn().mockRejectedValueOnce(new Error("disk full"));
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: /new entry/i }));
+    await user.type(screen.getByLabelText("Title"), "GitHub");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("disk full")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /vault changed on disk/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a conflict overlay instead of losing the edit when the file changed on disk", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const saveVault = vi.fn().mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath));
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: /new entry/i }));
+    await user.type(screen.getByLabelText("Title"), "GitHub");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByRole("heading", { name: /vault changed on disk/i })).toBeInTheDocument();
+  });
+
+  it("retries the save with force when the user chooses to overwrite the conflict", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const saveVault = vi
+      .fn()
+      .mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath))
+      .mockResolvedValueOnce(undefined);
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: /new entry/i }));
+    await user.type(screen.getByLabelText("Title"), "GitHub");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await user.click(await screen.findByRole("button", { name: /overwrite anyway/i }));
+
+    expect(saveVault).toHaveBeenLastCalledWith(expect.anything(), opened.filePath, { force: true });
+    expect(await screen.findByRole("heading", { name: "GitHub" })).toBeInTheDocument();
+  });
+
+  it("locks the vault, discarding the pending edit, when the user chooses to discard the conflict", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const saveVault = vi.fn().mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath));
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: /new entry/i }));
+    await user.type(screen.getByLabelText("Title"), "GitHub");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await user.click(await screen.findByRole("button", { name: /discard my changes/i }));
+
+    expect(await screen.findByLabelText("Master password")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /vault changed on disk/i })).not.toBeInTheDocument();
   });
 });

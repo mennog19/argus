@@ -7,4 +7,8 @@
 export interface FileStorage {
   readFile(path: string): Promise<ArrayBuffer>;
   writeFile(path: string, data: ArrayBuffer): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  /** Last-modified time of the file at `path`, in epoch milliseconds. */
+  lastModified(path: string): Promise<number>;
+  copyFile(source: string, destination: string): Promise<void>;
 }
