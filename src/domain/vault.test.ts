@@ -134,6 +134,31 @@ describe("Vault", () => {
     });
   });
 
+  describe("renameGroup", () => {
+    it("renames the root group", () => {
+      const vault = Vault.create("Root");
+
+      const updated = vault.renameGroup(vault.rootGroup.id, "Renamed");
+
+      expect(updated.rootGroup.name).toBe("Renamed");
+    });
+
+    it("renames a nested group", () => {
+      const child = Group.create("Child");
+      const vault = new Vault("Root", Group.create("Root").addGroup(child));
+
+      const updated = vault.renameGroup(child.id, "Renamed");
+
+      expect(updated.findGroup(child.id)?.name).toBe("Renamed");
+    });
+
+    it("throws when the group doesn't exist", () => {
+      const vault = Vault.create("Root");
+
+      expect(() => vault.renameGroup(GroupId.create(), "Renamed")).toThrow("Group not found");
+    });
+  });
+
   describe("addEntry", () => {
     it("adds an entry to the root group", () => {
       const vault = Vault.create("Root");

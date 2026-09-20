@@ -74,6 +74,13 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
     };
   }
 
+  function handleVaultSave(filePath: string) {
+    return async (nextVault: Vault) => {
+      await vaultAccessService.saveVault(nextVault, filePath);
+      setScreen({ kind: "unlocked", vault: nextVault, filePath });
+    };
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -96,7 +103,14 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
     );
   }
 
-  return <VaultShell vault={screen.vault} urlOpener={urlOpener} onLock={handleLock(screen.filePath)} />;
+  return (
+    <VaultShell
+      vault={screen.vault}
+      urlOpener={urlOpener}
+      onLock={handleLock(screen.filePath)}
+      onSave={handleVaultSave(screen.filePath)}
+    />
+  );
 }
 
 export default App;

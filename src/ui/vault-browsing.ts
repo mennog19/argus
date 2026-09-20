@@ -16,3 +16,19 @@ export function collectAllEntries(group: Group): EntryWithGroup[] {
 export function entriesOf(group: Group): EntryWithGroup[] {
   return group.entries.map((entry) => ({ entry, group }));
 }
+
+export interface GroupOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+/**
+ * `group` and every descendant, flattened depth-first with each nested
+ * level's `label` indented two spaces per level — for populating a group
+ * `<select>` while keeping the tree's shape legible.
+ */
+export function flattenGroupOptions(group: Group, depth = 0): GroupOption[] {
+  const own: GroupOption = { id: group.id.toString(), label: "  ".repeat(depth) + group.name };
+  const nested = group.groups.flatMap((child) => flattenGroupOptions(child, depth + 1));
+  return [own, ...nested];
+}

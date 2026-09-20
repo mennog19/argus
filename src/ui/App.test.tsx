@@ -12,6 +12,7 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     openExistingVault: vi.fn(),
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
+    saveVault: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -168,5 +169,35 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+  });
+
+  it("persists an entry created in the vault shell via saveVault, keeping the vault unlocked", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const saveVault = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: /new entry/i }));
+    await user.type(screen.getByLabelText("Title"), "GitHub");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByRole("heading", { name: "GitHub" })).toBeInTheDocument();
+    expect(saveVault).toHaveBeenCalledWith(expect.anything(), "C:/vaults/personal.kdbx");
   });
 });

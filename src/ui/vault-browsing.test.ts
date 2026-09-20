@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Entry, Group } from "../domain";
-import { collectAllEntries, entriesOf } from "./vault-browsing";
+import { collectAllEntries, entriesOf, flattenGroupOptions } from "./vault-browsing";
 
 describe("entriesOf", () => {
   it("returns only the group's own entries, paired with that group", () => {
@@ -49,5 +49,27 @@ describe("collectAllEntries", () => {
     const root = Group.create("Root");
 
     expect(collectAllEntries(root)).toEqual([]);
+  });
+});
+
+describe("flattenGroupOptions", () => {
+  it("returns a single option for a group with no children", () => {
+    const group = Group.create("Root");
+
+    expect(flattenGroupOptions(group)).toEqual([{ id: group.id.toString(), label: "Root" }]);
+  });
+
+  it("flattens nested groups depth-first, indenting by depth", () => {
+    const grandchild = Group.create("Grandchild");
+    const child = Group.create("Child").addGroup(grandchild);
+    const sibling = Group.create("Sibling");
+    const root = Group.create("Root").addGroup(child).addGroup(sibling);
+
+    expect(flattenGroupOptions(root)).toEqual([
+      { id: root.id.toString(), label: "Root" },
+      { id: child.id.toString(), label: "  Child" },
+      { id: grandchild.id.toString(), label: "    Grandchild" },
+      { id: sibling.id.toString(), label: "  Sibling" },
+    ]);
   });
 });

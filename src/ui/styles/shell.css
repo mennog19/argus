@@ -291,6 +291,131 @@
   margin: 12px 8px;
 }
 
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 0 10px;
+}
+
+.sidebar-section-header .sidebar-section-label {
+  padding: 0;
+}
+
+.icon-button-small {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-dimmer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button-small:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.group-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+  border-radius: 8px;
+}
+
+.group-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.group-row.active {
+  background: var(--color-surface);
+}
+
+.group-disclosure {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dimmer);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-row-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+}
+
+.group-row:hover .group-row-actions {
+  opacity: 1;
+}
+
+.group-row-actions button {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dimmer);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+}
+
+.group-row-actions button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+}
+
+.group-inline-form,
+.group-inline-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+}
+
+.group-inline-form .field-input {
+  padding: 7px 9px;
+  font-size: 12.5px;
+}
+
+.group-inline-confirm span {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--color-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .entry-list-panel {
   width: 368px;
   flex: none;
@@ -312,6 +437,14 @@
   font-size: 16px;
   font-weight: 700;
   margin: 0;
+}
+
+.entry-list-header .btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12.5px;
 }
 
 .entry-list {
@@ -414,6 +547,12 @@
   margin-bottom: 20px;
 }
 
+.detail-header-actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
 .detail-avatar {
   width: 52px;
   height: 52px;
@@ -492,4 +631,96 @@
   line-height: 1.5;
   color: rgba(236, 238, 241, 0.8);
   white-space: pre-wrap;
+}
+
+/* Entry create/edit form */
+
+.entry-form {
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.entry-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.entry-form-actions .btn-primary {
+  flex: none;
+  padding: 12px 22px;
+}
+
+/* Tags editor */
+
+.tags-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  font-size: 12px;
+}
+
+.tag-chip button {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dimmer);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.tag-chip button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+/* Custom fields editor */
+
+.custom-fields-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-field-row .field-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-field-row .icon-button {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-dimmer);
+}
+
+.custom-field-row .icon-button:hover {
+  color: var(--color-danger);
 }
