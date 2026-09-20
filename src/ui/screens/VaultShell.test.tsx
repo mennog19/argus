@@ -77,6 +77,61 @@ describe("VaultShell", () => {
     expect(screen.getByText("Nested Entry")).toBeInTheDocument();
   });
 
+  it("searches across all groups by title/username/URL/notes/tags/custom fields, case-insensitively", async () => {
+    const user = userEvent.setup();
+    const github = Entry.create({ title: "GitHub", username: "octocat" });
+    const work = Group.create("Work").addEntry(
+      Entry.create({ title: "Internal Tool", notes: "shared github mirror" }),
+    );
+    const other = Entry.create({ title: "Mail" });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, github);
+    vault = vault.addEntry(vault.rootGroup.id, other);
+    vault = vault.addGroup(vault.rootGroup.id, work);
+
+    renderShell(vault);
+    // Narrow to a single group first, to prove search overrides group scope.
+    await user.click(rowButton("Work"));
+
+    await user.type(screen.getByLabelText("Search entries"), "GITHUB");
+
+    expect(screen.getByText("GitHub")).toBeInTheDocument();
+    expect(screen.getByText("Internal Tool")).toBeInTheDocument();
+    expect(screen.queryByText("Mail")).not.toBeInTheDocument();
+  });
+
+  it("shows a no-match message while searching, and clears the search via the clear button", async () => {
+    const user = userEvent.setup();
+    const entry = Entry.create({ title: "GitHub" });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+
+    renderShell(vault);
+
+    await user.type(screen.getByLabelText("Search entries"), "nonexistent");
+    expect(screen.getByText('No entries match "nonexistent".')).toBeInTheDocument();
+    expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(screen.getByText("GitHub")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search entries")).toHaveValue("");
+  });
+
+  it("clears the search query when switching groups", async () => {
+    const user = userEvent.setup();
+    const work = Group.create("Work").addEntry(Entry.create({ title: "Work Entry" }));
+    let vault = Vault.create("Mine");
+    vault = vault.addGroup(vault.rootGroup.id, work);
+
+    renderShell(vault);
+
+    await user.type(screen.getByLabelText("Search entries"), "something");
+    await user.click(rowButton("Work"));
+
+    expect(screen.getByLabelText("Search entries")).toHaveValue("");
+  });
+
   it("selects an entry and shows its read-only detail", async () => {
     const user = userEvent.setup();
     const entry = Entry.create({

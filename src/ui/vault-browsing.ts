@@ -1,4 +1,4 @@
-import { Entry, Group, GroupId } from "../domain";
+import { Entry, Group, GroupId, matchesSearchQuery } from "../domain";
 
 export interface EntryWithGroup {
   readonly entry: Entry;
@@ -29,6 +29,19 @@ export function collectAllEntries(
 /** Only `group`'s own entries (not its subgroups'), paired with `group` itself. */
 export function entriesOf(group: Group): EntryWithGroup[] {
   return group.entries.map((entry) => ({ entry, group }));
+}
+
+/**
+ * Entries (paired with their group) whose entry matches `query` — see
+ * `matchesSearchQuery` for what counts as a match. Callers typically pass
+ * the result of `collectAllEntries` (already excluding the recycle bin) so
+ * search never surfaces deleted entries.
+ */
+export function searchEntries(
+  entries: readonly EntryWithGroup[],
+  query: string,
+): EntryWithGroup[] {
+  return entries.filter(({ entry }) => matchesSearchQuery(entry, query));
 }
 
 export interface GroupOption {

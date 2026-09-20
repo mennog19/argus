@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { UrlOpener } from "../../application/url-opener";
-import { EditIcon, LockIcon, PlusIcon, TrashIcon } from "../icons";
+import { EditIcon, LockIcon, PlusIcon, SearchIcon, TrashIcon, XIcon } from "../icons";
 import { initialOf } from "../format";
 import {
   collectAllEntries,
   entriesOf,
   EntryWithGroup,
   flattenGroupOptions,
+  searchEntries,
 } from "../vault-browsing";
 import { EntryForm } from "./EntryForm";
 import { GroupTree } from "./GroupTree";
@@ -29,6 +30,7 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
   const [selectedEntryId, setSelectedEntryId] = useState<string | undefined>(undefined);
   const [revealed, setRevealed] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>({ kind: "none" });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const rootGroup = vault.rootGroup;
   const recycleBin = vault.recycleBin;
@@ -47,11 +49,16 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
       ? undefined
       : vault.findGroup(GroupId.fromString(effectiveGroupId));
 
+  const trimmedQuery = searchQuery.trim();
+  const isSearching = trimmedQuery !== "";
+
   const visibleEntries: EntryWithGroup[] = isRecycleBinSelected
     ? []
-    : effectiveGroupId === ALL_ITEMS
-      ? collectAllEntries(rootGroup, excludeFromBrowsing)
-      : entriesOf(selectedGroup!);
+    : isSearching
+      ? searchEntries(collectAllEntries(rootGroup, excludeFromBrowsing), trimmedQuery)
+      : effectiveGroupId === ALL_ITEMS
+        ? collectAllEntries(rootGroup, excludeFromBrowsing)
+        : entriesOf(selectedGroup!);
 
   const selected = visibleEntries.find((item) => item.entry.id.toString() === selectedEntryId);
   const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing);
@@ -61,6 +68,7 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
     setSelectedEntryId(undefined);
     setRevealed(false);
     setFormMode({ kind: "none" });
+    setSearchQuery("");
   }
 
   function selectEntry(entryId: string) {
@@ -175,9 +183,32 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
                 <PlusIcon size={13} /> New Entry
               </button>
             </div>
+            <div className="entry-search">
+              <SearchIcon size={14} />
+              <input
+                type="text"
+                className="entry-search-input"
+                placeholder="Search entries…"
+                aria-label="Search entries"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              {isSearching && (
+                <button
+                  type="button"
+                  className="entry-search-clear"
+                  aria-label="Clear search"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <XIcon size={12} />
+                </button>
+              )}
+            </div>
             <div className="entry-list">
               {visibleEntries.length === 0 && (
-                <div className="entry-list-empty">No entries in this group.</div>
+                <div className="entry-list-empty">
+                  {isSearching ? `No entries match "${trimmedQuery}".` : "No entries in this group."}
+                </div>
               )}
               {visibleEntries.map(({ entry }) => (
                 <button

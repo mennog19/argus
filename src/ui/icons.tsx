@@ -57,6 +57,15 @@ export function XIcon({ size = 14, color = "currentColor" }: IconProps) {
   );
 }
 
+export function SearchIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" fill="none" stroke={color} strokeWidth="2" />
+      <path d="M20 20l-4.5-4.5" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ChevronIcon({ size = 12, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
