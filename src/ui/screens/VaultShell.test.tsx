@@ -12,9 +12,12 @@ import {
   Tags,
   Vault,
 } from "../../domain";
+import { AutoLockSettings } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
+
+const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
 
 function fakeUrlOpener(): UrlOpener {
   return { open: vi.fn() };
@@ -35,6 +38,8 @@ function renderShell(
     clipboardWriter?: ClipboardWriter;
     clipboardClearSeconds?: number;
     onClipboardClearSecondsChange?: (seconds: number) => void;
+    autoLock?: AutoLockSettings;
+    onAutoLockChange?: (autoLock: AutoLockSettings) => void;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
@@ -45,6 +50,8 @@ function renderShell(
   const clipboardWriter = overrides.clipboardWriter ?? fakeClipboardWriter();
   const clipboardClearSeconds = overrides.clipboardClearSeconds ?? 20;
   const onClipboardClearSecondsChange = overrides.onClipboardClearSecondsChange ?? vi.fn();
+  const autoLock = overrides.autoLock ?? DEFAULT_AUTO_LOCK;
+  const onAutoLockChange = overrides.onAutoLockChange ?? vi.fn();
   render(
     <VaultShell
       vault={vault}
@@ -52,14 +59,23 @@ function renderShell(
       clipboardWriter={clipboardWriter}
       generatorPolicy={generatorPolicy}
       clipboardClearSeconds={clipboardClearSeconds}
+      autoLock={autoLock}
       onLock={onLock}
       onSave={onSave}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
+      onAutoLockChange={onAutoLockChange}
       getPasswordChangedTimes={getPasswordChangedTimes}
     />,
   );
-  return { onSave, onLock, onGeneratorPolicyChange, clipboardWriter, onClipboardClearSecondsChange };
+  return {
+    onSave,
+    onLock,
+    onGeneratorPolicyChange,
+    clipboardWriter,
+    onClipboardClearSecondsChange,
+    onAutoLockChange,
+  };
 }
 
 // The row-select button's accessible name concatenates the group's name with
@@ -237,9 +253,11 @@ describe("VaultShell", () => {
         onSave={vi.fn()}
         onGeneratorPolicyChange={vi.fn()}
         onClipboardClearSecondsChange={vi.fn()}
+        onAutoLockChange={vi.fn()}
         getPasswordChangedTimes={() => new Map()}
         clipboardWriter={fakeClipboardWriter()}
         clipboardClearSeconds={20}
+        autoLock={DEFAULT_AUTO_LOCK}
       />,
     );
 
@@ -680,9 +698,11 @@ describe("VaultShell", () => {
           onSave={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
+          onAutoLockChange={vi.fn()}
           getPasswordChangedTimes={() => new Map()}
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
+          autoLock={DEFAULT_AUTO_LOCK}
         />,
       );
 
@@ -702,9 +722,11 @@ describe("VaultShell", () => {
           onSave={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
+          onAutoLockChange={vi.fn()}
           getPasswordChangedTimes={() => new Map()}
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
+          autoLock={DEFAULT_AUTO_LOCK}
         />,
       );
 

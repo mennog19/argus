@@ -6,6 +6,16 @@ export interface RecentVaultEntry {
   readonly lastOpenedAt: string;
 }
 
+/** Auto-lock triggers, each independently toggleable. All off by default (opt-in). */
+export interface AutoLockSettings {
+  /** Minutes of inactivity before locking. Undefined means idle-timeout locking is disabled. */
+  readonly idleTimeoutMinutes?: number;
+  readonly lockOnMinimize: boolean;
+  readonly lockOnSleep: boolean;
+}
+
+export const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
   /** Shared password generator settings, used by both the dedicated generator
@@ -16,6 +26,8 @@ export interface AppSettings {
   /** Seconds after a copy-to-clipboard before it's cleared automatically.
    * Undefined until the user changes it, at which point `DEFAULT_CLIPBOARD_CLEAR_SECONDS` applies. */
   readonly clipboardClearSeconds?: number;
+  /** Undefined until the user changes it, at which point `DEFAULT_AUTO_LOCK` applies. */
+  readonly autoLock?: AutoLockSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -62,4 +74,9 @@ export function withGeneratorPolicy(
 /** Returns settings with `seconds` recorded as the clipboard auto-clear delay. */
 export function withClipboardClearSeconds(settings: AppSettings, seconds: number): AppSettings {
   return { ...settings, clipboardClearSeconds: seconds };
+}
+
+/** Returns settings with `autoLock` recorded as the auto-lock configuration. */
+export function withAutoLock(settings: AppSettings, autoLock: AutoLockSettings): AppSettings {
+  return { ...settings, autoLock };
 }

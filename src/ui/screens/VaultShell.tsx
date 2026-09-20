@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Entry, EntryId, Group, GroupId, PasswordPolicyOptions, Vault } from "../../domain";
+import { AutoLockSettings } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import {
@@ -36,10 +37,12 @@ interface VaultShellProps {
   clipboardWriter: ClipboardWriter;
   generatorPolicy: PasswordPolicyOptions;
   clipboardClearSeconds: number;
+  autoLock: AutoLockSettings;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
+  onAutoLockChange: (autoLock: AutoLockSettings) => void;
   getPasswordChangedTimes: () => Map<string, Date>;
 }
 
@@ -54,10 +57,12 @@ export function VaultShell({
   clipboardWriter,
   generatorPolicy,
   clipboardClearSeconds,
+  autoLock,
   onLock,
   onSave,
   onGeneratorPolicyChange,
   onClipboardClearSecondsChange,
+  onAutoLockChange,
   getPasswordChangedTimes,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
@@ -239,7 +244,9 @@ export function VaultShell({
       ) : view === "settings" ? (
         <SettingsScreen
           clipboardClearSeconds={clipboardClearSeconds}
+          autoLock={autoLock}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
+          onAutoLockChange={onAutoLockChange}
         />
       ) : (
         <>

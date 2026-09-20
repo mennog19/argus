@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Vault } from "../domain";
 import { ClipboardWriter } from "../application/clipboard";
 import { OpenedVault, VaultAccessService, VaultSaveConflictError } from "../application/vault-access-service";
 import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
+import { WindowEvents } from "../application/window-events";
 import App from "./App";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
@@ -35,6 +36,10 @@ function fakeClipboardWriter(): ClipboardWriter {
   return { writeText: vi.fn() };
 }
 
+function fakeWindowEvents(overrides: Partial<WindowEvents> = {}): WindowEvents {
+  return { onMinimize: vi.fn().mockReturnValue(vi.fn()), ...overrides };
+}
+
 describe("App", () => {
   it("shows the welcome screen when there are no recent vaults", async () => {
     render(
@@ -43,6 +48,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -56,6 +62,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore({ load: vi.fn().mockRejectedValue(new Error("no backend")) })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -76,6 +83,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -93,6 +101,7 @@ describe("App", () => {
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -125,6 +134,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -149,6 +159,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -172,6 +183,7 @@ describe("App", () => {
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -198,6 +210,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -226,6 +239,7 @@ describe("App", () => {
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -254,6 +268,7 @@ describe("App", () => {
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -282,6 +297,7 @@ describe("App", () => {
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -311,6 +327,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -342,6 +359,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -370,6 +388,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -403,6 +422,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -436,6 +456,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
       />,
     );
 
@@ -453,5 +474,263 @@ describe("App", () => {
 
     expect(await screen.findByLabelText("Master password")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /vault changed on disk/i })).not.toBeInTheDocument();
+  });
+
+  it("persists an auto-lock change made in the vault shell's settings screen", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settingsStore = fakeSettingsStore();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={settingsStore}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("checkbox", { name: /minimized/i }));
+
+    expect(settingsStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ autoLock: expect.objectContaining({ lockOnMinimize: true }) }),
+    );
+  });
+
+  it("locks the vault after the configured idle timeout with no activity", async () => {
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settings: AppSettings = {
+      recentVaults: [],
+      autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
+    };
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ delay: null });
+    try {
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+        />,
+      );
+
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(70_000);
+      });
+
+      expect(screen.getByLabelText("Master password")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not lock from idle timeout while activity keeps resetting the idle clock", async () => {
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settings: AppSettings = {
+      recentVaults: [],
+      autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
+    };
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ delay: null });
+    try {
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+        />,
+      );
+
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(40_000);
+      });
+      window.dispatchEvent(new Event("mousemove"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(40_000);
+      });
+
+      expect(screen.getByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("locks the vault when the system clock jumps far beyond the sleep-check interval", async () => {
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settings: AppSettings = {
+      recentVaults: [],
+      autoLock: { lockOnMinimize: false, lockOnSleep: true },
+    };
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ delay: null });
+    try {
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+        />,
+      );
+
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+
+      // Simulate the machine sleeping: make the next heartbeat tick observe a
+      // huge gap since the last one, without disturbing when the fake timer
+      // queue itself thinks "now" is (which governs when that tick fires).
+      const jumpedTime = Date.now() + 6 * 60_000;
+      vi.spyOn(Date, "now").mockReturnValue(jumpedTime);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+
+      expect(screen.getByLabelText("Master password")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not lock from a sleep-check heartbeat that isn't a real clock jump", async () => {
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settings: AppSettings = {
+      recentVaults: [],
+      autoLock: { lockOnMinimize: false, lockOnSleep: true },
+    };
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ delay: null });
+    try {
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+        />,
+      );
+
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+
+      expect(screen.getByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("locks the vault when the window is minimized, only if lock-on-minimize is enabled", async () => {
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settings: AppSettings = {
+      recentVaults: [],
+      autoLock: { lockOnMinimize: true, lockOnSleep: false },
+    };
+    const user = userEvent.setup();
+    let minimizeCallback: (() => void) | undefined;
+    const windowEvents = fakeWindowEvents({
+      onMinimize: vi.fn((callback: () => void) => {
+        minimizeCallback = callback;
+        return vi.fn();
+      }),
+    });
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={windowEvents}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    expect(minimizeCallback).toBeDefined();
+
+    act(() => {
+      minimizeCallback!();
+    });
+
+    expect(await screen.findByLabelText("Master password")).toBeInTheDocument();
+  });
+
+  it("does not lock on minimize when lock-on-minimize is disabled", async () => {
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const user = userEvent.setup();
+    let minimizeRegistered = false;
+    const windowEvents = fakeWindowEvents({
+      onMinimize: vi.fn(() => {
+        minimizeRegistered = true;
+        return vi.fn();
+      }),
+    });
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={windowEvents}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    expect(minimizeRegistered).toBe(false);
   });
 });
