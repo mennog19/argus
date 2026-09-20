@@ -14,6 +14,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // Must come after fs: persists filesystem paths the user grants via
+        // the dialog plugin (e.g. picking a vault location) across app
+        // restarts. Without this, re-opening a remembered vault path on a
+        // fresh launch is rejected by Tauri's fs scope before the master
+        // password is ever checked.
+        .plugin(tauri_plugin_persisted_scope::init())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
