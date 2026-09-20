@@ -3,9 +3,15 @@ import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { UrlOpener } from "../../application/url-opener";
 import { EditIcon, LockIcon, PlusIcon, TrashIcon } from "../icons";
 import { initialOf } from "../format";
-import { collectAllEntries, entriesOf, EntryWithGroup, flattenGroupOptions } from "../vault-browsing";
+import {
+  collectAllEntries,
+  entriesOf,
+  EntryWithGroup,
+  flattenGroupOptions,
+} from "../vault-browsing";
 import { EntryForm } from "./EntryForm";
 import { GroupTree } from "./GroupTree";
+import { RecycleBinPanel } from "./RecycleBinPanel";
 
 interface VaultShellProps {
   vault: Vault;
@@ -25,6 +31,8 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
   const [formMode, setFormMode] = useState<FormMode>({ kind: "none" });
 
   const rootGroup = vault.rootGroup;
+  const recycleBin = vault.recycleBin;
+  const excludeFromBrowsing = recycleBin ? [recycleBin.id] : [];
 
   // Falls back to "All Items" if the selected group no longer exists (e.g.
   // it, or an ancestor of it, was just deleted).
@@ -32,14 +40,21 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
     selectedGroupId === ALL_ITEMS || vault.findGroup(GroupId.fromString(selectedGroupId))
       ? selectedGroupId
       : ALL_ITEMS;
+  const isRecycleBinSelected =
+    recycleBin !== undefined && effectiveGroupId === recycleBin.id.toString();
   const selectedGroup =
-    effectiveGroupId === ALL_ITEMS ? undefined : vault.findGroup(GroupId.fromString(effectiveGroupId));
+    effectiveGroupId === ALL_ITEMS
+      ? undefined
+      : vault.findGroup(GroupId.fromString(effectiveGroupId));
 
-  const visibleEntries: EntryWithGroup[] =
-    effectiveGroupId === ALL_ITEMS ? collectAllEntries(rootGroup) : entriesOf(selectedGroup!);
+  const visibleEntries: EntryWithGroup[] = isRecycleBinSelected
+    ? []
+    : effectiveGroupId === ALL_ITEMS
+      ? collectAllEntries(rootGroup, excludeFromBrowsing)
+      : entriesOf(selectedGroup!);
 
   const selected = visibleEntries.find((item) => item.entry.id.toString() === selectedEntryId);
-  const groupOptions = flattenGroupOptions(rootGroup);
+  const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing);
 
   function selectGroup(groupId: string) {
     setSelectedGroupId(groupId);
@@ -67,7 +82,7 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
   }
 
   async function handleDeleteGroup(groupId: GroupId) {
-    await persist(vault.removeGroup(groupId));
+    await persist(vault.deleteGroup(groupId));
     if (effectiveGroupId === groupId.toString()) {
       selectGroup(ALL_ITEMS);
     }
@@ -89,8 +104,28 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
   }
 
   async function handleDeleteEntry(entryId: EntryId) {
-    await persist(vault.removeEntry(entryId));
+    await persist(vault.deleteEntry(entryId));
     setSelectedEntryId(undefined);
+  }
+
+  async function handleRestoreEntry(entryId: EntryId) {
+    await persist(vault.restoreEntry(entryId, vault.rootGroup.id));
+  }
+
+  async function handleDeleteEntryForever(entryId: EntryId) {
+    await persist(vault.removeEntry(entryId));
+  }
+
+  async function handleRestoreGroup(groupId: GroupId) {
+    await persist(vault.restoreGroup(groupId, vault.rootGroup.id));
+  }
+
+  async function handleDeleteGroupForever(groupId: GroupId) {
+    await persist(vault.removeGroup(groupId));
+  }
+
+  async function handleEmptyRecycleBin() {
+    await persist(vault.emptyRecycleBin());
   }
 
   function startCreateEntry() {
@@ -98,7 +133,8 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
     setFormMode({ kind: "create" });
   }
 
-  const newEntryGroupId = effectiveGroupId === ALL_ITEMS ? rootGroup.id.toString() : effectiveGroupId;
+  const newEntryGroupId =
+    effectiveGroupId === ALL_ITEMS ? rootGroup.id.toString() : effectiveGroupId;
 
   return (
     <div className="vault-shell">
@@ -111,75 +147,89 @@ export function VaultShell({ vault, urlOpener, onLock, onSave }: VaultShellProps
 
       <GroupTree
         rootGroup={rootGroup}
+        recycleBin={recycleBin}
         selectedGroupId={effectiveGroupId}
         allItemsId={ALL_ITEMS}
-        allItemsCount={collectAllEntries(rootGroup).length}
+        allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
         onSelect={selectGroup}
         onCreateGroup={handleCreateGroup}
         onRenameGroup={handleRenameGroup}
         onDeleteGroup={handleDeleteGroup}
       />
 
-      <div className="entry-list-panel">
-        <div className="entry-list-header">
-          <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
-          <button type="button" className="btn-secondary" onClick={startCreateEntry}>
-            <PlusIcon size={13} /> New Entry
-          </button>
-        </div>
-        <div className="entry-list">
-          {visibleEntries.length === 0 && (
-            <div className="entry-list-empty">No entries in this group.</div>
-          )}
-          {visibleEntries.map(({ entry }) => (
-            <button
-              key={entry.id.toString()}
-              type="button"
-              className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}`}
-              onClick={() => selectEntry(entry.id.toString())}
-            >
-              <div className="entry-avatar">{initialOf(entry.title)}</div>
-              <div className="entry-row-text">
-                <div className="entry-row-title">{entry.title || "(untitled)"}</div>
-                <div className="entry-row-username">{entry.username}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      {isRecycleBinSelected && recycleBin ? (
+        <RecycleBinPanel
+          binGroup={recycleBin}
+          onRestoreEntry={handleRestoreEntry}
+          onDeleteEntryForever={handleDeleteEntryForever}
+          onRestoreGroup={handleRestoreGroup}
+          onDeleteGroupForever={handleDeleteGroupForever}
+          onEmptyRecycleBin={handleEmptyRecycleBin}
+        />
+      ) : (
+        <>
+          <div className="entry-list-panel">
+            <div className="entry-list-header">
+              <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
+              <button type="button" className="btn-secondary" onClick={startCreateEntry}>
+                <PlusIcon size={13} /> New Entry
+              </button>
+            </div>
+            <div className="entry-list">
+              {visibleEntries.length === 0 && (
+                <div className="entry-list-empty">No entries in this group.</div>
+              )}
+              {visibleEntries.map(({ entry }) => (
+                <button
+                  key={entry.id.toString()}
+                  type="button"
+                  className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}`}
+                  onClick={() => selectEntry(entry.id.toString())}
+                >
+                  <div className="entry-avatar">{initialOf(entry.title)}</div>
+                  <div className="entry-row-text">
+                    <div className="entry-row-title">{entry.title || "(untitled)"}</div>
+                    <div className="entry-row-username">{entry.username}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="detail-pane">
-        {formMode.kind === "create" && (
-          <EntryForm
-            initialGroupId={newEntryGroupId}
-            groupOptions={groupOptions}
-            onSubmit={handleCreateEntry}
-            onCancel={() => setFormMode({ kind: "none" })}
-          />
-        )}
-        {formMode.kind === "edit" && selected && (
-          <EntryForm
-            initialEntry={selected.entry}
-            initialGroupId={selected.group.id.toString()}
-            groupOptions={groupOptions}
-            onSubmit={(entry, groupId) => handleUpdateEntry(entry, groupId, selected.group.id)}
-            onCancel={() => setFormMode({ kind: "none" })}
-          />
-        )}
-        {formMode.kind === "none" && !selected && (
-          <div className="detail-empty">Select an entry to view details</div>
-        )}
-        {formMode.kind === "none" && selected && (
-          <EntryDetail
-            entryWithGroup={selected}
-            urlOpener={urlOpener}
-            revealed={revealed}
-            onToggleReveal={() => setRevealed((value) => !value)}
-            onEdit={() => setFormMode({ kind: "edit" })}
-            onDelete={() => handleDeleteEntry(selected.entry.id)}
-          />
-        )}
-      </div>
+          <div className="detail-pane">
+            {formMode.kind === "create" && (
+              <EntryForm
+                initialGroupId={newEntryGroupId}
+                groupOptions={groupOptions}
+                onSubmit={handleCreateEntry}
+                onCancel={() => setFormMode({ kind: "none" })}
+              />
+            )}
+            {formMode.kind === "edit" && selected && (
+              <EntryForm
+                initialEntry={selected.entry}
+                initialGroupId={selected.group.id.toString()}
+                groupOptions={groupOptions}
+                onSubmit={(entry, groupId) => handleUpdateEntry(entry, groupId, selected.group.id)}
+                onCancel={() => setFormMode({ kind: "none" })}
+              />
+            )}
+            {formMode.kind === "none" && !selected && (
+              <div className="detail-empty">Select an entry to view details</div>
+            )}
+            {formMode.kind === "none" && selected && (
+              <EntryDetail
+                entryWithGroup={selected}
+                urlOpener={urlOpener}
+                revealed={revealed}
+                onToggleReveal={() => setRevealed((value) => !value)}
+                onEdit={() => setFormMode({ kind: "edit" })}
+                onDelete={() => handleDeleteEntry(selected.entry.id)}
+              />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -193,7 +243,14 @@ interface EntryDetailProps {
   onDelete: () => Promise<void>;
 }
 
-function EntryDetail({ entryWithGroup, urlOpener, revealed, onToggleReveal, onEdit, onDelete }: EntryDetailProps) {
+function EntryDetail({
+  entryWithGroup,
+  urlOpener,
+  revealed,
+  onToggleReveal,
+  onEdit,
+  onDelete,
+}: EntryDetailProps) {
   const { entry, group } = entryWithGroup;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -218,7 +275,11 @@ function EntryDetail({ entryWithGroup, urlOpener, revealed, onToggleReveal, onEd
         <div className="entry-row-text">
           <h1 className="detail-title">{entry.title || "(untitled)"}</h1>
           {entry.url && (
-            <button type="button" className="link-muted" onClick={() => void urlOpener.open(entry.url)}>
+            <button
+              type="button"
+              className="link-muted"
+              onClick={() => void urlOpener.open(entry.url)}
+            >
               {entry.url}
             </button>
           )}
@@ -241,10 +302,20 @@ function EntryDetail({ entryWithGroup, urlOpener, revealed, onToggleReveal, onEd
       {confirmingDelete && (
         <div className="group-inline-confirm">
           <span>Delete this entry?</span>
-          <button type="button" className="link-muted" onClick={() => void handleConfirmDelete()} disabled={busy}>
+          <button
+            type="button"
+            className="link-muted"
+            onClick={() => void handleConfirmDelete()}
+            disabled={busy}
+          >
             Delete
           </button>
-          <button type="button" className="link-muted" onClick={() => setConfirmingDelete(false)} disabled={busy}>
+          <button
+            type="button"
+            className="link-muted"
+            onClick={() => setConfirmingDelete(false)}
+            disabled={busy}
+          >
             Cancel
           </button>
         </div>

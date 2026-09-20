@@ -25,7 +25,9 @@ function fieldToString(value: string | ProtectedValue | undefined): string {
 function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
   const customFields = Array.from(kdbxEntry.fields.entries())
     .filter(([key]) => !STANDARD_FIELD_KEYS.has(key))
-    .map(([key, value]) => new CustomField(key, fieldToString(value), value instanceof ProtectedValue));
+    .map(
+      ([key, value]) => new CustomField(key, fieldToString(value), value instanceof ProtectedValue),
+    );
 
   const tags = kdbxEntry.tags.map((tag) => new Tag(tag));
 
@@ -49,8 +51,23 @@ function groupFromKdbx(kdbxGroup: KdbxGroup): Group {
   );
 }
 
+function recycleBinIdFromKdbx(db: Kdbx): GroupId | undefined {
+  if (
+    !db.meta.recycleBinEnabled ||
+    !db.meta.recycleBinUuid ||
+    !db.getGroup(db.meta.recycleBinUuid)
+  ) {
+    return undefined;
+  }
+  return GroupId.fromString(kdbxUuidToDomainId(db.meta.recycleBinUuid));
+}
+
 export function vaultFromKdbx(db: Kdbx): Vault {
-  return new Vault(db.meta.name ?? "", groupFromKdbx(db.getDefaultGroup()));
+  return new Vault(
+    db.meta.name ?? "",
+    groupFromKdbx(db.getDefaultGroup()),
+    recycleBinIdFromKdbx(db),
+  );
 }
 
 /** Canonical, order-independent snapshot of the value an `Entry` carries, used to detect real changes. */
@@ -68,15 +85,25 @@ function snapshotEntry(entry: Entry): string {
   });
 }
 
-function writeEntryFields(kdbxEntry: KdbxEntry, entry: Entry, protection: Kdbx["meta"]["memoryProtection"]): void {
-  kdbxEntry.fields.set("Title", protection.title ? ProtectedValue.fromString(entry.title) : entry.title);
+function writeEntryFields(
+  kdbxEntry: KdbxEntry,
+  entry: Entry,
+  protection: Kdbx["meta"]["memoryProtection"],
+): void {
+  kdbxEntry.fields.set(
+    "Title",
+    protection.title ? ProtectedValue.fromString(entry.title) : entry.title,
+  );
   kdbxEntry.fields.set(
     "UserName",
     protection.userName ? ProtectedValue.fromString(entry.username) : entry.username,
   );
   kdbxEntry.fields.set("Password", ProtectedValue.fromString(entry.password.reveal()));
   kdbxEntry.fields.set("URL", protection.url ? ProtectedValue.fromString(entry.url) : entry.url);
-  kdbxEntry.fields.set("Notes", protection.notes ? ProtectedValue.fromString(entry.notes) : entry.notes);
+  kdbxEntry.fields.set(
+    "Notes",
+    protection.notes ? ProtectedValue.fromString(entry.notes) : entry.notes,
+  );
   kdbxEntry.tags = entry.tags.values.map((tag) => tag.toString());
 
   const keepKeys = new Set(entry.customFields.values.map((field) => field.key));
@@ -86,7 +113,10 @@ function writeEntryFields(kdbxEntry: KdbxEntry, entry: Entry, protection: Kdbx["
     }
   }
   for (const field of entry.customFields.values) {
-    kdbxEntry.fields.set(field.key, field.isProtected ? ProtectedValue.fromString(field.value) : field.value);
+    kdbxEntry.fields.set(
+      field.key,
+      field.isProtected ? ProtectedValue.fromString(field.value) : field.value,
+    );
   }
 
   kdbxEntry.times.update();
@@ -151,7 +181,15 @@ function syncGroup(
       childKdbxGroup = db.createGroup(kdbxGroup, childGroup.name);
       childKdbxGroup.uuid = domainIdToKdbxUuid(id);
     }
-    syncGroup(childGroup, childKdbxGroup, db, existingGroups, existingEntries, visitedGroups, visitedEntries);
+    syncGroup(
+      childGroup,
+      childKdbxGroup,
+      db,
+      existingGroups,
+      existingEntries,
+      visitedGroups,
+      visitedEntries,
+    );
   }
 }
 
@@ -181,7 +219,20 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
   const visitedGroups = new Set<string>();
   const visitedEntries = new Set<string>();
 
-  syncGroup(vault.rootGroup, rootKdbxGroup, db, existingGroups, existingEntries, visitedGroups, visitedEntries);
+  syncGroup(
+    vault.rootGroup,
+    rootKdbxGroup,
+    db,
+    existingGroups,
+    existingEntries,
+    visitedGroups,
+    visitedEntries,
+  );
+
+  if (vault.recycleBinId) {
+    db.meta.recycleBinEnabled = true;
+    db.meta.recycleBinUuid = domainIdToKdbxUuid(vault.recycleBinId.toString());
+  }
 
   const isUnvisitedGroup = (g: KdbxGroup) => !visitedGroups.has(kdbxUuidToDomainId(g.uuid));
 

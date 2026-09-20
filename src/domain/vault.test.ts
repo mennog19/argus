@@ -240,4 +240,232 @@ describe("Vault", () => {
       expect(() => vault.removeEntry(EntryId.create())).toThrow("Entry not found");
     });
   });
+
+  describe("recycle bin", () => {
+    describe("deleteEntry", () => {
+      it("lazily creates a recycle bin and moves the entry into it", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const vault = new Vault("Root", Group.create("Root").addEntry(entry));
+
+        const updated = vault.deleteEntry(entry.id);
+
+        expect(updated.rootGroup.entries).toEqual([]);
+        expect(updated.recycleBinId).toBeDefined();
+        expect(updated.recycleBin?.name).toBe("Recycle Bin");
+        expect(updated.recycleBin?.entries.map((e) => e.id.toString())).toEqual([
+          entry.id.toString(),
+        ]);
+      });
+
+      it("reuses an existing recycle bin instead of creating a second one", () => {
+        const first = Entry.create({ title: "First" });
+        const second = Entry.create({ title: "Second" });
+        let vault = new Vault("Root", Group.create("Root").addEntry(first).addEntry(second));
+
+        vault = vault.deleteEntry(first.id);
+        const binId = vault.recycleBinId;
+        vault = vault.deleteEntry(second.id);
+
+        expect(vault.recycleBinId?.equals(binId!)).toBe(true);
+        expect(vault.rootGroup.groups.filter((g) => g.name === "Recycle Bin")).toHaveLength(1);
+        expect(vault.recycleBin?.entries.map((e) => e.id.toString()).sort()).toEqual(
+          [first.id.toString(), second.id.toString()].sort(),
+        );
+      });
+
+      it("recreates the recycle bin if the tracked id no longer resolves to a group", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const vault = new Vault("Root", Group.create("Root").addEntry(entry), GroupId.create());
+
+        const updated = vault.deleteEntry(entry.id);
+
+        expect(updated.recycleBin?.entries.map((e) => e.id.toString())).toEqual([
+          entry.id.toString(),
+        ]);
+      });
+
+      it("throws when the entry doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.deleteEntry(EntryId.create())).toThrow("Entry not found");
+      });
+    });
+
+    describe("deleteGroup", () => {
+      it("moves a group and its subtree into the recycle bin", () => {
+        const nestedEntry = Entry.create({ title: "Nested" });
+        const child = Group.create("Child").addEntry(nestedEntry);
+        const parent = Group.create("Parent").addGroup(child);
+        const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+        const updated = vault.deleteGroup(parent.id);
+
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Recycle Bin"]);
+        const recycledParent = updated.recycleBin?.groups.find((g) => g.name === "Parent");
+        expect(
+          recycledParent?.groups.find((g) => g.name === "Child")?.entries[0].id.toString(),
+        ).toBe(nestedEntry.id.toString());
+      });
+
+      it("throws when trying to remove the root group", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.deleteGroup(vault.rootGroup.id)).toThrow("Cannot remove the root group");
+      });
+
+      it("throws when trying to delete the recycle bin itself", () => {
+        const entry = Entry.create({ title: "Bank" });
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry));
+        vault = vault.deleteEntry(entry.id);
+
+        expect(() => vault.deleteGroup(vault.recycleBinId!)).toThrow(
+          "Cannot delete the recycle bin",
+        );
+      });
+
+      it("throws when the group doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.deleteGroup(GroupId.create())).toThrow("Group not found");
+      });
+    });
+
+    describe("restoreEntry", () => {
+      it("moves an entry out of the recycle bin into the target group", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const work = Group.create("Work");
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry).addGroup(work));
+        vault = vault.deleteEntry(entry.id);
+
+        const restored = vault.restoreEntry(entry.id, work.id);
+
+        expect(restored.recycleBin?.entries).toEqual([]);
+        expect(restored.findGroup(work.id)?.entries.map((e) => e.id.toString())).toEqual([
+          entry.id.toString(),
+        ]);
+      });
+
+      it("throws when the entry doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.restoreEntry(EntryId.create(), vault.rootGroup.id)).toThrow(
+          "Entry not found",
+        );
+      });
+
+      it("throws when the target group doesn't exist", () => {
+        const entry = Entry.create({ title: "Bank" });
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry));
+        vault = vault.deleteEntry(entry.id);
+
+        expect(() => vault.restoreEntry(entry.id, GroupId.create())).toThrow("Group not found");
+      });
+    });
+
+    describe("restoreGroup", () => {
+      it("moves a group out of the recycle bin into the target group", () => {
+        const deleted = Group.create("Deleted");
+        const work = Group.create("Work");
+        let vault = new Vault("Root", Group.create("Root").addGroup(deleted).addGroup(work));
+        vault = vault.deleteGroup(deleted.id);
+
+        const restored = vault.restoreGroup(deleted.id, work.id);
+
+        expect(restored.recycleBin?.groups).toEqual([]);
+        expect(restored.findGroup(work.id)?.groups.map((g) => g.name)).toEqual(["Deleted"]);
+      });
+
+      it("throws when the group doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.restoreGroup(GroupId.create(), vault.rootGroup.id)).toThrow(
+          "Group not found",
+        );
+      });
+
+      it("throws when restoring a group into itself", () => {
+        const deleted = Group.create("Deleted");
+        let vault = new Vault("Root", Group.create("Root").addGroup(deleted));
+        vault = vault.deleteGroup(deleted.id);
+
+        expect(() => vault.restoreGroup(deleted.id, deleted.id)).toThrow(
+          "Cannot restore a group into itself or one of its own subgroups",
+        );
+      });
+
+      it("throws when restoring a group into its own subgroup", () => {
+        const grandchild = Group.create("Grandchild");
+        const deleted = Group.create("Deleted").addGroup(grandchild);
+        let vault = new Vault("Root", Group.create("Root").addGroup(deleted));
+        vault = vault.deleteGroup(deleted.id);
+        const recycledDeleted = vault.recycleBin!.groups.find((g) => g.name === "Deleted")!;
+        const recycledGrandchild = recycledDeleted.groups[0];
+
+        expect(() => vault.restoreGroup(recycledDeleted.id, recycledGrandchild.id)).toThrow(
+          "Cannot restore a group into itself or one of its own subgroups",
+        );
+      });
+    });
+
+    describe("emptyRecycleBin", () => {
+      it("removes everything from the recycle bin, keeping the (now empty) bin itself", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const deletedGroup = Group.create("Deleted");
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry).addGroup(deletedGroup));
+        vault = vault.deleteEntry(entry.id);
+        vault = vault.deleteGroup(deletedGroup.id);
+
+        const emptied = vault.emptyRecycleBin();
+
+        expect(emptied.recycleBin?.entries).toEqual([]);
+        expect(emptied.recycleBin?.groups).toEqual([]);
+        expect(emptied.recycleBinId?.equals(vault.recycleBinId!)).toBe(true);
+      });
+
+      it("returns the same vault when there is no recycle bin yet", () => {
+        const vault = Vault.create("Root");
+
+        expect(vault.emptyRecycleBin()).toBe(vault);
+      });
+
+      it("returns the same vault when the tracked recycle bin id no longer resolves", () => {
+        const vault = new Vault("Root", Group.create("Root"), GroupId.create());
+
+        expect(vault.emptyRecycleBin()).toBe(vault);
+      });
+    });
+
+    describe("isInRecycleBin", () => {
+      it("is false when there is no recycle bin", () => {
+        const vault = Vault.create("Root");
+
+        expect(vault.isInRecycleBin(vault.rootGroup.id)).toBe(false);
+      });
+
+      it("is true for the recycle bin group itself and anything nested inside it", () => {
+        const entry = Entry.create({ title: "Bank" });
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry));
+        vault = vault.deleteEntry(entry.id);
+
+        expect(vault.isInRecycleBin(vault.recycleBinId!)).toBe(true);
+      });
+
+      it("is false for a group outside the recycle bin", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const work = Group.create("Work");
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry).addGroup(work));
+        vault = vault.deleteEntry(entry.id);
+
+        expect(vault.isInRecycleBin(work.id)).toBe(false);
+      });
+    });
+
+    describe("recycleBin getter", () => {
+      it("is undefined when no recycle bin has been created", () => {
+        const vault = Vault.create("Root");
+
+        expect(vault.recycleBin).toBeUndefined();
+      });
+    });
+  });
 });

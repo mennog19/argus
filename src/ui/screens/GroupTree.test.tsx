@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Group } from "../../domain";
+import { Entry, Group } from "../../domain";
 import { GroupTree } from "./GroupTree";
 
 function buildTree() {
@@ -24,6 +24,7 @@ function rowButton(name: string) {
 function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[0]> = {}) {
   return {
     rootGroup: root,
+    recycleBin: undefined,
     selectedGroupId: "__all__",
     allItemsId: "__all__",
     allItemsCount: 0,
@@ -254,7 +255,9 @@ describe("GroupTree", () => {
       await user.click(screen.getByRole("button", { name: `Rename ${work.name}` }));
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-      expect(screen.queryByRole("textbox", { name: `Rename ${work.name}` })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("textbox", { name: `Rename ${work.name}` }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -299,6 +302,72 @@ describe("GroupTree", () => {
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+    });
+  });
+
+  describe("recycle bin row", () => {
+    it("does not render a Recycle Bin row when there is none", () => {
+      const { root } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      expect(screen.queryByText("Recycle Bin")).not.toBeInTheDocument();
+    });
+
+    it("renders the recycle bin as a fixed row, excluded from the normal Groups tree", () => {
+      const { root } = buildTree();
+      const recycleBin = Group.create("Recycle Bin");
+      const rootWithBin = root.addGroup(recycleBin);
+
+      render(<GroupTree {...baseProps(rootWithBin, { recycleBin })} />);
+
+      expect(screen.getByText("Recycle Bin")).toBeInTheDocument();
+      expect(rowButton("Work")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: `Delete ${recycleBin.name}` }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("selects the recycle bin when its row is clicked", async () => {
+      const user = userEvent.setup();
+      const { root } = buildTree();
+      const recycleBin = Group.create("Recycle Bin");
+      const rootWithBin = root.addGroup(recycleBin);
+      const onSelect = vi.fn();
+
+      render(<GroupTree {...baseProps(rootWithBin, { recycleBin, onSelect })} />);
+
+      await user.click(screen.getByText("Recycle Bin"));
+
+      expect(onSelect).toHaveBeenCalledWith(recycleBin.id.toString());
+    });
+
+    it("marks the recycle bin row active when it is selected", () => {
+      const { root } = buildTree();
+      const recycleBin = Group.create("Recycle Bin");
+      const rootWithBin = root.addGroup(recycleBin);
+
+      render(
+        <GroupTree
+          {...baseProps(rootWithBin, { recycleBin, selectedGroupId: recycleBin.id.toString() })}
+        />,
+      );
+
+      expect(screen.getByText("Recycle Bin").closest("button")?.className).toContain("active");
+    });
+
+    it("shows the recycle bin's total recursive entry count", () => {
+      const { root } = buildTree();
+      const nested = Group.create("Nested Deleted").addEntry(Entry.create({ title: "Deep" }));
+      const recycleBin = Group.create("Recycle Bin")
+        .addEntry(Entry.create({ title: "Direct" }))
+        .addGroup(nested);
+      const rootWithBin = root.addGroup(recycleBin);
+
+      render(<GroupTree {...baseProps(rootWithBin, { recycleBin })} />);
+
+      const binRow = screen.getByText("Recycle Bin").closest("button")!;
+      expect(binRow).toHaveTextContent("2");
     });
   });
 });

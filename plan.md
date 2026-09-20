@@ -20,6 +20,7 @@ This plan is the checklist from empty repo to v1.0.0. It assumes the decisions b
 ## Definition of Done (every feature branch)
 
 A feature branch isn't done until:
+
 1. Tests exist for every new domain/application/infrastructure/UI unit added, and coverage is 100%.
 2. `pnpm lint` / `cargo clippy` pass with no warnings.
 3. CI is green on the PR.
@@ -41,9 +42,9 @@ Not a "feature" in the product sense — one setup branch (`chore/scaffolding`) 
 - [x] Configure ESLint + Prettier for TS; confirm `rustfmt`/`clippy` defaults for Rust.
 - [x] Add GitHub Actions workflow: install → lint → `pnpm test -- --coverage` (gate at 100%) → `cargo test` → Playwright → build, required on PRs into `main`.
 - [x] Fix CI `build` job failure: `tsc` couldn't see `@testing-library/jest-dom`'s matcher type augmentation because `vitest.setup.ts` lived outside `tsconfig.json`'s `include: ["src"]`. Moved it to `src/vitest.setup.ts` (updated `vitest.config.ts` setup/coverage-exclude paths to match).
-- [X] Branch protection on `main`: require the CI check, require PR review (or at least PR existence) before merge, squash-merge only. **Blocked on you** — needs your GitHub login, I can't set this via API without `gh` authenticated.
+- [x] Branch protection on `main`: require the CI check, require PR review (or at least PR existence) before merge, squash-merge only. **Blocked on you** — needs your GitHub login, I can't set this via API without `gh` authenticated.
 - [x] Write `CLAUDE.md` and keep it updated as structure solidifies.
-- [X] Open and merge the `chore/scaffolding` PR: https://github.com/mennog19/argus/pull/new/chore/scaffolding — pushed and CI-verified locally, waiting on you to open it (no `gh` auth on this machine).
+- [x] Open and merge the `chore/scaffolding` PR: https://github.com/mennog19/argus/pull/new/chore/scaffolding — pushed and CI-verified locally, waiting on you to open it (no `gh` auth on this machine).
 
 ## Phase 1 — Core Domain & Vault I/O
 
@@ -55,6 +56,7 @@ Pure domain logic first (no Tauri, no UI) — this is where DDD and TDD matter m
 - [x] `feature/vault-unlock-create`: application layer — open an existing `.kdbx` with a master password, create a brand-new vault with a chosen master password. Wired to Tauri's file-open dialog via the Rust shell. `VaultAccessService` (application) orchestrates the open/create flows against new `FileStorage`/`VaultFileDialog` ports and `VaultRepository.createVault`; `TauriFileStorage`/`TauriVaultFileDialog` (infrastructure) implement those ports on `@tauri-apps/plugin-fs`/`@tauri-apps/plugin-dialog`, with the Rust shell just registering the two plugins and granting minimal capabilities (dialog-picked paths are auto-scoped for fs access). Merged via PR #5. Not wired into any UI yet — that's `feature/main-shell-ui` in Phase 2.
 
 ## Phase 2 — Application Shell & UI
+
 Please follow the following designs: https://claude.ai/artifact/HQfkEAWzuNDjJyhyT9njxS
 
 Built as a single branch, `feature/app-shell`, covering all four items below (deviation from the
@@ -87,7 +89,16 @@ tool available) — worth a manual pass before merging.
 ## Phase 3 — Entry Management
 
 - [x] `feature/entry-crud`: create/edit/delete entries and groups (including nested groups), tags, custom fields — full read/write through the domain model and repository. Merged via PR #7.
-- [ ] `feature/recycle-bin`: soft-delete for entries/groups instead of hard delete; restore and permanent-empty actions.
+- [x] `feature/recycle-bin`: soft-delete for entries/groups instead of hard delete; restore and
+      permanent-empty actions. `Vault` tracks a `recycleBinId` (created lazily on first delete, or
+      mapped from KDBX's own `meta.recycleBinUuid`/`recycleBinEnabled` — the format already has
+      first-class recycle-bin support, so the mapper just surfaces it to the domain instead of
+      reinventing it) and adds `deleteEntry`/`deleteGroup` (move into the bin), `restoreEntry`/
+      `restoreGroup` (move out, currently always to the vault root — no destination picker yet),
+      and `emptyRecycleBin`. The sidebar shows a fixed "Recycle Bin" row (excluded from the normal
+      Groups tree and from "All Items"/group pickers); selecting it swaps in a dedicated
+      `RecycleBinPanel` listing deleted groups/entries with Restore and confirm-gated Delete
+      Forever, plus a confirm-gated Empty Recycle Bin action.
 - [ ] `feature/search`: search across title/username/URL/notes/tags/custom field keys and values.
 - [ ] `feature/password-generator`: dedicated generator settings screen (length, character-set toggles, exclude-ambiguous, passphrase mode) per the design; "generate for new entry" reuses the same settings.
 
