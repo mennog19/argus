@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomField, CustomFields, Entry, Group, Tag, Tags, Vault } from "../../domain";
+import { CustomField, CustomFields, Entry, Group, PasswordPolicyOptions, Tag, Tags, Vault } from "../../domain";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
 
@@ -14,12 +14,25 @@ function renderShell(
   overrides: {
     onSave?: (vault: Vault) => Promise<void>;
     onLock?: () => void;
+    generatorPolicy?: PasswordPolicyOptions;
+    onGeneratorPolicyChange?: (policy: PasswordPolicyOptions) => void;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
   const onLock = overrides.onLock ?? vi.fn();
-  render(<VaultShell vault={vault} urlOpener={fakeUrlOpener()} onLock={onLock} onSave={onSave} />);
-  return { onSave, onLock };
+  const generatorPolicy = overrides.generatorPolicy ?? {};
+  const onGeneratorPolicyChange = overrides.onGeneratorPolicyChange ?? vi.fn();
+  render(
+    <VaultShell
+      vault={vault}
+      urlOpener={fakeUrlOpener()}
+      generatorPolicy={generatorPolicy}
+      onLock={onLock}
+      onSave={onSave}
+      onGeneratorPolicyChange={onGeneratorPolicyChange}
+    />,
+  );
+  return { onSave, onLock, onGeneratorPolicyChange };
 }
 
 // The row-select button's accessible name concatenates the group's name with
@@ -188,7 +201,16 @@ describe("VaultShell", () => {
     vault = vault.addEntry(vault.rootGroup.id, entry);
     const urlOpener = fakeUrlOpener();
 
-    render(<VaultShell vault={vault} urlOpener={urlOpener} onLock={vi.fn()} onSave={vi.fn()} />);
+    render(
+      <VaultShell
+        vault={vault}
+        urlOpener={urlOpener}
+        generatorPolicy={{}}
+        onLock={vi.fn()}
+        onSave={vi.fn()}
+        onGeneratorPolicyChange={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByText("GitHub"));
     await user.click(screen.getByText("https://github.com"));
@@ -503,7 +525,14 @@ describe("VaultShell", () => {
       vault = vault.addGroup(vault.rootGroup.id, work);
 
       const { rerender } = render(
-        <VaultShell vault={vault} urlOpener={fakeUrlOpener()} onLock={vi.fn()} onSave={vi.fn()} />,
+        <VaultShell
+          vault={vault}
+          urlOpener={fakeUrlOpener()}
+          generatorPolicy={{}}
+          onLock={vi.fn()}
+          onSave={vi.fn()}
+          onGeneratorPolicyChange={vi.fn()}
+        />,
       );
 
       await user.click(rowButton("Work"));
@@ -517,8 +546,10 @@ describe("VaultShell", () => {
         <VaultShell
           vault={vaultWithoutWork}
           urlOpener={fakeUrlOpener()}
+          generatorPolicy={{}}
           onLock={vi.fn()}
           onSave={vi.fn()}
+          onGeneratorPolicyChange={vi.fn()}
         />,
       );
 
@@ -670,6 +701,54 @@ describe("VaultShell", () => {
 
       const savedVault: Vault = onSave.mock.calls[0][0];
       expect(savedVault.recycleBin?.entries).toEqual([]);
+    });
+  });
+
+  describe("password generator", () => {
+    it("switches to the generator screen and back to the vault via the nav rail", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "GitHub" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Password generator" }));
+
+      expect(screen.getByRole("heading", { name: "Password Generator" })).toBeInTheDocument();
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Vault" }));
+
+      expect(screen.getByText("GitHub")).toBeInTheDocument();
+    });
+
+    it("persists a generator policy change made on the generator screen", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      const { onGeneratorPolicyChange } = renderShell(vault, {
+        generatorPolicy: { length: 16 },
+      });
+
+      await user.click(screen.getByRole("button", { name: "Password generator" }));
+      await user.click(screen.getByRole("button", { name: "Passphrase" }));
+
+      expect(onGeneratorPolicyChange).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "passphrase" }),
+      );
+    });
+
+    it("passes the shared generator policy through to the entry form's Generate button", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      renderShell(vault, { generatorPolicy: { length: 10, useSymbols: false } });
+
+      await user.click(screen.getByRole("button", { name: /new entry/i }));
+      await user.click(screen.getByRole("button", { name: "Generate" }));
+
+      expect((screen.getByLabelText("Password") as HTMLInputElement).value).toHaveLength(10);
     });
   });
 });

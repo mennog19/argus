@@ -18,6 +18,7 @@ describe("EntryForm", () => {
       <EntryForm
         initialGroupId="root-id"
         groupOptions={groupOptions}
+        generatorPolicy={{}}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -57,6 +58,7 @@ describe("EntryForm", () => {
         initialEntry={existing}
         initialGroupId="root-id"
         groupOptions={groupOptions}
+        generatorPolicy={{}}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -78,7 +80,13 @@ describe("EntryForm", () => {
     const user = userEvent.setup();
 
     render(
-      <EntryForm initialGroupId="root-id" groupOptions={groupOptions} onSubmit={vi.fn()} onCancel={vi.fn()} />,
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
     );
 
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
@@ -90,12 +98,39 @@ describe("EntryForm", () => {
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
   });
 
+  it("generates a password using the shared generator policy and reveals it", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{ length: 12, useSymbols: false }}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Password")).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+    expect((screen.getByLabelText("Password") as HTMLInputElement).value).toHaveLength(12);
+  });
+
   it("shows an error and does not submit when the title is blank", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
     render(
-      <EntryForm initialGroupId="root-id" groupOptions={groupOptions} onSubmit={onSubmit} onCancel={vi.fn()} />,
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -109,7 +144,13 @@ describe("EntryForm", () => {
     const onSubmit = vi.fn().mockRejectedValue(new Error("Disk full"));
 
     render(
-      <EntryForm initialGroupId="root-id" groupOptions={groupOptions} onSubmit={onSubmit} onCancel={vi.fn()} />,
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
     );
 
     await user.type(screen.getByLabelText("Title"), "GitHub");
@@ -124,7 +165,13 @@ describe("EntryForm", () => {
     const onSubmit = vi.fn().mockRejectedValue("boom");
 
     render(
-      <EntryForm initialGroupId="root-id" groupOptions={groupOptions} onSubmit={onSubmit} onCancel={vi.fn()} />,
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
     );
 
     await user.type(screen.getByLabelText("Title"), "GitHub");
@@ -138,7 +185,13 @@ describe("EntryForm", () => {
     const onCancel = vi.fn();
 
     render(
-      <EntryForm initialGroupId="root-id" groupOptions={groupOptions} onSubmit={vi.fn()} onCancel={onCancel} />,
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={vi.fn()}
+        onCancel={onCancel}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AppSettings, DEFAULT_SETTINGS, recordVaultOpened } from "./settings";
+import { AppSettings, DEFAULT_SETTINGS, recordVaultOpened, withGeneratorPolicy } from "./settings";
 
 describe("recordVaultOpened", () => {
   it("adds a path to an empty list", () => {
@@ -52,5 +52,26 @@ describe("recordVaultOpened", () => {
 
     expect(result.recentVaults).toHaveLength(1);
     expect(new Date(result.recentVaults[0].lastOpenedAt).getTime()).not.toBeNaN();
+  });
+});
+
+describe("withGeneratorPolicy", () => {
+  it("records the generator policy without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withGeneratorPolicy(settings, { length: 24, useSymbols: true });
+
+    expect(result.generatorPolicy).toEqual({ length: 24, useSymbols: true });
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+
+  it("overwrites a previously stored generator policy", () => {
+    const settings: AppSettings = { recentVaults: [], generatorPolicy: { length: 8 } };
+
+    const result = withGeneratorPolicy(settings, { mode: "passphrase", wordCount: 5 });
+
+    expect(result.generatorPolicy).toEqual({ mode: "passphrase", wordCount: 5 });
   });
 });

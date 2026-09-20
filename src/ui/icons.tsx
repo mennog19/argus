@@ -73,3 +73,41 @@ export function ChevronIcon({ size = 12, color = "currentColor" }: IconProps) {
     </svg>
   );
 }
+
+export function VaultIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke={color} strokeWidth="2" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth="2" />
+      <path d="M12 9v1.2M12 14.8V16" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function GeneratorIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke={color} strokeWidth="2" />
+      <circle cx="9" cy="9" r="1.2" fill={color} />
+      <circle cx="15" cy="9" r="1.2" fill={color} />
+      <circle cx="9" cy="15" r="1.2" fill={color} />
+      <circle cx="15" cy="15" r="1.2" fill={color} />
+      <circle cx="12" cy="12" r="1.2" fill={color} />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path d="M17 4v4h-4M7 20v-4h4" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
