@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Entry, Group } from "../domain";
-import { collectAllEntries, entriesOf, flattenGroupOptions } from "./vault-browsing";
+import { collectAllEntries, entriesOf, flattenGroupOptions, searchEntries } from "./vault-browsing";
 
 describe("entriesOf", () => {
   it("returns only the group's own entries, paired with that group", () => {
@@ -63,6 +63,28 @@ describe("collectAllEntries", () => {
     const result = collectAllEntries(root, [bin.id]);
 
     expect(result).toEqual([{ entry: rootEntry, group: root }]);
+  });
+});
+
+describe("searchEntries", () => {
+  it("keeps only entries whose entry matches the query", () => {
+    const github = Entry.create({ title: "GitHub" });
+    const gitlab = Entry.create({ title: "GitLab" });
+    const other = Entry.create({ title: "Mail" });
+    const group = Group.create("Work").addEntry(github).addEntry(gitlab).addEntry(other);
+
+    const result = searchEntries(collectAllEntries(group), "git");
+
+    expect(result).toEqual([
+      { entry: github, group },
+      { entry: gitlab, group },
+    ]);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    const group = Group.create("Work").addEntry(Entry.create({ title: "GitHub" }));
+
+    expect(searchEntries(collectAllEntries(group), "nonexistent")).toEqual([]);
   });
 });
 
