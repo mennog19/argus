@@ -66,6 +66,35 @@ export function SearchIcon({ size = 16, color = "currentColor" }: IconProps) {
   );
 }
 
+export function CopyIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="9" y="9" width="12" height="12" rx="2" fill="none" stroke={color} strokeWidth="2" />
+      <path
+        d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+export function SettingsIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth="2" />
+      <path
+        d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1M18.5 18.5l-2.1-2.1M7.6 7.6 5.5 5.5"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function ChevronIcon({ size = 12, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">

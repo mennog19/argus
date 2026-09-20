@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { PasswordPolicyOptions, Vault } from "../domain";
+import { ClipboardWriter } from "../application/clipboard";
 import { OpenedVault, VaultAccessService, VaultSaveConflictError } from "../application/vault-access-service";
 import {
   AppSettings,
+  DEFAULT_CLIPBOARD_CLEAR_SECONDS,
   DEFAULT_SETTINGS,
   recordVaultOpened,
   SettingsStore,
+  withClipboardClearSeconds,
   withGeneratorPolicy,
 } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
@@ -19,6 +22,7 @@ interface AppProps {
   vaultAccessService: VaultAccessService;
   settingsStore: SettingsStore;
   urlOpener: UrlOpener;
+  clipboardWriter: ClipboardWriter;
 }
 
 type Screen =
@@ -31,7 +35,7 @@ interface SaveConflict {
   filePath: string;
 }
 
-function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
+function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter }: AppProps) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
@@ -126,6 +130,16 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
     }
   }
 
+  async function handleClipboardClearSecondsChange(seconds: number) {
+    const updated = withClipboardClearSeconds(settings, seconds);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -153,10 +167,13 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
       <VaultShell
         vault={screen.vault}
         urlOpener={urlOpener}
+        clipboardWriter={clipboardWriter}
         generatorPolicy={settings.generatorPolicy ?? {}}
+        clipboardClearSeconds={settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
+        onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
         getPasswordChangedTimes={() => vaultAccessService.getPasswordChangedTimes()}
       />
       {conflict && (

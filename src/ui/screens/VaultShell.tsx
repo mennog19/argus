@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Entry, EntryId, Group, GroupId, PasswordPolicyOptions, Vault } from "../../domain";
+import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import {
+  CopyIcon,
   EditIcon,
   GeneratorIcon,
   HealthIcon,
   LockIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   TrashIcon,
   VaultIcon,
   XIcon,
@@ -25,29 +28,36 @@ import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
 import { HealthScreen } from "./HealthScreen";
 import { RecycleBinPanel } from "./RecycleBinPanel";
+import { SettingsScreen } from "./SettingsScreen";
 
 interface VaultShellProps {
   vault: Vault;
   urlOpener: UrlOpener;
+  clipboardWriter: ClipboardWriter;
   generatorPolicy: PasswordPolicyOptions;
+  clipboardClearSeconds: number;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
+  onClipboardClearSecondsChange: (seconds: number) => void;
   getPasswordChangedTimes: () => Map<string, Date>;
 }
 
 const ALL_ITEMS = "__all__";
 
 type FormMode = { kind: "none" } | { kind: "create" } | { kind: "edit" };
-type View = "vault" | "generator" | "health";
+type View = "vault" | "generator" | "health" | "settings";
 
 export function VaultShell({
   vault,
   urlOpener,
+  clipboardWriter,
   generatorPolicy,
+  clipboardClearSeconds,
   onLock,
   onSave,
   onGeneratorPolicyChange,
+  onClipboardClearSecondsChange,
   getPasswordChangedTimes,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
@@ -204,6 +214,14 @@ export function VaultShell({
           >
             <HealthIcon />
           </button>
+          <button
+            type="button"
+            className={`icon-button${view === "settings" ? " active" : ""}`}
+            aria-label="Settings"
+            onClick={() => setView("settings")}
+          >
+            <SettingsIcon />
+          </button>
         </div>
         <button type="button" className="icon-button" onClick={onLock} aria-label="Lock vault">
           <LockIcon />
@@ -217,6 +235,11 @@ export function VaultShell({
           entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
           passwordChangedTimes={getPasswordChangedTimes()}
           onSelectEntry={handleSelectHealthEntry}
+        />
+      ) : view === "settings" ? (
+        <SettingsScreen
+          clipboardClearSeconds={clipboardClearSeconds}
+          onClipboardClearSecondsChange={onClipboardClearSecondsChange}
         />
       ) : (
         <>
@@ -321,6 +344,8 @@ export function VaultShell({
                   <EntryDetail
                     entryWithGroup={selected}
                     urlOpener={urlOpener}
+                    clipboardWriter={clipboardWriter}
+                    clipboardClearSeconds={clipboardClearSeconds}
                     revealed={revealed}
                     onToggleReveal={() => setRevealed((value) => !value)}
                     onEdit={() => setFormMode({ kind: "edit" })}
@@ -339,15 +364,21 @@ export function VaultShell({
 interface EntryDetailProps {
   entryWithGroup: EntryWithGroup;
   urlOpener: UrlOpener;
+  clipboardWriter: ClipboardWriter;
+  clipboardClearSeconds: number;
   revealed: boolean;
   onToggleReveal: () => void;
   onEdit: () => void;
   onDelete: () => Promise<void>;
 }
 
+type CopiedField = "username" | "password" | undefined;
+
 function EntryDetail({
   entryWithGroup,
   urlOpener,
+  clipboardWriter,
+  clipboardClearSeconds,
   revealed,
   onToggleReveal,
   onEdit,
@@ -357,6 +388,23 @@ function EntryDetail({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [copiedField, setCopiedField] = useState<CopiedField>(undefined);
+  const copyToken = useRef(0);
+
+  async function handleCopy(value: string, field: "username" | "password") {
+    copyToken.current += 1;
+    const thisToken = copyToken.current;
+    await clipboardWriter.writeText(value);
+    setCopiedField(field);
+    setTimeout(() => {
+      setCopiedField((current) => (current === field ? undefined : current));
+    }, 1500);
+    setTimeout(() => {
+      if (copyToken.current === thisToken) {
+        void clipboardWriter.writeText("");
+      }
+    }, clipboardClearSeconds * 1000);
+  }
 
   async function handleConfirmDelete() {
     setBusy(true);
@@ -431,6 +479,17 @@ function EntryDetail({
               <div className="field-label">Username</div>
               <div className="detail-field-value">{entry.username}</div>
             </div>
+            <div className="detail-field-actions">
+              {copiedField === "username" && <span className="copied-label">Copied</span>}
+              <button
+                type="button"
+                className="icon-button-small"
+                aria-label="Copy username"
+                onClick={() => void handleCopy(entry.username, "username")}
+              >
+                <CopyIcon size={14} />
+              </button>
+            </div>
           </div>
           <div className="detail-field-row">
             <div>
@@ -439,9 +498,20 @@ function EntryDetail({
                 {revealed ? entry.password.reveal() : entry.password.toString()}
               </div>
             </div>
-            <button type="button" onClick={onToggleReveal}>
-              {revealed ? "Hide" : "Show"}
-            </button>
+            <div className="detail-field-actions">
+              {copiedField === "password" && <span className="copied-label">Copied</span>}
+              <button
+                type="button"
+                className="icon-button-small"
+                aria-label="Copy password"
+                onClick={() => void handleCopy(entry.password.reveal(), "password")}
+              >
+                <CopyIcon size={14} />
+              </button>
+              <button type="button" onClick={onToggleReveal}>
+                {revealed ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
         </div>
 

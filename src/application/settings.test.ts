@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AppSettings, DEFAULT_SETTINGS, recordVaultOpened, withGeneratorPolicy } from "./settings";
+import {
+  AppSettings,
+  DEFAULT_SETTINGS,
+  recordVaultOpened,
+  withClipboardClearSeconds,
+  withGeneratorPolicy,
+} from "./settings";
 
 describe("recordVaultOpened", () => {
   it("adds a path to an empty list", () => {
@@ -73,5 +79,18 @@ describe("withGeneratorPolicy", () => {
     const result = withGeneratorPolicy(settings, { mode: "passphrase", wordCount: 5 });
 
     expect(result.generatorPolicy).toEqual({ mode: "passphrase", wordCount: 5 });
+  });
+});
+
+describe("withClipboardClearSeconds", () => {
+  it("records the clipboard clear delay without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withClipboardClearSeconds(settings, 30);
+
+    expect(result.clipboardClearSeconds).toBe(30);
+    expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });

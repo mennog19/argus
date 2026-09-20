@@ -944,3 +944,14 @@
   padding-top: 0;
   border-top: none;
 }
+
+.detail-field-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copied-label {
+  font-size: 11.5px;
+  color: var(--color-accent);
+}

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Vault } from "../domain";
+import { ClipboardWriter } from "../application/clipboard";
 import { OpenedVault, VaultAccessService, VaultSaveConflictError } from "../application/vault-access-service";
 import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
@@ -30,6 +31,10 @@ function fakeUrlOpener(): UrlOpener {
   return { open: vi.fn() };
 }
 
+function fakeClipboardWriter(): ClipboardWriter {
+  return { writeText: vi.fn() };
+}
+
 describe("App", () => {
   it("shows the welcome screen when there are no recent vaults", async () => {
     render(
@@ -37,6 +42,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -49,6 +55,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockRejectedValue(new Error("no backend")) })}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -68,6 +75,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -84,6 +92,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -115,6 +124,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService({ openVaultAtPath: vi.fn().mockResolvedValue(vault) })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -138,6 +148,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -160,6 +171,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -185,6 +197,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -212,6 +225,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -229,6 +243,34 @@ describe("App", () => {
     );
   });
 
+  it("persists a clipboard clear-delay change made in the vault shell's settings screen", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settingsStore = fakeSettingsStore();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={settingsStore}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    fireEvent.change(screen.getByLabelText(/clear clipboard after/i), { target: { value: "45" } });
+
+    expect(settingsStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ clipboardClearSeconds: 45 }),
+    );
+  });
+
   it("keeps the generator policy change even if persisting it fails", async () => {
     const user = userEvent.setup();
     const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
@@ -239,6 +281,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -267,6 +310,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -297,6 +341,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -324,6 +369,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -356,6 +402,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 
@@ -388,6 +435,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
       />,
     );
 

@@ -7,6 +7,7 @@ import { TauriFileStorage } from "./infrastructure/tauri-file-storage";
 import { TauriVaultFileDialog } from "./infrastructure/tauri-vault-file-dialog";
 import { JsonSettingsStore } from "./infrastructure/json-settings-store";
 import { TauriUrlOpener } from "./infrastructure/tauri-url-opener";
+import { TauriClipboard } from "./infrastructure/tauri-clipboard";
 
 const vaultAccessService = new VaultAccessService(
   new KdbxVaultRepository(),
@@ -15,9 +16,15 @@ const vaultAccessService = new VaultAccessService(
 );
 const settingsStore = new JsonSettingsStore();
 const urlOpener = new TauriUrlOpener();
+const clipboardWriter = new TauriClipboard();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App vaultAccessService={vaultAccessService} settingsStore={settingsStore} urlOpener={urlOpener} />
+    <App
+      vaultAccessService={vaultAccessService}
+      settingsStore={settingsStore}
+      urlOpener={urlOpener}
+      clipboardWriter={clipboardWriter}
+    />
   </React.StrictMode>,
 );

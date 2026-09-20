@@ -13,9 +13,14 @@ export interface AppSettings {
    * setting for the first time, at which point `PasswordPolicy`'s own
    * defaults apply. */
   readonly generatorPolicy?: PasswordPolicyOptions;
+  /** Seconds after a copy-to-clipboard before it's cleared automatically.
+   * Undefined until the user changes it, at which point `DEFAULT_CLIPBOARD_CLEAR_SECONDS` applies. */
+  readonly clipboardClearSeconds?: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
+
+export const DEFAULT_CLIPBOARD_CLEAR_SECONDS = 20;
 
 /**
  * Reads/writes the local app settings file. Implemented in `infrastructure`
@@ -52,4 +57,9 @@ export function withGeneratorPolicy(
   policy: PasswordPolicyOptions,
 ): AppSettings {
   return { ...settings, generatorPolicy: policy };
+}
+
+/** Returns settings with `seconds` recorded as the clipboard auto-clear delay. */
+export function withClipboardClearSeconds(settings: AppSettings, seconds: number): AppSettings {
+  return { ...settings, clipboardClearSeconds: seconds };
 }
