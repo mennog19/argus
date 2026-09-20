@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Credentials, Kdbx, KdbxUuid, ProtectedValue } from "kdbxweb";
 import { CustomField, CustomFields, Entry, Group, Password, Tag, Tags, Vault } from "../domain";
 import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
-import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
+import { applyVaultToKdbx, passwordChangedTimesFromKdbx, vaultFromKdbx } from "./kdbx-mapper";
 
 function createDb(name = "Test Vault"): Kdbx {
   return Kdbx.create(new Credentials(null), name);
@@ -358,5 +358,106 @@ describe("applyVaultToKdbx", () => {
 
     const kdbxEntry = db.getDefaultGroup().entries[0];
     expect(kdbxEntry.fields.get("Title")).toBe("plain");
+  });
+});
+
+describe("passwordChangedTimesFromKdbx", () => {
+  it("uses the entry's creation time when the password has never changed", () => {
+    const db = createDb();
+    const entry = db.createEntry(db.getDefaultGroup());
+    const creationTime = new Date("2025-01-01T00:00:00.000Z");
+    entry.times.creationTime = creationTime;
+    entry.fields.set("Password", ProtectedValue.fromString("secret"));
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.get(kdbxUuidToDomainId(entry.uuid))).toEqual(creationTime);
+  });
+
+  it("uses the history snapshot's lastModTime where the password changed", () => {
+    const db = createDb();
+    const entry = db.createEntry(db.getDefaultGroup());
+    entry.times.creationTime = new Date("2025-01-01T00:00:00.000Z");
+    entry.fields.set("Password", ProtectedValue.fromString("first-password"));
+    entry.pushHistory();
+    const firstChange = new Date("2025-02-01T00:00:00.000Z");
+    entry.times.lastModTime = firstChange;
+    entry.fields.set("Password", ProtectedValue.fromString("second-password"));
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.get(kdbxUuidToDomainId(entry.uuid))).toEqual(firstChange);
+  });
+
+  it("uses the most recent transition when the password changed more than once", () => {
+    const db = createDb();
+    const entry = db.createEntry(db.getDefaultGroup());
+    entry.times.creationTime = new Date("2025-01-01T00:00:00.000Z");
+    entry.fields.set("Password", ProtectedValue.fromString("first"));
+    entry.pushHistory();
+    entry.fields.set("Password", ProtectedValue.fromString("second"));
+    entry.times.lastModTime = new Date("2025-02-01T00:00:00.000Z");
+    entry.pushHistory();
+    entry.fields.set("Password", ProtectedValue.fromString("third"));
+    const latestChange = new Date("2025-03-01T00:00:00.000Z");
+    entry.times.lastModTime = latestChange;
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.get(kdbxUuidToDomainId(entry.uuid))).toEqual(latestChange);
+  });
+
+  it("does not treat an edit that left the password unchanged as a password change", () => {
+    const db = createDb();
+    const entry = db.createEntry(db.getDefaultGroup());
+    const creationTime = new Date("2025-01-01T00:00:00.000Z");
+    entry.times.creationTime = creationTime;
+    entry.fields.set("Password", ProtectedValue.fromString("same-password"));
+    entry.pushHistory();
+    entry.fields.set("Title", "renamed");
+    entry.times.lastModTime = new Date("2025-02-01T00:00:00.000Z");
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.get(kdbxUuidToDomainId(entry.uuid))).toEqual(creationTime);
+  });
+
+  it("falls back to epoch zero when the entry has no creation time and the password never changed", () => {
+    const db = createDb();
+    const entry = db.createEntry(db.getDefaultGroup());
+    entry.times.creationTime = undefined;
+    entry.fields.set("Password", ProtectedValue.fromString("secret"));
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.get(kdbxUuidToDomainId(entry.uuid))).toEqual(new Date(0));
+  });
+
+  it("keeps the prior changedAt when a snapshot with a changed password has no lastModTime", () => {
+    const db = createDb();
+    const entry = db.createEntry(db.getDefaultGroup());
+    const creationTime = new Date("2025-01-01T00:00:00.000Z");
+    entry.times.creationTime = creationTime;
+    entry.fields.set("Password", ProtectedValue.fromString("first"));
+    entry.pushHistory();
+    entry.fields.set("Password", ProtectedValue.fromString("second"));
+    entry.times.lastModTime = undefined;
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.get(kdbxUuidToDomainId(entry.uuid))).toEqual(creationTime);
+  });
+
+  it("maps every entry in the tree, including nested groups", () => {
+    const db = createDb();
+    const root = db.getDefaultGroup();
+    const topLevel = db.createEntry(root);
+    const subGroup = db.createGroup(root, "Sub Group");
+    const nested = db.createEntry(subGroup);
+
+    const times = passwordChangedTimesFromKdbx(db);
+
+    expect(times.has(kdbxUuidToDomainId(topLevel.uuid))).toBe(true);
+    expect(times.has(kdbxUuidToDomainId(nested.uuid))).toBe(true);
   });
 });

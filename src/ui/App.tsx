@@ -157,6 +157,7 @@ function App({ vaultAccessService, settingsStore, urlOpener }: AppProps) {
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
+        getPasswordChangedTimes={() => vaultAccessService.getPasswordChangedTimes()}
       />
       {conflict && (
         <div className="modal-overlay">

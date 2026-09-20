@@ -13,6 +13,7 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
     saveVault: vi.fn().mockResolvedValue(undefined),
+    getPasswordChangedTimes: vi.fn().mockReturnValue(new Map()),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -281,6 +282,33 @@ describe("App", () => {
 
     expect(await screen.findByText("disk full")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /vault changed on disk/i })).not.toBeInTheDocument();
+  });
+
+  it("wires the vault access service's password-changed times through to the health screen", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const getPasswordChangedTimes = vi.fn().mockReturnValue(new Map());
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          getPasswordChangedTimes,
+        })}
+        settingsStore={fakeSettingsStore()}
+        urlOpener={fakeUrlOpener()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Password health" }));
+
+    expect(getPasswordChangedTimes).toHaveBeenCalled();
   });
 
   it("shows a conflict overlay instead of losing the edit when the file changed on disk", async () => {

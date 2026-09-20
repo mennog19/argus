@@ -4,6 +4,7 @@ import { UrlOpener } from "../../application/url-opener";
 import {
   EditIcon,
   GeneratorIcon,
+  HealthIcon,
   LockIcon,
   PlusIcon,
   SearchIcon,
@@ -22,6 +23,7 @@ import {
 import { EntryForm } from "./EntryForm";
 import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
+import { HealthScreen } from "./HealthScreen";
 import { RecycleBinPanel } from "./RecycleBinPanel";
 
 interface VaultShellProps {
@@ -31,12 +33,13 @@ interface VaultShellProps {
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
+  getPasswordChangedTimes: () => Map<string, Date>;
 }
 
 const ALL_ITEMS = "__all__";
 
 type FormMode = { kind: "none" } | { kind: "create" } | { kind: "edit" };
-type View = "vault" | "generator";
+type View = "vault" | "generator" | "health";
 
 export function VaultShell({
   vault,
@@ -45,6 +48,7 @@ export function VaultShell({
   onLock,
   onSave,
   onGeneratorPolicyChange,
+  getPasswordChangedTimes,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -96,6 +100,12 @@ export function VaultShell({
     setSelectedEntryId(entryId);
     setRevealed(false);
     setFormMode({ kind: "none" });
+  }
+
+  function handleSelectHealthEntry(entry: Entry, group: Group) {
+    selectGroup(group.id.toString());
+    selectEntry(entry.id.toString());
+    setView("vault");
   }
 
   async function persist(nextVault: Vault): Promise<void> {
@@ -186,6 +196,14 @@ export function VaultShell({
           >
             <GeneratorIcon />
           </button>
+          <button
+            type="button"
+            className={`icon-button${view === "health" ? " active" : ""}`}
+            aria-label="Password health"
+            onClick={() => setView("health")}
+          >
+            <HealthIcon />
+          </button>
         </div>
         <button type="button" className="icon-button" onClick={onLock} aria-label="Lock vault">
           <LockIcon />
@@ -194,6 +212,12 @@ export function VaultShell({
 
       {view === "generator" ? (
         <GeneratorScreen policyOptions={generatorPolicy} onPolicyChange={onGeneratorPolicyChange} />
+      ) : view === "health" ? (
+        <HealthScreen
+          entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
+          passwordChangedTimes={getPasswordChangedTimes()}
+          onSelectEntry={handleSelectHealthEntry}
+        />
       ) : (
         <>
           <GroupTree

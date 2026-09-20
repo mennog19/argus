@@ -97,6 +97,28 @@ export function GeneratorIcon({ size = 20, color = "currentColor" }: IconProps) 
   );
 }
 
+export function HealthIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 20s-7-4.35-9.5-9C.9 7.4 3 4 6.2 4 8.4 4 10 5.2 12 7c2-1.8 3.6-3 5.8-3C21 4 23.1 7.4 21.5 11 19 15.65 12 20 12 20Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 12h3l1.5-3L12 15l1.5-3H19"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function RefreshIcon({ size = 16, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">

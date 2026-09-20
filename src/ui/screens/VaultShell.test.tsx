@@ -1,7 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomField, CustomFields, Entry, Group, PasswordPolicyOptions, Tag, Tags, Vault } from "../../domain";
+import {
+  CustomField,
+  CustomFields,
+  Entry,
+  Group,
+  Password,
+  PasswordPolicyOptions,
+  Tag,
+  Tags,
+  Vault,
+} from "../../domain";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
 
@@ -16,12 +26,14 @@ function renderShell(
     onLock?: () => void;
     generatorPolicy?: PasswordPolicyOptions;
     onGeneratorPolicyChange?: (policy: PasswordPolicyOptions) => void;
+    getPasswordChangedTimes?: () => Map<string, Date>;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
   const onLock = overrides.onLock ?? vi.fn();
   const generatorPolicy = overrides.generatorPolicy ?? {};
   const onGeneratorPolicyChange = overrides.onGeneratorPolicyChange ?? vi.fn();
+  const getPasswordChangedTimes = overrides.getPasswordChangedTimes ?? (() => new Map());
   render(
     <VaultShell
       vault={vault}
@@ -30,6 +42,7 @@ function renderShell(
       onLock={onLock}
       onSave={onSave}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
+      getPasswordChangedTimes={getPasswordChangedTimes}
     />,
   );
   return { onSave, onLock, onGeneratorPolicyChange };
@@ -209,6 +222,7 @@ describe("VaultShell", () => {
         onLock={vi.fn()}
         onSave={vi.fn()}
         onGeneratorPolicyChange={vi.fn()}
+        getPasswordChangedTimes={() => new Map()}
       />,
     );
 
@@ -532,6 +546,7 @@ describe("VaultShell", () => {
           onLock={vi.fn()}
           onSave={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
+          getPasswordChangedTimes={() => new Map()}
         />,
       );
 
@@ -550,6 +565,7 @@ describe("VaultShell", () => {
           onLock={vi.fn()}
           onSave={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
+          getPasswordChangedTimes={() => new Map()}
         />,
       );
 
@@ -749,6 +765,57 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Generate" }));
 
       expect((screen.getByLabelText("Password") as HTMLInputElement).value).toHaveLength(10);
+    });
+  });
+
+  describe("password health", () => {
+    it("switches to the health screen and back to the vault via the nav rail", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "GitHub", password: new Password("Correct-Horse-7!") });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Password health" }));
+
+      expect(screen.getByRole("heading", { name: "Password Health" })).toBeInTheDocument();
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Vault" }));
+
+      expect(screen.getByText("GitHub")).toBeInTheDocument();
+    });
+
+    it("passes password-changed times from the injected getter through to the health screen", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      const getPasswordChangedTimes = vi
+        .fn()
+        .mockReturnValue(new Map([[entry.id.toString(), new Date("2000-01-01T00:00:00.000Z")]]));
+
+      renderShell(vault, { getPasswordChangedTimes });
+
+      await user.click(screen.getByRole("button", { name: "Password health" }));
+
+      expect(getPasswordChangedTimes).toHaveBeenCalled();
+      expect(screen.getByText(/stale passwords/i)).toBeInTheDocument();
+    });
+
+    it("selecting a flagged entry on the health screen jumps back to it in the vault view", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Weak Site", password: new Password("abc") });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Password health" }));
+      await user.click(screen.getByText("Weak Site"));
+
+      expect(screen.getByRole("heading", { name: "Weak Site" })).toBeInTheDocument();
     });
   });
 });

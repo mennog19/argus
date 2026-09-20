@@ -10,6 +10,7 @@ function fakeRepository(overrides: Partial<VaultRepository> = {}): VaultReposito
     openVault: vi.fn(),
     createVault: vi.fn(),
     saveVault: vi.fn(),
+    getPasswordChangedTimes: vi.fn(),
     ...overrides,
   };
 }
@@ -291,6 +292,20 @@ describe("VaultAccessService", () => {
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
       expect(fileStorage.copyFile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getPasswordChangedTimes", () => {
+    it("delegates to the repository", () => {
+      const times = new Map([["entry-1", new Date("2026-01-01T00:00:00.000Z")]]);
+      const repository = fakeRepository({ getPasswordChangedTimes: vi.fn().mockReturnValue(times) });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      const result = service.getPasswordChangedTimes();
+
+      expect(result).toBe(times);
     });
   });
 });
