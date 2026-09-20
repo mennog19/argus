@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
+import { Credentials, Kdbx, KdbxUuid, ProtectedValue } from "kdbxweb";
 import { CustomField, CustomFields, Entry, Group, Password, Tag, Tags, Vault } from "../domain";
-import { kdbxUuidToDomainId } from "./kdbx-id";
+import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
 import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
 
 function createDb(name = "Test Vault"): Kdbx {
@@ -48,8 +48,12 @@ describe("vaultFromKdbx", () => {
     expect(mapped.url).toBe("https://github.com");
     expect(mapped.notes).toBe("personal account");
     expect(mapped.tags.values.map((t) => t.toString()).sort()).toEqual(["important", "work"]);
-    expect(mapped.customFields.get("TOTP Seed")).toEqual(new CustomField("TOTP Seed", "JBSWY3DPEHPK3PXP", true));
-    expect(mapped.customFields.get("Recovery Codes")).toEqual(new CustomField("Recovery Codes", "abc-123", false));
+    expect(mapped.customFields.get("TOTP Seed")).toEqual(
+      new CustomField("TOTP Seed", "JBSWY3DPEHPK3PXP", true),
+    );
+    expect(mapped.customFields.get("Recovery Codes")).toEqual(
+      new CustomField("Recovery Codes", "abc-123", false),
+    );
     expect(mapped.id.toString()).toBe(kdbxUuidToDomainId(entry.uuid));
   });
 
@@ -60,6 +64,34 @@ describe("vaultFromKdbx", () => {
 
     const vault = vaultFromKdbx(db);
     expect(vault.rootGroup.entries[0].notes).toBe("");
+  });
+
+  it("maps the recycle bin group's id from meta.recycleBinUuid", () => {
+    const db = createDb();
+
+    const vault = vaultFromKdbx(db);
+
+    expect(vault.recycleBinId).toBeDefined();
+    expect(vault.recycleBin?.name).toBe("Recycle Bin");
+  });
+
+  it("leaves recycleBinId undefined when the recycle bin is disabled", () => {
+    const db = createDb();
+    db.meta.recycleBinEnabled = false;
+
+    const vault = vaultFromKdbx(db);
+
+    expect(vault.recycleBinId).toBeUndefined();
+  });
+
+  it("leaves recycleBinId undefined when recycleBinUuid points at a group that no longer exists", () => {
+    const db = createDb();
+    db.meta.recycleBinEnabled = true;
+    db.meta.recycleBinUuid = new KdbxUuid(new ArrayBuffer(16));
+
+    const vault = vaultFromKdbx(db);
+
+    expect(vault.recycleBinId).toBeUndefined();
   });
 
   it("maps nested groups", () => {
@@ -277,6 +309,27 @@ describe("applyVaultToKdbx", () => {
     expect(recycledChild).toBeDefined();
     expect(recycledChild?.entries[0].fields.get("Title")).toBe("nested");
     expect(recycledParent.entries[0].fields.get("Title")).toBe("direct");
+  });
+
+  it("writes a lazily-created domain recycle bin's id onto meta.recycleBinUuid", () => {
+    const db = createDb();
+    db.meta.recycleBinEnabled = false;
+    const entry = db.createEntry(db.getDefaultGroup());
+    entry.fields.set("Title", "to delete");
+
+    let vault = vaultFromKdbx(db);
+    expect(vault.recycleBinId).toBeUndefined();
+    vault = vault.deleteEntry(vault.rootGroup.entries[0].id);
+
+    applyVaultToKdbx(db, vault);
+
+    expect(db.meta.recycleBinEnabled).toBe(true);
+    expect(db.meta.recycleBinUuid?.equals(domainIdToKdbxUuid(vault.recycleBinId!.toString()))).toBe(
+      true,
+    );
+
+    const reopened = vaultFromKdbx(db);
+    expect(reopened.recycleBinId?.equals(vault.recycleBinId!)).toBe(true);
   });
 
   it("renames an existing group that changed", () => {

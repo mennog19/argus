@@ -50,6 +50,20 @@ describe("collectAllEntries", () => {
 
     expect(collectAllEntries(root)).toEqual([]);
   });
+
+  it("skips an excluded subgroup and everything nested inside it", () => {
+    const rootEntry = Entry.create({ title: "Root Entry" });
+    const binEntry = Entry.create({ title: "Bin Entry" });
+    const nestedInBin = Group.create("Nested In Bin").addEntry(
+      Entry.create({ title: "Deep Bin Entry" }),
+    );
+    const bin = Group.create("Recycle Bin").addEntry(binEntry).addGroup(nestedInBin);
+    const root = Group.create("Root").addEntry(rootEntry).addGroup(bin);
+
+    const result = collectAllEntries(root, [bin.id]);
+
+    expect(result).toEqual([{ entry: rootEntry, group: root }]);
+  });
 });
 
 describe("flattenGroupOptions", () => {
@@ -69,6 +83,18 @@ describe("flattenGroupOptions", () => {
       { id: root.id.toString(), label: "Root" },
       { id: child.id.toString(), label: "  Child" },
       { id: grandchild.id.toString(), label: "    Grandchild" },
+      { id: sibling.id.toString(), label: "  Sibling" },
+    ]);
+  });
+
+  it("skips an excluded subgroup and everything nested inside it", () => {
+    const grandchild = Group.create("Grandchild");
+    const child = Group.create("Child").addGroup(grandchild);
+    const sibling = Group.create("Sibling");
+    const root = Group.create("Root").addGroup(child).addGroup(sibling);
+
+    expect(flattenGroupOptions(root, [child.id])).toEqual([
+      { id: root.id.toString(), label: "Root" },
       { id: sibling.id.toString(), label: "  Sibling" },
     ]);
   });

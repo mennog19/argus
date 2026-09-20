@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Group, GroupId } from "../../domain";
+import { collectAllEntries } from "../vault-browsing";
 import { ChevronIcon, EditIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface GroupTreeProps {
   rootGroup: Group;
+  recycleBin: Group | undefined;
   selectedGroupId: string;
   allItemsId: string;
   allItemsCount: number;
@@ -26,6 +28,7 @@ const INDENT_PX = 14;
 
 export function GroupTree({
   rootGroup,
+  recycleBin,
   selectedGroupId,
   allItemsId,
   allItemsCount,
@@ -161,7 +164,12 @@ export function GroupTree({
         {isDeleting ? (
           <div className="group-inline-confirm" style={{ paddingLeft: indent }}>
             <span>Delete &quot;{group.name}&quot;?</span>
-            <button type="button" className="link-muted" onClick={() => void submitDelete(group)} disabled={busy}>
+            <button
+              type="button"
+              className="link-muted"
+              onClick={() => void submitDelete(group)}
+              disabled={busy}
+            >
               Delete
             </button>
             <button type="button" className="link-muted" onClick={cancelEditor} disabled={busy}>
@@ -178,7 +186,12 @@ export function GroupTree({
               aria-label={`Rename ${group.name}`}
               autoFocus
             />
-            <button type="button" className="link-muted" onClick={() => void submitRename(group)} disabled={busy}>
+            <button
+              type="button"
+              className="link-muted"
+              onClick={() => void submitRename(group)}
+              disabled={busy}
+            >
               Save
             </button>
             <button type="button" className="link-muted" onClick={cancelEditor} disabled={busy}>
@@ -202,13 +215,25 @@ export function GroupTree({
               <span className="sidebar-row-count">{group.entries.length}</span>
             </button>
             <span className="group-row-actions">
-              <button type="button" aria-label={`Add subgroup to ${group.name}`} onClick={() => startAdd(group.id)}>
+              <button
+                type="button"
+                aria-label={`Add subgroup to ${group.name}`}
+                onClick={() => startAdd(group.id)}
+              >
                 <PlusIcon size={12} />
               </button>
-              <button type="button" aria-label={`Rename ${group.name}`} onClick={() => startRename(group)}>
+              <button
+                type="button"
+                aria-label={`Rename ${group.name}`}
+                onClick={() => startRename(group)}
+              >
                 <EditIcon size={12} />
               </button>
-              <button type="button" aria-label={`Delete ${group.name}`} onClick={() => startDelete(group)}>
+              <button
+                type="button"
+                aria-label={`Delete ${group.name}`}
+                onClick={() => startDelete(group)}
+              >
                 <TrashIcon size={12} />
               </button>
             </span>
@@ -216,7 +241,9 @@ export function GroupTree({
         )}
 
         {isAddingChild && renderInlineForm("New group name", () => void submitAdd(group.id))}
-        {(isRenaming || isDeleting || isAddingChild) && error && <div className="field-error">{error}</div>}
+        {(isRenaming || isDeleting || isAddingChild) && error && (
+          <div className="field-error">{error}</div>
+        )}
 
         {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1))}
       </div>
@@ -224,6 +251,9 @@ export function GroupTree({
   }
 
   const isAddingTopLevel = editor?.kind === "add" && editor.parentId.equals(rootGroup.id);
+  const visibleGroups = rootGroup.groups.filter(
+    (group) => !recycleBin || !group.id.equals(recycleBin.id),
+  );
 
   return (
     <div className="group-sidebar">
@@ -240,7 +270,12 @@ export function GroupTree({
       <div className="sidebar-divider" />
       <div className="sidebar-section-header">
         <div className="sidebar-section-label">Groups</div>
-        <button type="button" className="icon-button-small" aria-label="Add group" onClick={() => startAdd(rootGroup.id)}>
+        <button
+          type="button"
+          className="icon-button-small"
+          aria-label="Add group"
+          onClick={() => startAdd(rootGroup.id)}
+        >
           <PlusIcon size={13} />
         </button>
       </div>
@@ -248,7 +283,24 @@ export function GroupTree({
       {isAddingTopLevel && renderInlineForm("New group name", () => void submitAdd(rootGroup.id))}
       {isAddingTopLevel && error && <div className="field-error">{error}</div>}
 
-      {rootGroup.groups.map((group) => renderGroup(group, 0))}
+      {visibleGroups.map((group) => renderGroup(group, 0))}
+
+      {recycleBin && (
+        <>
+          <div className="sidebar-divider" />
+          <button
+            type="button"
+            className={`sidebar-row${selectedGroupId === recycleBin.id.toString() ? " active" : ""}`}
+            onClick={() => onSelect(recycleBin.id.toString())}
+          >
+            <span className="sidebar-row-icon-label">
+              <TrashIcon size={13} />
+              Recycle Bin
+            </span>
+            <span className="sidebar-row-count">{collectAllEntries(recycleBin).length}</span>
+          </button>
+        </>
+      )}
     </div>
   );
 }

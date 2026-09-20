@@ -85,7 +85,10 @@ describe("VaultShell", () => {
       url: "https://github.com",
       notes: "some notes",
       tags: new Tags([new Tag("dev")]),
-      customFields: new CustomFields([new CustomField("PIN", "1234"), new CustomField("Secret", "x", true)]),
+      customFields: new CustomFields([
+        new CustomField("PIN", "1234"),
+        new CustomField("Secret", "x", true),
+      ]),
     });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
@@ -94,7 +97,9 @@ describe("VaultShell", () => {
 
     await user.click(screen.getByText("GitHub"));
 
-    const detail = within(screen.getByRole("heading", { name: "GitHub" }).closest(".detail-content")!);
+    const detail = within(
+      screen.getByRole("heading", { name: "GitHub" }).closest(".detail-content")!,
+    );
     expect(detail.getByText("octocat")).toBeInTheDocument();
     expect(detail.getByText("https://github.com")).toBeInTheDocument();
     expect(detail.getByText("some notes")).toBeInTheDocument();
@@ -286,7 +291,9 @@ describe("VaultShell", () => {
 
       const savedVault: Vault = onSave.mock.calls[0][0];
       expect(savedVault.rootGroup.entries).toEqual([]);
-      expect(savedVault.findGroup(work.id)?.entries.map((e) => e.id.toString())).toEqual([entry.id.toString()]);
+      expect(savedVault.findGroup(work.id)?.entries.map((e) => e.id.toString())).toEqual([
+        entry.id.toString(),
+      ]);
     });
 
     it("cancels editing without saving", async () => {
@@ -324,7 +331,10 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       const savedVault: Vault = onSave.mock.calls[0][0];
-      expect(savedVault.findEntry(entry.id)).toBeUndefined();
+      expect(savedVault.rootGroup.entries).toEqual([]);
+      expect(savedVault.recycleBin?.entries.map((e) => e.id.toString())).toEqual([
+        entry.id.toString(),
+      ]);
       expect(screen.getByText("Select an entry to view details")).toBeInTheDocument();
     });
 
@@ -448,7 +458,14 @@ describe("VaultShell", () => {
       // save elsewhere) in which the previously-selected group is gone,
       // without going through this component's own delete flow.
       const vaultWithoutWork = Vault.create("Mine");
-      rerender(<VaultShell vault={vaultWithoutWork} urlOpener={fakeUrlOpener()} onLock={vi.fn()} onSave={vi.fn()} />);
+      rerender(
+        <VaultShell
+          vault={vaultWithoutWork}
+          urlOpener={fakeUrlOpener()}
+          onLock={vi.fn()}
+          onSave={vi.fn()}
+        />,
+      );
 
       expect(screen.getByRole("button", { name: /all items/i }).className).toContain("active");
     });
@@ -468,6 +485,136 @@ describe("VaultShell", () => {
 
       expect(onSave).toHaveBeenCalled();
       expect(screen.getByRole("button", { name: /all items/i }).className).toContain("active");
+    });
+
+    it("moves a deleted group into the recycle bin instead of removing it outright", async () => {
+      const user = userEvent.setup();
+      const work = Group.create("Work");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.rootGroup.groups.map((g) => g.name)).toEqual(["Recycle Bin"]);
+      expect(savedVault.recycleBin?.groups.map((g) => g.name)).toEqual(["Work"]);
+    });
+  });
+
+  describe("recycle bin", () => {
+    it("selects the Recycle Bin row and shows its contents instead of the normal entry list", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      vault = vault.deleteEntry(entry.id);
+
+      renderShell(vault);
+
+      await user.click(screen.getByText("Recycle Bin"));
+
+      expect(screen.getByRole("heading", { name: "Recycle Bin" })).toBeInTheDocument();
+      expect(screen.getByText("Old Site")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /new entry/i })).not.toBeInTheDocument();
+    });
+
+    it("restores a deleted entry back to the root group", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      vault = vault.deleteEntry(entry.id);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByText("Recycle Bin"));
+      await user.click(screen.getByRole("button", { name: "Restore" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.recycleBin?.entries).toEqual([]);
+      expect(savedVault.rootGroup.entries.map((e) => e.id.toString())).toEqual([
+        entry.id.toString(),
+      ]);
+    });
+
+    it("permanently deletes an entry from the recycle bin", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      vault = vault.deleteEntry(entry.id);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByText("Recycle Bin"));
+      await user.click(screen.getByRole("button", { name: "Delete Forever" }));
+      await user.click(screen.getByRole("button", { name: "Delete Forever" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.findEntry(entry.id)).toBeUndefined();
+    });
+
+    it("restores a deleted group back to the root group", async () => {
+      const user = userEvent.setup();
+      const deleted = Group.create("Deleted");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, deleted);
+      vault = vault.deleteGroup(deleted.id);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByText("Recycle Bin"));
+      await user.click(screen.getByRole("button", { name: "Restore" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.recycleBin?.groups).toEqual([]);
+      expect(savedVault.rootGroup.groups.map((g) => g.name).sort()).toEqual([
+        "Deleted",
+        "Recycle Bin",
+      ]);
+    });
+
+    it("permanently deletes a group from the recycle bin", async () => {
+      const user = userEvent.setup();
+      const deleted = Group.create("Deleted");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, deleted);
+      vault = vault.deleteGroup(deleted.id);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByText("Recycle Bin"));
+      await user.click(screen.getByRole("button", { name: "Delete Forever" }));
+      await user.click(screen.getByRole("button", { name: "Delete Forever" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.findGroup(deleted.id)).toBeUndefined();
+    });
+
+    it("empties the recycle bin", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      vault = vault.deleteEntry(entry.id);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByText("Recycle Bin"));
+      await user.click(screen.getByRole("button", { name: "Empty Recycle Bin" }));
+      await user.click(screen.getByRole("button", { name: "Empty" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.recycleBin?.entries).toEqual([]);
     });
   });
 });
