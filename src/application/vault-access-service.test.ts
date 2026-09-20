@@ -125,4 +125,33 @@ describe("VaultAccessService", () => {
       );
     });
   });
+
+  describe("saveVault", () => {
+    it("serializes the vault through the repository and writes it to the given path", async () => {
+      const vault = Vault.create("My Vault");
+      const fileBytes = new ArrayBuffer(4);
+      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(fileBytes) });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await service.saveVault(vault, "C:/vaults/mine.kdbx");
+
+      expect(repository.saveVault).toHaveBeenCalledWith(vault);
+      expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx", fileBytes);
+    });
+
+    it("propagates errors from the repository", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockRejectedValue(new Error("Save failed")),
+      });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await expect(service.saveVault(vault, "C:/vaults/mine.kdbx")).rejects.toThrow("Save failed");
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -53,4 +53,15 @@ export class VaultAccessService {
     const fileBytes = await this.fileStorage.readFile(filePath);
     return this.repository.openVault(fileBytes, masterPassword);
   }
+
+  /**
+   * Persists an already-open vault back to its file, for use after local
+   * edits (entry/group create/edit/delete). Throws on failure without
+   * writing, so callers can keep their in-memory edit and show an error
+   * instead of silently losing it.
+   */
+  async saveVault(vault: Vault, filePath: string): Promise<void> {
+    const fileBytes = await this.repository.saveVault(vault);
+    await this.fileStorage.writeFile(filePath, fileBytes);
+  }
 }

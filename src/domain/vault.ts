@@ -128,6 +128,14 @@ export class Vault {
     return new Vault(this.name, result.group);
   }
 
+  renameGroup(groupId: GroupId, name: string): Vault {
+    const result = updateGroupById(this.rootGroup, groupId, (group) => group.rename(name));
+    if (!result.found) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    return new Vault(this.name, result.group);
+  }
+
   addEntry(groupId: GroupId, entry: Entry): Vault {
     const result = updateGroupById(this.rootGroup, groupId, (group) => group.addEntry(entry));
     if (!result.found) {
