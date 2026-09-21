@@ -11,6 +11,7 @@ import {
   Password,
   Vault,
 } from "../domain";
+import { iconFromKdbx, writeIconToKdbx } from "./kdbx-icon";
 import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
 
 const STANDARD_FIELD_KEYS = new Set(["Title", "UserName", "Password", "URL", "Notes"]);
@@ -39,6 +40,7 @@ function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
     notes: fieldToString(kdbxEntry.fields.get("Notes")),
     tags: new Tags(tags),
     customFields: new CustomFields(customFields),
+    icon: iconFromKdbx(kdbxEntry),
   });
 }
 
@@ -113,6 +115,7 @@ function snapshotEntry(entry: Entry): string {
     customFields: entry.customFields.values
       .map((field) => ({ key: field.key, value: field.value, isProtected: field.isProtected }))
       .sort((a, b) => a.key.localeCompare(b.key)),
+    icon: entry.icon.toString(),
   });
 }
 
@@ -148,6 +151,12 @@ function writeEntryFields(
       field.key,
       field.isProtected ? ProtectedValue.fromString(field.value) : field.value,
     );
+  }
+
+  // Only touched when the choice actually changed, so an icon Argus can't
+  // represent (a custom image, an unmapped KeePass icon) survives other edits.
+  if (!iconFromKdbx(kdbxEntry).equals(entry.icon)) {
+    writeIconToKdbx(kdbxEntry, entry.icon);
   }
 
   kdbxEntry.times.update();

@@ -20,7 +20,6 @@
   --color-nav: #111318;
   --color-surface: #1a1d23;
   --color-input: #1c1f26;
-  --color-avatar: #242830;
   --color-border: rgba(255, 255, 255, 0.06);
   --color-border-strong: rgba(255, 255, 255, 0.1);
   --color-text: #eceef1;
@@ -60,6 +59,10 @@ select,
 textarea,
 button {
   font-family: inherit;
+}
+
+button {
+  color: inherit;
 }
 
 a {

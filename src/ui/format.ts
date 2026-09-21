@@ -25,9 +25,3 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 }
-
-/** Single-character avatar initial for an entry/group title. */
-export function initialOf(title: string): string {
-  const trimmed = title.trim();
-  return trimmed.length > 0 ? trimmed[0].toUpperCase() : "?";
-}

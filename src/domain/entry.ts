@@ -1,4 +1,5 @@
 import { CustomFields } from "./custom-fields";
+import { EntryIcon } from "./entry-icon";
 import { EntryId } from "./entry-id";
 import { Password } from "./password";
 import { Tags } from "./tags";
@@ -11,6 +12,7 @@ export interface EntryFields {
   notes?: string;
   tags?: Tags;
   customFields?: CustomFields;
+  icon?: EntryIcon;
 }
 
 /**
@@ -26,6 +28,7 @@ export class Entry {
   readonly notes: string;
   readonly tags: Tags;
   readonly customFields: CustomFields;
+  readonly icon: EntryIcon;
 
   constructor(id: EntryId, fields: EntryFields = {}) {
     this.id = id;
@@ -36,6 +39,7 @@ export class Entry {
     this.notes = fields.notes ?? "";
     this.tags = fields.tags ?? new Tags();
     this.customFields = fields.customFields ?? new CustomFields();
+    this.icon = fields.icon ?? EntryIcon.AUTO;
   }
 
   static create(fields: EntryFields = {}): Entry {
@@ -55,6 +59,7 @@ export class Entry {
       notes: fields.notes ?? this.notes,
       tags: fields.tags ?? this.tags,
       customFields: fields.customFields ?? this.customFields,
+      icon: fields.icon ?? this.icon,
     });
   }
 }

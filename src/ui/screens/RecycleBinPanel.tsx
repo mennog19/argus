@@ -2,7 +2,7 @@ import { useState } from "react";
 import { EntryId, Group, GroupId } from "../../domain";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
-import { initialOf } from "../format";
+import { EntryAvatar } from "../entry-icons/EntryAvatar";
 
 interface RecycleBinPanelProps {
   binGroup: Group;
@@ -167,7 +167,7 @@ export function RecycleBinPanel({
                   </div>
                 ) : (
                   <>
-                    <div className="entry-avatar">{initialOf(entry.title)}</div>
+                    <EntryAvatar entry={entry} />
                     <div className="entry-row-text">
                       <div className="entry-row-title">{entry.title || "(untitled)"}</div>
                       <div className="entry-row-username">{entry.username}</div>

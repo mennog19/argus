@@ -17,7 +17,7 @@ import {
   XIcon,
 } from "../icons";
 import { errorMessage } from "../error-message";
-import { initialOf } from "../format";
+import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import {
   collectAllEntries,
   entriesOf,
@@ -31,6 +31,7 @@ import { GroupTree } from "./GroupTree";
 import { HealthScreen } from "./HealthScreen";
 import { RecycleBinPanel } from "./RecycleBinPanel";
 import { SettingsScreen } from "./SettingsScreen";
+import { ArgusMark } from "../ArgusMark";
 
 interface VaultShellProps {
   vault: Vault;
@@ -194,7 +195,9 @@ export function VaultShell({
   return (
     <div className="vault-shell">
       <nav className="nav-rail">
-        <div className="nav-logo">A</div>
+        <div className="nav-logo">
+          <ArgusMark />
+        </div>
         <div className="nav-rail-icons">
           <button
             type="button"
@@ -305,7 +308,9 @@ export function VaultShell({
                 <div className="entry-list">
                   {visibleEntries.length === 0 && (
                     <div className="entry-list-empty">
-                      {isSearching ? `No entries match "${trimmedQuery}".` : "No entries in this group."}
+                      {isSearching
+                        ? `No entries match "${trimmedQuery}".`
+                        : "No entries in this group."}
                     </div>
                   )}
                   {visibleEntries.map(({ entry }) => (
@@ -315,7 +320,7 @@ export function VaultShell({
                       className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}`}
                       onClick={() => selectEntry(entry.id.toString())}
                     >
-                      <div className="entry-avatar">{initialOf(entry.title)}</div>
+                      <EntryAvatar entry={entry} />
                       <div className="entry-row-text">
                         <div className="entry-row-title">{entry.title || "(untitled)"}</div>
                         <div className="entry-row-username">{entry.username}</div>
@@ -341,7 +346,9 @@ export function VaultShell({
                     initialGroupId={selected.group.id.toString()}
                     groupOptions={groupOptions}
                     generatorPolicy={generatorPolicy}
-                    onSubmit={(entry, groupId) => handleUpdateEntry(entry, groupId, selected.group.id)}
+                    onSubmit={(entry, groupId) =>
+                      handleUpdateEntry(entry, groupId, selected.group.id)
+                    }
                     onCancel={() => setFormMode({ kind: "none" })}
                   />
                 )}
@@ -429,7 +436,7 @@ function EntryDetail({
   return (
     <div className="detail-content">
       <div className="detail-header">
-        <div className="detail-avatar">{initialOf(entry.title)}</div>
+        <EntryAvatar entry={entry} size="lg" />
         <div className="entry-row-text">
           <h1 className="detail-title">{entry.title || "(untitled)"}</h1>
           {entry.url && (

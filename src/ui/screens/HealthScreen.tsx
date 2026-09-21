@@ -1,5 +1,11 @@
-import { checkPasswordHealth, Entry, EntryPasswordAge, Group, PasswordHealthPolicy } from "../../domain";
-import { initialOf } from "../format";
+import {
+  checkPasswordHealth,
+  Entry,
+  EntryPasswordAge,
+  Group,
+  PasswordHealthPolicy,
+} from "../../domain";
+import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { EntryWithGroup } from "../vault-browsing";
 
 interface HealthScreenProps {
@@ -23,7 +29,7 @@ function entryRow(
       className="entry-row"
       onClick={() => onSelectEntry(entry, group)}
     >
-      <div className="entry-avatar">{initialOf(entry.title)}</div>
+      <EntryAvatar entry={entry} />
       <div className="entry-row-text">
         <div className="entry-row-title">{entry.title || "(untitled)"}</div>
         <div className="entry-row-username">{group.name}</div>
@@ -47,9 +53,7 @@ export function HealthScreen({ entries, passwordChangedTimes, onSelectEntry }: H
       <div className="detail-content">
         <h1 className="detail-title">Password Health</h1>
 
-        {isClean && (
-          <div className="detail-card padded">No password health issues found.</div>
-        )}
+        {isClean && <div className="detail-card padded">No password health issues found.</div>}
 
         {report.duplicates.length > 0 && (
           <div className="detail-card padded">

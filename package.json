@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "icons:brands": "node scripts/generate-brand-icons.mjs && prettier --write src/ui/entry-icons/brands.generated.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -23,6 +24,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "hash-wasm": "^4.12.0",
     "kdbxweb": "^2.1.1",
+    "lucide-react": "^1.47.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
@@ -46,6 +48,7 @@
     "globals": "^17.12.0",
     "jsdom": "^30.1.0",
     "prettier": "^3.9.8",
+    "simple-icons": "^16.32.0",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
     "vitest": "^5.0.1"

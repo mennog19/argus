@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, formatRelativeTime, initialOf } from "./format";
+import { basename, formatRelativeTime } from "./format";
 
 describe("basename", () => {
   it("returns the last segment of a forward-slash path", () => {
@@ -57,20 +57,5 @@ describe("formatRelativeTime", () => {
   it("defaults `now` to the current time", () => {
     const iso = new Date().toISOString();
     expect(formatRelativeTime(iso)).toBe("just now");
-  });
-});
-
-describe("initialOf", () => {
-  it("returns the uppercased first character", () => {
-    expect(initialOf("github")).toBe("G");
-  });
-
-  it("trims surrounding whitespace first", () => {
-    expect(initialOf("  notion")).toBe("N");
-  });
-
-  it("returns '?' for an empty or whitespace-only title", () => {
-    expect(initialOf("   ")).toBe("?");
-    expect(initialOf("")).toBe("?");
   });
 });

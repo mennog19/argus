@@ -2,7 +2,7 @@ import { KeyboardEvent, useState } from "react";
 import { Vault } from "../../domain";
 import { VaultAccessService } from "../../application/vault-access-service";
 import { errorMessage } from "../error-message";
-import { LockIcon } from "../icons";
+import { ArgusMark } from "../ArgusMark";
 import { basename } from "../format";
 
 interface LockedScreenProps {
@@ -44,9 +44,7 @@ export function LockedScreen({
 
   return (
     <div className="screen-centered">
-      <div className="icon-badge">
-        <LockIcon size={30} color="var(--color-accent)" />
-      </div>
+      <ArgusMark state={busy ? "focusing" : "watching"} />
       <div className="screen-heading">
         <h1>Unlock your vault</h1>
         <p>{basename(filePath)}</p>
@@ -68,7 +66,12 @@ export function LockedScreen({
           </button>
         </div>
         {error && <div className="field-error">{error}</div>}
-        <button type="button" className="btn-primary" onClick={() => void handleUnlock()} disabled={busy}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => void handleUnlock()}
+          disabled={busy}
+        >
           Unlock
         </button>
         <button type="button" className="link-muted" onClick={onChooseDifferentVault}>
