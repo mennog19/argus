@@ -1,15 +1,15 @@
-import { EntryIcon } from "../../domain";
+import { Icon } from "../../domain";
 import { BRAND_ICONS, BrandCatalog, BrandIcon } from "./brand-icons";
 import { findLibraryIcon, LibraryIcon } from "./library-icons";
 import { hostOf, sigilSeed } from "./sigil";
 
-export interface EntryIconSubject {
+export interface IconSubject {
   title: string;
   url: string;
-  icon: EntryIcon;
+  icon: Icon;
 }
 
-export type ResolvedEntryIcon =
+export type ResolvedIcon =
   | { kind: "sigil"; seed: string }
   | { kind: "library"; icon: LibraryIcon; seed: string; hue?: number }
   | { kind: "brand"; icon: BrandIcon };
@@ -19,10 +19,10 @@ export type ResolvedEntryIcon =
  * site gets its logo and anything else its generated sigil. A key the
  * catalogs don't know (e.g. written by a newer Argus) falls back to automatic.
  */
-export function resolveEntryIcon(
-  { title, url, icon }: EntryIconSubject,
+export function resolveIcon(
+  { title, url, icon }: IconSubject,
   brands: BrandCatalog = BRAND_ICONS,
-): ResolvedEntryIcon {
+): ResolvedIcon {
   const seed = sigilSeed(title, url);
   if (icon.kind === "library") {
     const library = findLibraryIcon(icon.key);

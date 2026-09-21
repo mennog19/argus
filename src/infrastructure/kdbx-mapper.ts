@@ -50,6 +50,7 @@ function groupFromKdbx(kdbxGroup: KdbxGroup): Group {
     kdbxGroup.name ?? "",
     kdbxGroup.groups.map(groupFromKdbx),
     kdbxGroup.entries.map(entryFromKdbx),
+    iconFromKdbx(kdbxGroup),
   );
 }
 
@@ -199,8 +200,16 @@ function syncGroup(
   visitedEntries: Set<string>,
 ): void {
   visitedGroups.add(group.id.toString());
+  let changed = false;
   if (kdbxGroup.name !== group.name) {
     kdbxGroup.name = group.name;
+    changed = true;
+  }
+  if (!iconFromKdbx(kdbxGroup).equals(group.icon)) {
+    writeIconToKdbx(kdbxGroup, group.icon);
+    changed = true;
+  }
+  if (changed) {
     kdbxGroup.times.update();
   }
 

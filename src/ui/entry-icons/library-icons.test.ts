@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EntryIcon } from "../../domain";
+import { Icon } from "../../domain";
 import { LIBRARY_ICON_KEEPASS_IDS } from "../../infrastructure/kdbx-icon";
 import { findLibraryIcon, LIBRARY_ICONS } from "./library-icons";
 
@@ -8,7 +8,7 @@ describe("LIBRARY_ICONS", () => {
     const keys = LIBRARY_ICONS.map((icon) => icon.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const key of keys) {
-      expect(() => EntryIcon.library(key)).not.toThrow();
+      expect(() => Icon.library(key)).not.toThrow();
     }
   });
 

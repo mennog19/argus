@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Entry, Group } from "../../domain";
+import { Entry, Group, Icon } from "../../domain";
 import { GroupTree } from "./GroupTree";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 
@@ -15,11 +15,16 @@ function buildTree() {
 
 // The row-select button's accessible name is its name text concatenated
 // directly with its entry count (e.g. "Work0"), which collides on a loose
-// match with the row's own "Add subgroup to Work"/"Rename Work"/
-// "Delete Work" action buttons — anchor the match to the start of the name
-// to pick out just the row button.
+// match with the row's own "Add subgroup to Work"/"More actions for Work"
+// action buttons — anchor the match to the start of the name to pick out
+// just the row button.
 function rowButton(name: string) {
   return screen.getByRole("button", { name: new RegExp(`^${name}`, "i") });
+}
+
+// Rename/Delete/Change icon all live behind the row's "More actions" menu.
+async function openRowMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole("button", { name: `More actions for ${name}` }));
 }
 
 function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[0]> = {}) {
@@ -33,6 +38,7 @@ function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[
     onCreateGroup: vi.fn().mockResolvedValue(undefined),
     onRenameGroup: vi.fn().mockResolvedValue(undefined),
     onDeleteGroup: vi.fn().mockResolvedValue(undefined),
+    onChangeGroupIcon: vi.fn().mockResolvedValue(undefined),
     groupDeleteMode: "deleteContents" as const,
     entryDragActive: false,
     onDropEntry: vi.fn().mockResolvedValue(undefined),
@@ -256,7 +262,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { onRenameGroup })} />);
 
-      await user.click(screen.getByRole("button", { name: `Rename ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Rename" }));
       const input = screen.getByRole("textbox", { name: `Rename ${work.name}` });
       expect(input).toHaveValue("Work");
       await user.clear(input);
@@ -273,7 +280,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { onRenameGroup })} />);
 
-      await user.click(screen.getByRole("button", { name: `Rename ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Rename" }));
       await user.clear(screen.getByRole("textbox", { name: `Rename ${work.name}` }));
       await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -288,7 +296,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { onRenameGroup })} />);
 
-      await user.click(screen.getByRole("button", { name: `Rename ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Rename" }));
       await user.click(screen.getByRole("button", { name: "Save" }));
 
       expect(await screen.findByText("Rename failed")).toBeInTheDocument();
@@ -300,12 +309,147 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root)} />);
 
-      await user.click(screen.getByRole("button", { name: `Rename ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Rename" }));
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(
         screen.queryByRole("textbox", { name: `Rename ${work.name}` }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("the row's More actions menu", () => {
+    it("does not select the group when its trigger is clicked", async () => {
+      const user = userEvent.setup();
+      const onSelect = vi.fn();
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root, { onSelect })} />);
+
+      await openRowMenu(user, work.name);
+
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("toggles the menu closed when its trigger is clicked again", async () => {
+      const user = userEvent.setup();
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      const trigger = screen.getByRole("button", { name: `More actions for ${work.name}` });
+      await user.click(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+      await user.click(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes the menu on an outside click", async () => {
+      const user = userEvent.setup();
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      const trigger = screen.getByRole("button", { name: `More actions for ${work.name}` });
+      await user.click(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+      await user.click(document.body);
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes the menu on Escape but not other keys", async () => {
+      const user = userEvent.setup();
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      const trigger = screen.getByRole("button", { name: `More actions for ${work.name}` });
+      await user.click(trigger);
+      await user.keyboard("a");
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+      await user.keyboard("{Escape}");
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("switches to a different group's menu without closing first", async () => {
+      const user = userEvent.setup();
+      const { root, work, personal } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      await openRowMenu(user, work.name);
+      await openRowMenu(user, personal.name);
+
+      expect(
+        screen.getByRole("button", { name: `More actions for ${work.name}` }),
+      ).toHaveAttribute("aria-expanded", "false");
+      expect(
+        screen.getByRole("button", { name: `More actions for ${personal.name}` }),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
+  describe("changing a group's icon", () => {
+    it("opens the icon popover already expanded and picks an icon", async () => {
+      const user = userEvent.setup();
+      const onChangeGroupIcon = vi.fn().mockResolvedValue(undefined);
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root, { onChangeGroupIcon })} />);
+
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Change icon" }));
+      await user.click(screen.getByRole("button", { name: "Star" }));
+
+      expect(onChangeGroupIcon).toHaveBeenCalledWith(work.id, Icon.library("star"));
+    });
+
+    it("closes the menu once the icon popover opens", async () => {
+      const user = userEvent.setup();
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Change icon" }));
+
+      expect(screen.queryByRole("button", { name: "Rename" })).not.toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Icons" })).toBeInTheDocument();
+    });
+
+    it("keeps the trigger marked as open while the icon popover it launched is showing", async () => {
+      const user = userEvent.setup();
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Change icon" }));
+
+      const trigger = screen.getByRole("button", { name: `More actions for ${work.name}` });
+      expect(trigger).toHaveClass("active");
+
+      await user.click(document.body);
+      expect(trigger).not.toHaveClass("active");
+      expect(screen.queryByRole("tab", { name: "Icons" })).not.toBeInTheDocument();
+    });
+
+    it("shows an error message when onChangeGroupIcon rejects", async () => {
+      const user = userEvent.setup();
+      const onChangeGroupIcon = vi.fn().mockRejectedValue(new Error("Icon change failed"));
+      const { root, work } = buildTree();
+
+      render(<GroupTree {...baseProps(root, { onChangeGroupIcon })} />);
+
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Change icon" }));
+      await user.click(screen.getByRole("button", { name: "Star" }));
+
+      expect(await screen.findByText("Icon change failed")).toBeInTheDocument();
     });
   });
 
@@ -317,7 +461,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { onDeleteGroup })} />);
 
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       expect(screen.getByText('Delete "Work"?')).toBeInTheDocument();
       expect(screen.getByText(/will be deleted too/i)).toBeInTheDocument();
 
@@ -333,7 +478,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { groupDeleteMode: "keepContents" })} />);
 
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       expect(screen.getByText(/will move to the parent group/i)).toBeInTheDocument();
     });
 
@@ -344,7 +490,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { onDeleteGroup })} />);
 
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(onDeleteGroup).not.toHaveBeenCalled();
@@ -358,7 +505,8 @@ describe("GroupTree", () => {
 
       render(<GroupTree {...baseProps(root, { onDeleteGroup })} />);
 
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await openRowMenu(user, work.name);
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(await screen.findByText("nope")).toBeInTheDocument();

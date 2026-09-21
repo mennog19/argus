@@ -1,8 +1,8 @@
 import { CSSProperties } from "react";
-import { EntryIconSubject, ResolvedEntryIcon, resolveEntryIcon } from "./resolve-entry-icon";
+import { IconSubject, ResolvedIcon, resolveIcon } from "./resolve-entry-icon";
 import { Sigil, sigilFor } from "./sigil";
 
-export type EntryTileSize = "sm" | "lg";
+export type EntryTileSize = "xs" | "sm" | "lg";
 
 const OUTER_RADIUS = 11;
 const INNER_RADIUS = 6.5;
@@ -43,10 +43,10 @@ export function EntryTile({
   resolved,
   size = "sm",
 }: {
-  resolved: ResolvedEntryIcon;
+  resolved: ResolvedIcon;
   size?: EntryTileSize;
 }) {
-  const sizeClass = size === "lg" ? " entry-tile-lg" : "";
+  const sizeClass = size === "lg" ? " entry-tile-lg" : size === "xs" ? " entry-tile-xs" : "";
 
   if (resolved.kind === "brand") {
     const { icon } = resolved;
@@ -86,6 +86,19 @@ export function EntryTile({
 }
 
 /** An entry's icon: its chosen one, its site's logo, or its generated sigil. */
-export function EntryAvatar({ entry, size }: { entry: EntryIconSubject; size?: EntryTileSize }) {
-  return <EntryTile resolved={resolveEntryIcon(entry)} size={size} />;
+export function EntryAvatar({ entry, size }: { entry: IconSubject; size?: EntryTileSize }) {
+  return <EntryTile resolved={resolveIcon(entry)} size={size} />;
+}
+
+/** A group's icon: its chosen one, or a sigil generated from its name (groups have no URL to brand-match against). */
+export function GroupAvatar({
+  name,
+  icon,
+  size,
+}: {
+  name: string;
+  icon: IconSubject["icon"];
+  size?: EntryTileSize;
+}) {
+  return <EntryTile resolved={resolveIcon({ title: name, url: "", icon })} size={size} />;
 }

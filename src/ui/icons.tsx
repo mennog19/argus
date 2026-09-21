@@ -113,16 +113,29 @@ export function EyeOffIcon({ size = 16, color = "currentColor" }: IconProps) {
   );
 }
 
-export function FolderIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function PaletteIcon({ size = 16, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path
-        d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
+        d="M12 3a9 9 0 1 0 9 9c0-1.1-.9-1.7-2-1.7h-1.8a2 2 0 0 1-2-2c0-.55.22-1.02.55-1.4.5-.58.28-1.5-.42-1.77A9 9 0 0 0 12 3Z"
         fill="none"
         stroke={color}
         strokeWidth="2"
         strokeLinejoin="round"
       />
+      <circle cx="7.2" cy="10.2" r="1.15" fill={color} />
+      <circle cx="8.8" cy="15" r="1.15" fill={color} />
+      <circle cx="13.5" cy="15.8" r="1.15" fill={color} />
+    </svg>
+  );
+}
+
+export function MoreIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="5.5" r="1.8" fill={color} />
+      <circle cx="12" cy="12" r="1.8" fill={color} />
+      <circle cx="12" cy="18.5" r="1.8" fill={color} />
     </svg>
   );
 }
@@ -144,13 +157,18 @@ export function CopyIcon({ size = 16, color = "currentColor" }: IconProps) {
 export function SettingsIcon({ size = 20, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth="2" />
       <path
-        d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1M18.5 18.5l-2.1-2.1M7.6 7.6 5.5 5.5"
+        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
         fill="none"
         stroke={color}
         strokeWidth="2"
-        strokeLinecap="round"
+      />
+      <path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
       />
     </svg>
   );

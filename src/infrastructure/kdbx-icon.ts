@@ -1,10 +1,13 @@
-import { Consts, KdbxEntry } from "kdbxweb";
-import { EntryIcon } from "../domain";
+import { Consts, KdbxEntry, KdbxGroup } from "kdbxweb";
+import { Icon } from "../domain";
+
+/** An entry or group, the two KDBX node types that carry an icon. */
+type KdbxIconHost = KdbxEntry | KdbxGroup;
 
 /**
- * Entry CustomData key holding Argus's own icon choice (`library:star`,
- * `brand:github`, or `library:star:235` for a library icon with a manual
- * colour override).
+ * CustomData key holding Argus's own icon choice for an entry or group
+ * (`library:star`, `brand:github`, or `library:star:235` for a library icon
+ * with a manual colour override).
  */
 export const ICON_CUSTOM_DATA_KEY = "Argus.Icon";
 
@@ -71,6 +74,33 @@ export const LIBRARY_ICON_KEEPASS_IDS: Readonly<Record<string, number>> = {
   pet: Icons.Key,
   health: Icons.Key,
   fitness: Icons.Key,
+  sun: Icons.Key,
+  "letter-a": Icons.Key,
+  "letter-b": Icons.Key,
+  "letter-c": Icons.Key,
+  "letter-d": Icons.Key,
+  "letter-e": Icons.Key,
+  "letter-f": Icons.Key,
+  "letter-g": Icons.Key,
+  "letter-h": Icons.Key,
+  "letter-i": Icons.Key,
+  "letter-j": Icons.Key,
+  "letter-k": Icons.Key,
+  "letter-l": Icons.Key,
+  "letter-m": Icons.Key,
+  "letter-n": Icons.Key,
+  "letter-o": Icons.Key,
+  "letter-p": Icons.Key,
+  "letter-q": Icons.Key,
+  "letter-r": Icons.Key,
+  "letter-s": Icons.Key,
+  "letter-t": Icons.Key,
+  "letter-u": Icons.Key,
+  "letter-v": Icons.Key,
+  "letter-w": Icons.Key,
+  "letter-x": Icons.Key,
+  "letter-y": Icons.Key,
+  "letter-z": Icons.Key,
   luggage: Icons.Package,
   briefcase: Icons.Package,
   gift: Icons.Package,
@@ -101,17 +131,17 @@ for (const [key, id] of Object.entries(LIBRARY_ICON_KEEPASS_IDS)) {
 }
 
 /**
- * Reads an entry's icon. Argus's CustomData wins only while it still agrees
- * with the KeePass icon id — if another app changed the icon since, that
- * app's choice is what's shown. Custom (image) icons aren't rendered yet, so
- * they read as automatic.
+ * Reads an entry or group's icon. Argus's CustomData wins only while it
+ * still agrees with the KeePass icon id — if another app changed the icon
+ * since, that app's choice is what's shown. Custom (image) icons aren't
+ * rendered yet, so they read as automatic.
  */
-export function iconFromKdbx(kdbxEntry: KdbxEntry): EntryIcon {
-  if (kdbxEntry.customIcon) {
-    return EntryIcon.AUTO;
+export function iconFromKdbx(kdbxItem: KdbxIconHost): Icon {
+  if (kdbxItem.customIcon) {
+    return Icon.AUTO;
   }
-  const keepassId = kdbxEntry.icon ?? Icons.Key;
-  const stored = EntryIcon.parse(kdbxEntry.customData?.get(ICON_CUSTOM_DATA_KEY)?.value ?? "");
+  const keepassId = kdbxItem.icon ?? Icons.Key;
+  const stored = Icon.parse(kdbxItem.customData?.get(ICON_CUSTOM_DATA_KEY)?.value ?? "");
   if (stored?.kind === "brand" && keepassId === BRAND_KEEPASS_ID) {
     return stored;
   }
@@ -119,19 +149,19 @@ export function iconFromKdbx(kdbxEntry: KdbxEntry): EntryIcon {
     return stored;
   }
   const libraryKey = LIBRARY_KEY_BY_KEEPASS_ID.get(keepassId);
-  return libraryKey ? EntryIcon.library(libraryKey) : EntryIcon.AUTO;
+  return libraryKey ? Icon.library(libraryKey) : Icon.AUTO;
 }
 
 /** Writes an icon choice as both a KeePass standard icon and Argus CustomData. */
-export function writeIconToKdbx(kdbxEntry: KdbxEntry, icon: EntryIcon): void {
-  kdbxEntry.customIcon = undefined;
+export function writeIconToKdbx(kdbxItem: KdbxIconHost, icon: Icon): void {
+  kdbxItem.customIcon = undefined;
   if (icon.kind === "auto") {
-    kdbxEntry.icon = Icons.Key;
-    kdbxEntry.customData?.delete(ICON_CUSTOM_DATA_KEY);
+    kdbxItem.icon = Icons.Key;
+    kdbxItem.customData?.delete(ICON_CUSTOM_DATA_KEY);
     return;
   }
-  kdbxEntry.icon =
+  kdbxItem.icon =
     icon.kind === "brand" ? BRAND_KEEPASS_ID : (LIBRARY_ICON_KEEPASS_IDS[icon.key] ?? Icons.Key);
-  kdbxEntry.customData ??= new Map();
-  kdbxEntry.customData.set(ICON_CUSTOM_DATA_KEY, { value: icon.toString() });
+  kdbxItem.customData ??= new Map();
+  kdbxItem.customData.set(ICON_CUSTOM_DATA_KEY, { value: icon.toString() });
 }

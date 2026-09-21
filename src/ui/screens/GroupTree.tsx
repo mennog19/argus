@@ -1,10 +1,19 @@
-import { DragEvent, useState } from "react";
-import { Group, GroupId } from "../../domain";
+import {
+  CSSProperties,
+  DragEvent,
+  MouseEvent as ReactMouseEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Group, GroupId, Icon } from "../../domain";
 import { GroupDeleteMode } from "../../application/settings";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
-import { ChevronIcon, EditIcon, FolderIcon, PlusIcon, TrashIcon } from "../icons";
+import { GroupAvatar } from "../entry-icons/EntryAvatar";
+import { IconPicker } from "../entry-icons/IconPicker";
+import { ChevronIcon, EditIcon, MoreIcon, PaletteIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface GroupTreeProps {
   rootGroup: Group;
@@ -16,6 +25,7 @@ interface GroupTreeProps {
   onCreateGroup: (parentId: GroupId, name: string) => Promise<void>;
   onRenameGroup: (groupId: GroupId, name: string) => Promise<void>;
   onDeleteGroup: (groupId: GroupId) => Promise<void>;
+  onChangeGroupIcon: (groupId: GroupId, icon: Icon) => Promise<void>;
   /** Only used to tell the user, while confirming a delete, what happens to the group's contents. */
   groupDeleteMode: GroupDeleteMode;
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */
@@ -23,13 +33,42 @@ interface GroupTreeProps {
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
 }
 
+/** Where a floating panel's trigger button sat, in viewport coordinates, when it was opened. */
+interface Anchor {
+  top: number;
+  left: number;
+  bottom: number;
+}
+
 type Editor =
   | { kind: "add"; parentId: GroupId }
   | { kind: "rename"; group: Group }
   | { kind: "delete"; group: Group };
 
+/**
+ * The row's overflow menu and icon popover both float over the rest of the
+ * app (fixed position, anchored to the trigger that opened them) instead of
+ * being laid out inline in the ~200px sidebar column, which is too narrow
+ * for either to fit. Only one is ever open at a time.
+ */
+type Floating =
+  | { kind: "menu"; group: Group; anchor: Anchor }
+  | { kind: "icon"; group: Group; anchor: Anchor };
+
 const INDENT_PX = 14;
 const ROW_INSET_PX = 4;
+
+const FLOATING_GUTTER = 12;
+const ROW_MENU_WIDTH = 176;
+const ICON_POPOVER_WIDTH = 300;
+
+function floatingStyle(anchor: Anchor, width: number): CSSProperties {
+  const maxLeft = window.innerWidth - width - FLOATING_GUTTER;
+  return {
+    left: Math.max(FLOATING_GUTTER, Math.min(anchor.left, maxLeft)),
+    top: anchor.bottom + 6,
+  };
+}
 
 export function GroupTree({
   rootGroup,
@@ -41,11 +80,13 @@ export function GroupTree({
   onCreateGroup,
   onRenameGroup,
   onDeleteGroup,
+  onChangeGroupIcon,
   groupDeleteMode,
   entryDragActive,
   onDropEntry,
 }: GroupTreeProps) {
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
+  const [floating, setFloating] = useState<Floating | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -53,6 +94,40 @@ export function GroupTree({
   const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined);
   const [flashId, setFlashId] = useState<string | undefined>(undefined);
   const [dropError, setDropError] = useState<string | undefined>(undefined);
+  const floatingRef = useRef<HTMLDivElement>(null);
+
+  // Closes the open menu/popover on an outside click or Escape, but not on a
+  // click that lands on a trigger button — that button's own click handler
+  // decides whether that's opening a different group's panel or toggling
+  // this one shut.
+  useEffect(() => {
+    if (!floating) {
+      return;
+    }
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (floatingRef.current?.contains(target)) {
+        return;
+      }
+      if (target instanceof Element && target.closest("[data-group-menu-trigger]")) {
+        return;
+      }
+      setFloating(undefined);
+      setError(undefined);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setFloating(undefined);
+        setError(undefined);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [floating]);
 
   function startAdd(parentId: GroupId) {
     setEditor({ kind: "add", parentId });
@@ -71,9 +146,35 @@ export function GroupTree({
     setError(undefined);
   }
 
+  function toggleMenu(group: Group, event: ReactMouseEvent<HTMLButtonElement>) {
+    if (floating?.kind === "menu" && floating.group.id.equals(group.id)) {
+      setFloating(undefined);
+      return;
+    }
+    const { top, left, bottom } = event.currentTarget.getBoundingClientRect();
+    setFloating({ kind: "menu", group, anchor: { top, left, bottom } });
+    setError(undefined);
+  }
+
+  /** Swaps the open row menu for the icon popover, anchored at the same spot. */
+  function openIconPopover(group: Group, event: ReactMouseEvent<HTMLButtonElement>) {
+    const { top, left, bottom } = event.currentTarget.getBoundingClientRect();
+    setFloating({ kind: "icon", group, anchor: { top, left, bottom } });
+    setError(undefined);
+  }
+
   function cancelEditor() {
     setEditor(undefined);
     setError(undefined);
+  }
+
+  async function changeIcon(group: Group, icon: Icon) {
+    setError(undefined);
+    try {
+      await onChangeGroupIcon(group.id, icon);
+    } catch (cause) {
+      setError(errorMessage(cause, "Something went wrong."));
+    }
   }
 
   async function submitAdd(parentId: GroupId) {
@@ -218,6 +319,10 @@ export function GroupTree({
     const isRenaming = editor?.kind === "rename" && editor.group.id.equals(group.id);
     const isDeleting = editor?.kind === "delete" && editor.group.id.equals(group.id);
     const isAddingChild = editor?.kind === "add" && editor.parentId.equals(group.id);
+    const menu =
+      floating?.kind === "menu" && floating.group.id.equals(group.id) ? floating : undefined;
+    const iconPopover =
+      floating?.kind === "icon" && floating.group.id.equals(group.id) ? floating : undefined;
     const indent = ROW_INSET_PX + depth * INDENT_PX;
 
     return (
@@ -285,7 +390,7 @@ export function GroupTree({
               <span className="group-disclosure-spacer" />
             )}
             <button type="button" className="group-row-name" onClick={() => onSelect(idStr)}>
-              <FolderIcon size={15} />
+              <GroupAvatar name={group.name} icon={group.icon} size="xs" />
               <span className="group-row-label">{group.name}</span>
               <span className="group-row-count">{group.entries.length}</span>
             </button>
@@ -300,20 +405,15 @@ export function GroupTree({
               </button>
               <button
                 type="button"
-                aria-label={`Rename ${group.name}`}
-                title="Rename"
-                onClick={() => startRename(group)}
+                data-group-menu-trigger
+                className={menu || iconPopover ? "active" : undefined}
+                aria-label={`More actions for ${group.name}`}
+                aria-haspopup="menu"
+                aria-expanded={menu !== undefined}
+                title="More actions"
+                onClick={(event) => toggleMenu(group, event)}
               >
-                <EditIcon size={14} />
-              </button>
-              <button
-                type="button"
-                className="danger"
-                aria-label={`Delete ${group.name}`}
-                title="Delete"
-                onClick={() => startDelete(group)}
-              >
-                <TrashIcon size={14} />
+                <MoreIcon size={15} />
               </button>
             </span>
           </div>
@@ -325,6 +425,56 @@ export function GroupTree({
             indent + INDENT_PX - ROW_INSET_PX,
             () => void submitAdd(group.id),
           )}
+
+        {menu && (
+          <div ref={floatingRef} className="group-row-menu" style={floatingStyle(menu.anchor, ROW_MENU_WIDTH)}>
+            <button
+              type="button"
+              onClick={(event) => openIconPopover(group, event)}
+            >
+              <PaletteIcon size={14} />
+              Change icon
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFloating(undefined);
+                startRename(group);
+              }}
+            >
+              <EditIcon size={14} />
+              Rename
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => {
+                setFloating(undefined);
+                startDelete(group);
+              }}
+            >
+              <TrashIcon size={14} />
+              Delete
+            </button>
+          </div>
+        )}
+
+        {iconPopover && (
+          <div
+            ref={floatingRef}
+            className="group-icon-popover"
+            style={floatingStyle(iconPopover.anchor, ICON_POPOVER_WIDTH)}
+          >
+            <IconPicker
+              value={group.icon}
+              title={group.name}
+              url=""
+              initiallyOpen
+              onChange={(icon) => void changeIcon(group, icon)}
+            />
+            {error && <div className="group-composer-error">{error}</div>}
+          </div>
+        )}
 
         {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1))}
       </div>

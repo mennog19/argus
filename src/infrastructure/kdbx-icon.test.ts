@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { Consts, Credentials, Kdbx, KdbxEntry, KdbxUuid, ProtectedValue } from "kdbxweb";
-import { Entry, EntryIcon } from "../domain";
+import { Entry, Icon } from "../domain";
 import {
   ICON_CUSTOM_DATA_KEY,
   LIBRARY_ICON_KEEPASS_IDS,
@@ -20,13 +20,13 @@ function newEntry(): { db: Kdbx; entry: KdbxEntry } {
 
 describe("iconFromKdbx", () => {
   it("reads KeePass's default Key icon as automatic", () => {
-    expect(iconFromKdbx(newEntry().entry)).toBe(EntryIcon.AUTO);
+    expect(iconFromKdbx(newEntry().entry)).toBe(Icon.AUTO);
   });
 
   it("treats a missing icon id like the default", () => {
     const { entry } = newEntry();
     entry.icon = undefined;
-    expect(iconFromKdbx(entry)).toBe(EntryIcon.AUTO);
+    expect(iconFromKdbx(entry)).toBe(Icon.AUTO);
   });
 
   it("maps a KeePass standard icon to the first library icon listed for it", () => {
@@ -38,27 +38,27 @@ describe("iconFromKdbx", () => {
   it("reads a KeePass icon Argus has no library icon for as automatic", () => {
     const { entry } = newEntry();
     entry.icon = Icons.Tux;
-    expect(iconFromKdbx(entry)).toBe(EntryIcon.AUTO);
+    expect(iconFromKdbx(entry)).toBe(Icon.AUTO);
   });
 
   it("prefers Argus CustomData while it agrees with the KeePass icon", () => {
     const { entry } = newEntry();
-    writeIconToKdbx(entry, EntryIcon.library("luggage"));
+    writeIconToKdbx(entry, Icon.library("luggage"));
     expect(iconFromKdbx(entry).toString()).toBe("library:luggage");
 
-    writeIconToKdbx(entry, EntryIcon.brand("github"));
+    writeIconToKdbx(entry, Icon.brand("github"));
     expect(iconFromKdbx(entry).toString()).toBe("brand:github");
   });
 
   it("follows another app's icon change over stale CustomData", () => {
     const { entry } = newEntry();
-    writeIconToKdbx(entry, EntryIcon.library("luggage"));
+    writeIconToKdbx(entry, Icon.library("luggage"));
     entry.icon = Icons.Star;
     expect(iconFromKdbx(entry).toString()).toBe("library:star");
 
-    writeIconToKdbx(entry, EntryIcon.brand("github"));
+    writeIconToKdbx(entry, Icon.brand("github"));
     entry.icon = Icons.Key;
-    expect(iconFromKdbx(entry)).toBe(EntryIcon.AUTO);
+    expect(iconFromKdbx(entry)).toBe(Icon.AUTO);
   });
 
   it("ignores unparseable CustomData", () => {
@@ -72,7 +72,7 @@ describe("iconFromKdbx", () => {
     const { entry } = newEntry();
     entry.icon = Icons.Star;
     entry.customIcon = KdbxUuid.random();
-    expect(iconFromKdbx(entry)).toBe(EntryIcon.AUTO);
+    expect(iconFromKdbx(entry)).toBe(Icon.AUTO);
   });
 });
 
@@ -80,7 +80,7 @@ describe("writeIconToKdbx", () => {
   it("writes a library icon as its nearest KeePass icon plus CustomData", () => {
     const { entry } = newEntry();
     entry.customIcon = KdbxUuid.random();
-    writeIconToKdbx(entry, EntryIcon.library("star"));
+    writeIconToKdbx(entry, Icon.library("star"));
     expect(entry.icon).toBe(Icons.Star);
     expect(entry.customIcon).toBeUndefined();
     expect(entry.customData?.get(ICON_CUSTOM_DATA_KEY)?.value).toBe("library:star");
@@ -88,20 +88,20 @@ describe("writeIconToKdbx", () => {
 
   it("writes a brand as the World icon", () => {
     const { entry } = newEntry();
-    writeIconToKdbx(entry, EntryIcon.brand("github"));
+    writeIconToKdbx(entry, Icon.brand("github"));
     expect(entry.icon).toBe(Icons.World);
   });
 
   it("falls back to the Key icon for a library key it doesn't know", () => {
     const { entry } = newEntry();
-    writeIconToKdbx(entry, EntryIcon.library("from-the-future"));
+    writeIconToKdbx(entry, Icon.library("from-the-future"));
     expect(entry.icon).toBe(Icons.Key);
   });
 
   it("resets to the default and drops the CustomData for automatic", () => {
     const { entry } = newEntry();
-    writeIconToKdbx(entry, EntryIcon.library("star"));
-    writeIconToKdbx(entry, EntryIcon.AUTO);
+    writeIconToKdbx(entry, Icon.library("star"));
+    writeIconToKdbx(entry, Icon.AUTO);
     expect(entry.icon).toBe(Icons.Key);
     expect(entry.customData?.has(ICON_CUSTOM_DATA_KEY)).toBe(false);
   });
@@ -109,7 +109,7 @@ describe("writeIconToKdbx", () => {
   it("handles automatic on an entry without CustomData", () => {
     const { entry } = newEntry();
     entry.customData = undefined;
-    writeIconToKdbx(entry, EntryIcon.AUTO);
+    writeIconToKdbx(entry, Icon.AUTO);
     expect(entry.icon).toBe(Icons.Key);
   });
 
@@ -126,7 +126,7 @@ describe("icons through the mapper", () => {
     configureKdbxCrypto();
     const db = Kdbx.create(new Credentials(ProtectedValue.fromString("pw")), "Test");
     let vault = vaultFromKdbx(db);
-    const entry = Entry.create({ title: "Trip", icon: EntryIcon.library("luggage") });
+    const entry = Entry.create({ title: "Trip", icon: Icon.library("luggage") });
     vault = vault.addEntry(vault.rootGroup.id, entry);
     applyVaultToKdbx(db, vault);
 
@@ -142,7 +142,7 @@ describe("icons through the mapper", () => {
     configureKdbxCrypto();
     const db = Kdbx.create(new Credentials(ProtectedValue.fromString("pw")), "Test");
     let vault = vaultFromKdbx(db);
-    const entry = Entry.create({ title: "Trip", icon: EntryIcon.library("luggage", 235) });
+    const entry = Entry.create({ title: "Trip", icon: Icon.library("luggage", 235) });
     vault = vault.addEntry(vault.rootGroup.id, entry);
     applyVaultToKdbx(db, vault);
 
@@ -171,7 +171,7 @@ describe("icons through the mapper", () => {
     const kdbxEntry = db.createEntry(db.getDefaultGroup());
     let vault = vaultFromKdbx(db);
     const [entry] = vault.rootGroup.entries;
-    vault = vault.updateEntry(entry.update({ icon: EntryIcon.brand("github") }));
+    vault = vault.updateEntry(entry.update({ icon: Icon.brand("github") }));
     applyVaultToKdbx(db, vault);
     expect(kdbxEntry.icon).toBe(Icons.World);
     expect(kdbxEntry.history).toHaveLength(1);

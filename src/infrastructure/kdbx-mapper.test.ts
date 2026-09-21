@@ -1,7 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { Credentials, Kdbx, KdbxUuid, ProtectedValue } from "kdbxweb";
-import { CustomField, CustomFields, Entry, Group, Password, Tag, Tags, Vault } from "../domain";
+import { Consts, Credentials, Kdbx, KdbxUuid, ProtectedValue } from "kdbxweb";
+import { CustomField, CustomFields, Entry, Group, Icon, Password, Tag, Tags, Vault } from "../domain";
+
+const Icons = Consts.Icons;
 import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
 import { applyVaultToKdbx, passwordChangedTimesFromKdbx, vaultFromKdbx } from "./kdbx-mapper";
 
@@ -107,6 +109,19 @@ describe("vaultFromKdbx", () => {
     const servers = work?.groups.find((g) => g.name === "Servers");
     expect(servers).toBeDefined();
     expect(servers?.entries[0].title).toBe("prod-db");
+  });
+
+  it("maps a group's chosen icon", () => {
+    const db = createDb();
+    const child = db.createGroup(db.getDefaultGroup(), "Work");
+    child.customData ??= new Map();
+    child.customData.set("Argus.Icon", { value: "library:briefcase" });
+    child.icon = Icons.Package; // the KeePass id LIBRARY_ICON_KEEPASS_IDS maps "briefcase" to
+
+    const vault = vaultFromKdbx(db);
+    const work = vault.rootGroup.groups.find((g) => g.name === "Work")!;
+
+    expect(work.icon.equals(Icon.library("briefcase"))).toBe(true);
   });
 });
 
@@ -342,6 +357,31 @@ describe("applyVaultToKdbx", () => {
 
     applyVaultToKdbx(db, updatedVault);
     expect(kdbxGroup.name).toBe("New");
+  });
+
+  it("writes a changed group icon", () => {
+    const db = createDb();
+    const kdbxGroup = db.createGroup(db.getDefaultGroup(), "Work");
+    const vault = vaultFromKdbx(db);
+    const group = vault.rootGroup.groups.find((g) => g.name === "Work")!;
+    const recolored = group.changeIcon(Icon.library("briefcase"));
+    const updatedVault = vault.removeGroup(group.id).addGroup(vault.rootGroup.id, recolored);
+
+    applyVaultToKdbx(db, updatedVault);
+
+    expect(kdbxGroup.icon).toBe(Icons.Package);
+    expect(kdbxGroup.customData?.get("Argus.Icon")?.value).toBe("library:briefcase");
+  });
+
+  it("leaves an unchanged group's icon untouched", () => {
+    const db = createDb();
+    const kdbxGroup = db.createGroup(db.getDefaultGroup(), "Work");
+    kdbxGroup.icon = 5; // fidelity check: an icon Argus can't represent must survive a no-op save
+    const vault = vaultFromKdbx(db);
+
+    applyVaultToKdbx(db, vault);
+
+    expect(kdbxGroup.icon).toBe(5);
   });
 
   it("respects memory-protection settings that are off for a field", () => {

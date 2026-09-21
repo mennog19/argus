@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { EntryIcon } from "../../domain";
+import { Icon } from "../../domain";
 import { EntryAvatar } from "./EntryAvatar";
 import { sigilFor } from "./sigil";
 
-function renderAvatar(url: string, icon = EntryIcon.AUTO, size?: "sm" | "lg") {
+function renderAvatar(url: string, icon = Icon.AUTO, size?: "sm" | "lg") {
   const { container } = render(<EntryAvatar entry={{ title: "Title", url, icon }} size={size} />);
   return { container, root: container.firstElementChild as HTMLElement };
 }
@@ -50,7 +50,7 @@ describe("EntryAvatar", () => {
   });
 
   it("draws a chosen library icon tinted with the site's hue", () => {
-    const { container, root } = renderAvatar("https://example.com", EntryIcon.library("luggage"));
+    const { container, root } = renderAvatar("https://example.com", Icon.library("luggage"));
     expect(root.dataset.kind).toBe("library");
     expect(root.dataset.hue).toBe(String(sigilFor("example.com").hue));
     expect(container.querySelector(".entry-tile-glyph")).toBeInTheDocument();
@@ -59,15 +59,15 @@ describe("EntryAvatar", () => {
   it("lets a manual hue override the name-derived colour of a chosen icon", () => {
     const { root } = renderAvatar(
       "https://example.com",
-      EntryIcon.library("luggage", 235),
+      Icon.library("luggage", 235),
     );
     expect(root.dataset.hue).toBe("235");
     expect(root.style.getPropertyValue("--sigil-hue")).toBe("235");
   });
 
   it("renders the large variant", () => {
-    expect(renderAvatar("", EntryIcon.AUTO, "lg").root).toHaveClass("entry-tile", "entry-tile-lg");
-    expect(renderAvatar("https://github.com", EntryIcon.AUTO, "lg").root).toHaveClass(
+    expect(renderAvatar("", Icon.AUTO, "lg").root).toHaveClass("entry-tile", "entry-tile-lg");
+    expect(renderAvatar("https://github.com", Icon.AUTO, "lg").root).toHaveClass(
       "entry-tile-brand",
       "entry-tile-lg",
     );

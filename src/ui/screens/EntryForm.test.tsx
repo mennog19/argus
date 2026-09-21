@@ -5,7 +5,7 @@ import {
   CustomField,
   CustomFields,
   Entry,
-  EntryIcon,
+  Icon,
   GroupId,
   Password,
   Tag,
@@ -212,7 +212,7 @@ describe("EntryForm", () => {
   it("saves the chosen icon, and keeps an existing entry's icon when untouched", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    const existing = Entry.create({ title: "Trip", icon: EntryIcon.library("plane") });
+    const existing = Entry.create({ title: "Trip", icon: Icon.library("plane") });
 
     const { unmount } = render(
       <EntryForm

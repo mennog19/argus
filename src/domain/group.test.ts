@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Entry } from "./entry";
 import { Group } from "./group";
 import { GroupId } from "./group-id";
+import { Icon } from "./icon";
 
 describe("Group", () => {
   it("creates an empty named group with a fresh id", () => {
@@ -11,6 +12,27 @@ describe("Group", () => {
     expect(group.name).toBe("Passwords");
     expect(group.groups).toEqual([]);
     expect(group.entries).toEqual([]);
+    expect(group.icon).toBe(Icon.AUTO);
+  });
+
+  it("changeIcon returns a new group with the new icon, preserving identity", () => {
+    const original = Group.create("Old");
+    const recolored = original.changeIcon(Icon.library("star"));
+
+    expect(recolored).not.toBe(original);
+    expect(recolored.id.equals(original.id)).toBe(true);
+    expect(recolored.icon.equals(Icon.library("star"))).toBe(true);
+    expect(original.icon).toBe(Icon.AUTO);
+  });
+
+  it("mutations preserve the group's icon", () => {
+    const withIcon = Group.create("Root").changeIcon(Icon.brand("github"));
+    const entry = Entry.create({ title: "Bank" });
+    const child = Group.create("Child");
+
+    expect(withIcon.rename("New").icon.equals(Icon.brand("github"))).toBe(true);
+    expect(withIcon.addEntry(entry).icon.equals(Icon.brand("github"))).toBe(true);
+    expect(withIcon.addGroup(child).icon.equals(Icon.brand("github"))).toBe(true);
   });
 
   it("two groups with the same id are equal regardless of other fields", () => {

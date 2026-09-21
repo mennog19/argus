@@ -1,4 +1,4 @@
-export type EntryIconKind = "auto" | "library" | "brand";
+export type IconKind = "auto" | "library" | "brand";
 
 const KEY_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
 
@@ -6,50 +6,50 @@ const KEY_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
 const MAX_HUE = 359;
 
 /**
- * Which icon an entry shows. `auto` lets the UI decide (brand logo for a known
- * site, otherwise a generated sigil); `library` and `brand` are explicit
- * choices identified by a catalog key. The domain only validates the shape —
- * which keys exist is up to the UI's catalogs, so unknown keys (e.g. written
- * by a newer version) survive a round trip untouched.
+ * Which icon an entry or group shows. `auto` lets the UI decide (brand logo
+ * for a known site, otherwise a generated sigil); `library` and `brand` are
+ * explicit choices identified by a catalog key. The domain only validates the
+ * shape — which keys exist is up to the UI's catalogs, so unknown keys (e.g.
+ * written by a newer version) survive a round trip untouched.
  *
- * A library icon's tint is normally derived from the entry's title/URL (so it
+ * A library icon's tint is normally derived from the owner's title/URL (so it
  * matches the automatic sigil it replaced); `hue` overrides that with a fixed
  * OKLCH hue, chosen independently of what's typed into the name field.
  */
-export class EntryIcon {
-  static readonly AUTO = new EntryIcon("auto", "", undefined);
+export class Icon {
+  static readonly AUTO = new Icon("auto", "", undefined);
 
   private constructor(
-    readonly kind: EntryIconKind,
+    readonly kind: IconKind,
     readonly key: string,
     readonly hue: number | undefined,
   ) {}
 
-  static library(key: string, hue?: number): EntryIcon {
-    return new EntryIcon("library", EntryIcon.validKey(key), EntryIcon.validHue(hue));
+  static library(key: string, hue?: number): Icon {
+    return new Icon("library", Icon.validKey(key), Icon.validHue(hue));
   }
 
-  static brand(key: string): EntryIcon {
-    return new EntryIcon("brand", EntryIcon.validKey(key), undefined);
+  static brand(key: string): Icon {
+    return new Icon("brand", Icon.validKey(key), undefined);
   }
 
   /** Parses the `kind:key` or `library:key:hue` form produced by `toString()`; `undefined` if it isn't one. */
-  static parse(value: string): EntryIcon | undefined {
+  static parse(value: string): Icon | undefined {
     if (value === "auto") {
-      return EntryIcon.AUTO;
+      return Icon.AUTO;
     }
     const match = /^(library|brand):([^:]+)(?::(\d+))?$/.exec(value);
     if (!match || !KEY_PATTERN.test(match[2])) {
       return undefined;
     }
     if (match[1] === "brand") {
-      return match[3] === undefined ? EntryIcon.brand(match[2]) : undefined;
+      return match[3] === undefined ? Icon.brand(match[2]) : undefined;
     }
     if (match[3] === undefined) {
-      return EntryIcon.library(match[2]);
+      return Icon.library(match[2]);
     }
     const hue = Number(match[3]);
-    return hue <= MAX_HUE ? EntryIcon.library(match[2], hue) : undefined;
+    return hue <= MAX_HUE ? Icon.library(match[2], hue) : undefined;
   }
 
   private static validKey(key: string): string {
@@ -69,7 +69,7 @@ export class EntryIcon {
     return hue;
   }
 
-  equals(other: EntryIcon): boolean {
+  equals(other: Icon): boolean {
     return other.kind === this.kind && other.key === this.key && other.hue === this.hue;
   }
 

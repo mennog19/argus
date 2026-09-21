@@ -6,6 +6,7 @@ import {
   CustomFields,
   Entry,
   Group,
+  Icon,
   Password,
   PasswordPolicyOptions,
   Tag,
@@ -675,13 +676,31 @@ describe("VaultShell", () => {
 
       renderShell(vault, { onSave });
 
-      await user.click(screen.getByRole("button", { name: `Rename ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: `More actions for ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Rename" }));
       await user.clear(screen.getByRole("textbox", { name: `Rename ${work.name}` }));
       await user.type(screen.getByRole("textbox", { name: `Rename ${work.name}` }), "Renamed");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
       const savedVault: Vault = onSave.mock.calls[0][0];
       expect(savedVault.findGroup(work.id)?.name).toBe("Renamed");
+    });
+
+    it("changes a group's icon from the sidebar", async () => {
+      const user = userEvent.setup();
+      const work = Group.create("Work");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      await user.click(screen.getByRole("button", { name: `More actions for ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Change icon" }));
+      await user.click(screen.getByRole("button", { name: "Star" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.findGroup(work.id)?.icon.equals(Icon.library("star"))).toBe(true);
     });
 
     it("deleting a group other than the currently selected one leaves the selection untouched", async () => {
@@ -696,7 +715,8 @@ describe("VaultShell", () => {
       renderShell(vault, { onSave });
 
       await user.click(rowButton("Work"));
-      await user.click(screen.getByRole("button", { name: `Delete ${personal.name}` }));
+      await user.click(screen.getByRole("button", { name: `More actions for ${personal.name}` }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(onSave).toHaveBeenCalled();
@@ -767,7 +787,8 @@ describe("VaultShell", () => {
       renderShell(vault, { onSave });
 
       await user.click(rowButton("Work"));
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: `More actions for ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(onSave).toHaveBeenCalled();
@@ -783,7 +804,8 @@ describe("VaultShell", () => {
 
       renderShell(vault, { onSave });
 
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: `More actions for ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       const savedVault: Vault = onSave.mock.calls[0][0];
@@ -801,7 +823,8 @@ describe("VaultShell", () => {
 
       renderShell(vault, { onSave, groupDeleteMode: "keepContents" });
 
-      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: `More actions for ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       const savedVault: Vault = onSave.mock.calls[0][0];

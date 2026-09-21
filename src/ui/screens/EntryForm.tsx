@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import {
   Entry,
-  EntryIcon,
+  Icon,
   generatePassword,
   GroupId,
   Password,
@@ -40,7 +40,7 @@ export function EntryForm({
   const [notes, setNotes] = useState(initialEntry?.notes ?? "");
   const [groupId, setGroupId] = useState(initialGroupId);
   const [tags, setTags] = useState(initialEntry?.tags ?? new Tags());
-  const [icon, setIcon] = useState(initialEntry?.icon ?? EntryIcon.AUTO);
+  const [icon, setIcon] = useState(initialEntry?.icon ?? Icon.AUTO);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 

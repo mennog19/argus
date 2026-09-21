@@ -3,6 +3,7 @@ import { Entry } from "./entry";
 import { EntryId } from "./entry-id";
 import { Group } from "./group";
 import { GroupId } from "./group-id";
+import { Icon } from "./icon";
 import { Vault } from "./vault";
 
 describe("Vault", () => {
@@ -156,6 +157,25 @@ describe("Vault", () => {
       const vault = Vault.create("Root");
 
       expect(() => vault.renameGroup(GroupId.create(), "Renamed")).toThrow("Group not found");
+    });
+  });
+
+  describe("changeGroupIcon", () => {
+    it("changes a nested group's icon", () => {
+      const child = Group.create("Child");
+      const vault = new Vault("Root", Group.create("Root").addGroup(child));
+
+      const updated = vault.changeGroupIcon(child.id, Icon.library("star"));
+
+      expect(updated.findGroup(child.id)?.icon.equals(Icon.library("star"))).toBe(true);
+    });
+
+    it("throws when the group doesn't exist", () => {
+      const vault = Vault.create("Root");
+
+      expect(() => vault.changeGroupIcon(GroupId.create(), Icon.library("star"))).toThrow(
+        "Group not found",
+      );
     });
   });
 

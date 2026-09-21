@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Entry, EntryId, Group, GroupId, PasswordPolicyOptions, Vault } from "../../domain";
+import { Entry, EntryId, Group, GroupId, Icon, PasswordPolicyOptions, Vault } from "../../domain";
 import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
@@ -145,6 +145,10 @@ export function VaultShell({
     await persist(vault.renameGroup(groupId, name));
   }
 
+  async function handleChangeGroupIcon(groupId: GroupId, icon: Icon) {
+    await persist(vault.changeGroupIcon(groupId, icon));
+  }
+
   async function handleDeleteGroup(groupId: GroupId) {
     await persist(
       groupDeleteMode === "keepContents"
@@ -285,6 +289,7 @@ export function VaultShell({
             onCreateGroup={handleCreateGroup}
             onRenameGroup={handleRenameGroup}
             onDeleteGroup={handleDeleteGroup}
+            onChangeGroupIcon={handleChangeGroupIcon}
             groupDeleteMode={groupDeleteMode}
             entryDragActive={draggingEntryId !== undefined}
             onDropEntry={handleDropEntry}

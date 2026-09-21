@@ -1,32 +1,41 @@
 import { CSSProperties, useState } from "react";
-import { EntryIcon } from "../../domain";
+import { Icon } from "../../domain";
 import { BRAND_ICONS, BrandCatalog } from "./brand-icons";
 import { EntryAvatar, EntryTile } from "./EntryAvatar";
 import { LIBRARY_ICONS } from "./library-icons";
-import { resolveEntryIcon } from "./resolve-entry-icon";
+import { resolveIcon } from "./resolve-entry-icon";
 import { HUES, sigilSeed } from "./sigil";
 
 type Tab = "library" | "brands";
 
 interface IconPickerProps {
-  value: EntryIcon;
+  value: Icon;
   title: string;
   url: string;
-  onChange: (icon: EntryIcon) => void;
+  onChange: (icon: Icon) => void;
   brands?: BrandCatalog;
+  /** Starts with the library/brand grid already expanded, skipping the "Change icon" click. */
+  initiallyOpen?: boolean;
 }
 
 function matches(query: string, words: readonly string[]): boolean {
   return words.some((word) => word.toLowerCase().includes(query));
 }
 
-export function IconPicker({ value, title, url, onChange, brands = BRAND_ICONS }: IconPickerProps) {
-  const [open, setOpen] = useState(false);
+export function IconPicker({
+  value,
+  title,
+  url,
+  onChange,
+  brands = BRAND_ICONS,
+  initiallyOpen = false,
+}: IconPickerProps) {
+  const [open, setOpen] = useState(initiallyOpen);
   const [tab, setTab] = useState<Tab>(value.kind === "brand" ? "brands" : "library");
   const [query, setQuery] = useState("");
 
   const subject = { title, url, icon: value };
-  const resolved = resolveEntryIcon(subject, brands);
+  const resolved = resolveIcon(subject, brands);
   const seed = sigilSeed(title, url);
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -53,7 +62,7 @@ export function IconPicker({ value, title, url, onChange, brands = BRAND_ICONS }
         ).map((icon) => ({
           id: icon.key,
           label: icon.label,
-          choice: EntryIcon.library(icon.key, currentHue),
+          choice: Icon.library(icon.key, currentHue),
           pressed: value.kind === "library" && value.key === icon.key,
           tile: <EntryTile resolved={{ kind: "library", icon, seed, hue: currentHue }} />,
         }))
@@ -62,7 +71,7 @@ export function IconPicker({ value, title, url, onChange, brands = BRAND_ICONS }
           .map((brand) => ({
             id: brand.slug,
             label: brand.title,
-            choice: EntryIcon.brand(brand.slug),
+            choice: Icon.brand(brand.slug),
             pressed: value.kind === "brand" && value.key === brand.slug,
             tile: <EntryTile resolved={{ kind: "brand", icon: brand }} />,
           }));
@@ -77,7 +86,7 @@ export function IconPicker({ value, title, url, onChange, brands = BRAND_ICONS }
         </div>
         <div className="icon-picker-current-actions">
           {value.kind !== "auto" && (
-            <button type="button" className="link-muted" onClick={() => onChange(EntryIcon.AUTO)}>
+            <button type="button" className="link-muted" onClick={() => onChange(Icon.AUTO)}>
               Use automatic
             </button>
           )}
@@ -100,7 +109,7 @@ export function IconPicker({ value, title, url, onChange, brands = BRAND_ICONS }
             title="Match name"
             aria-label="Match name"
             aria-pressed={value.hue === undefined}
-            onClick={() => onChange(EntryIcon.library(value.key))}
+            onClick={() => onChange(Icon.library(value.key))}
           />
           {HUES.map((hue) => (
             <button
@@ -111,7 +120,7 @@ export function IconPicker({ value, title, url, onChange, brands = BRAND_ICONS }
               title="Set colour"
               aria-label={`Set colour, hue ${hue}`}
               aria-pressed={value.hue === hue}
-              onClick={() => onChange(EntryIcon.library(value.key, hue))}
+              onClick={() => onChange(Icon.library(value.key, hue))}
             />
           ))}
         </div>

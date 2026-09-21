@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CustomField } from "./custom-field";
 import { CustomFields } from "./custom-fields";
 import { Entry } from "./entry";
-import { EntryIcon } from "./entry-icon";
+import { Icon } from "./icon";
 import { EntryId } from "./entry-id";
 import { Password } from "./password";
 import { Tag } from "./tag";
@@ -19,7 +19,7 @@ describe("Entry", () => {
     expect(entry.notes).toBe("");
     expect(entry.tags.values).toEqual([]);
     expect(entry.customFields.values).toEqual([]);
-    expect(entry.icon).toBe(EntryIcon.AUTO);
+    expect(entry.icon).toBe(Icon.AUTO);
   });
 
   it("creates an entry with the given fields and a fresh id", () => {
@@ -79,8 +79,8 @@ describe("Entry", () => {
   });
 
   it("carries an icon choice through update, keeping it when unspecified", () => {
-    const entry = Entry.create({ icon: EntryIcon.library("star") });
-    expect(entry.update({ title: "x" }).icon.equals(EntryIcon.library("star"))).toBe(true);
-    expect(entry.update({ icon: EntryIcon.brand("github") }).icon.toString()).toBe("brand:github");
+    const entry = Entry.create({ icon: Icon.library("star") });
+    expect(entry.update({ title: "x" }).icon.equals(Icon.library("star"))).toBe(true);
+    expect(entry.update({ icon: Icon.brand("github") }).icon.toString()).toBe("brand:github");
   });
 });

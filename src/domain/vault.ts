@@ -2,6 +2,7 @@ import { Entry } from "./entry";
 import { EntryId } from "./entry-id";
 import { Group } from "./group";
 import { GroupId } from "./group-id";
+import { Icon } from "./icon";
 
 interface TreeUpdate {
   group: Group;
@@ -144,6 +145,14 @@ export class Vault {
 
   renameGroup(groupId: GroupId, name: string): Vault {
     const result = updateGroupById(this.rootGroup, groupId, (group) => group.rename(name));
+    if (!result.found) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    return new Vault(this.name, result.group, this.recycleBinId);
+  }
+
+  changeGroupIcon(groupId: GroupId, icon: Icon): Vault {
+    const result = updateGroupById(this.rootGroup, groupId, (group) => group.changeIcon(icon));
     if (!result.found) {
       throw new Error(`Group not found: ${groupId.toString()}`);
     }

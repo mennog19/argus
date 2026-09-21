@@ -59,6 +59,7 @@ import {
   Star,
   Stethoscope,
   StickyNote,
+  Sun,
   Terminal,
   Trash2,
   TriangleAlert,
@@ -70,6 +71,7 @@ import {
   Wifi,
   Wrench,
 } from "lucide-react";
+import { createElement, SVGProps } from "react";
 
 export interface LibraryIcon {
   /** Stable id persisted in the vault — never rename one. */
@@ -79,6 +81,39 @@ export interface LibraryIcon {
   keywords: readonly string[];
   Icon: LucideIcon;
 }
+
+/** A single centred capital letter, drawn to sit alongside lucide's glyphs. */
+function letterIcon(letter: string): LucideIcon {
+  function LetterGlyph(props: SVGProps<SVGSVGElement>) {
+    return createElement(
+      "svg",
+      { viewBox: "0 0 24 24", "aria-hidden": "true", ...props },
+      createElement(
+        "text",
+        {
+          x: 12,
+          y: 17.5,
+          textAnchor: "middle",
+          fontSize: 15,
+          fontWeight: 600,
+          fill: "currentColor",
+        },
+        letter,
+      ),
+    );
+  }
+  return LetterGlyph as unknown as LucideIcon;
+}
+
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+
+/** One icon per letter of the alphabet, for initialing a group or entry. */
+const LETTER_ICONS: readonly LibraryIcon[] = Array.from(ALPHABET, (letter) => ({
+  key: `letter-${letter}`,
+  label: letter.toUpperCase(),
+  keywords: ["letter", "alphabet", "initial"],
+  Icon: letterIcon(letter.toUpperCase()),
+}));
 
 /**
  * The built-in icon library. Every key also needs a KeePass mapping in
@@ -159,6 +194,8 @@ export const LIBRARY_ICONS: readonly LibraryIcon[] = [
   { key: "warning", label: "Warning", keywords: ["alert", "caution"], Icon: TriangleAlert },
   { key: "trash", label: "Trash", keywords: ["delete", "old"], Icon: Trash2 },
   { key: "feather", label: "Feather", keywords: ["light", "writing"], Icon: Feather },
+  { key: "sun", label: "Sun", keywords: ["weather", "bright", "light", "summer"], Icon: Sun },
+  ...LETTER_ICONS,
 ];
 
 const BY_KEY = new Map(LIBRARY_ICONS.map((icon) => [icon.key, icon]));
