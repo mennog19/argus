@@ -1,12 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomField, CustomFields, Entry, Group, PasswordPolicyOptions, Tag, Tags, Vault } from "../../domain";
+import {
+  CustomField,
+  CustomFields,
+  Entry,
+  Group,
+  Password,
+  PasswordPolicyOptions,
+  Tag,
+  Tags,
+  Vault,
+} from "../../domain";
+import { AutoLockSettings } from "../../application/settings";
+import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
 
+const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+
 function fakeUrlOpener(): UrlOpener {
   return { open: vi.fn() };
+}
+
+function fakeClipboardWriter(overrides: Partial<ClipboardWriter> = {}): ClipboardWriter {
+  return { writeText: vi.fn(), ...overrides };
 }
 
 function renderShell(
@@ -16,23 +34,48 @@ function renderShell(
     onLock?: () => void;
     generatorPolicy?: PasswordPolicyOptions;
     onGeneratorPolicyChange?: (policy: PasswordPolicyOptions) => void;
+    getPasswordChangedTimes?: () => Map<string, Date>;
+    clipboardWriter?: ClipboardWriter;
+    clipboardClearSeconds?: number;
+    onClipboardClearSecondsChange?: (seconds: number) => void;
+    autoLock?: AutoLockSettings;
+    onAutoLockChange?: (autoLock: AutoLockSettings) => void;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
   const onLock = overrides.onLock ?? vi.fn();
   const generatorPolicy = overrides.generatorPolicy ?? {};
   const onGeneratorPolicyChange = overrides.onGeneratorPolicyChange ?? vi.fn();
+  const getPasswordChangedTimes = overrides.getPasswordChangedTimes ?? (() => new Map());
+  const clipboardWriter = overrides.clipboardWriter ?? fakeClipboardWriter();
+  const clipboardClearSeconds = overrides.clipboardClearSeconds ?? 20;
+  const onClipboardClearSecondsChange = overrides.onClipboardClearSecondsChange ?? vi.fn();
+  const autoLock = overrides.autoLock ?? DEFAULT_AUTO_LOCK;
+  const onAutoLockChange = overrides.onAutoLockChange ?? vi.fn();
   render(
     <VaultShell
       vault={vault}
       urlOpener={fakeUrlOpener()}
+      clipboardWriter={clipboardWriter}
       generatorPolicy={generatorPolicy}
+      clipboardClearSeconds={clipboardClearSeconds}
+      autoLock={autoLock}
       onLock={onLock}
       onSave={onSave}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
+      onClipboardClearSecondsChange={onClipboardClearSecondsChange}
+      onAutoLockChange={onAutoLockChange}
+      getPasswordChangedTimes={getPasswordChangedTimes}
     />,
   );
-  return { onSave, onLock, onGeneratorPolicyChange };
+  return {
+    onSave,
+    onLock,
+    onGeneratorPolicyChange,
+    clipboardWriter,
+    onClipboardClearSecondsChange,
+    onAutoLockChange,
+  };
 }
 
 // The row-select button's accessible name concatenates the group's name with
@@ -209,6 +252,12 @@ describe("VaultShell", () => {
         onLock={vi.fn()}
         onSave={vi.fn()}
         onGeneratorPolicyChange={vi.fn()}
+        onClipboardClearSecondsChange={vi.fn()}
+        onAutoLockChange={vi.fn()}
+        getPasswordChangedTimes={() => new Map()}
+        clipboardWriter={fakeClipboardWriter()}
+        clipboardClearSeconds={20}
+        autoLock={DEFAULT_AUTO_LOCK}
       />,
     );
 
@@ -235,6 +284,122 @@ describe("VaultShell", () => {
 
     await user.click(screen.getByRole("button", { name: "Hide" }));
     expect(screen.getByText("••••••••")).toBeInTheDocument();
+  });
+
+  it("copies the username, shows a transient copied label, and clears the clipboard after the configured delay", async () => {
+    const entry = Entry.create({ title: "GitHub", username: "octocat" });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.useFakeTimers();
+    try {
+      renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }), clipboardClearSeconds: 5 });
+      fireEvent.click(screen.getByText("GitHub"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy username" }));
+        await Promise.resolve();
+      });
+
+      expect(writeText).toHaveBeenCalledWith("octocat");
+      expect(screen.getByText("Copied")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+      expect(screen.queryByText("Copied")).not.toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000 - 1500);
+      });
+      expect(writeText).toHaveBeenLastCalledWith("");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("copies the revealed password value", async () => {
+    const entry = Entry.create({ title: "GitHub", password: new Password("s3cret!") });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }) });
+    await user.click(screen.getByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Copy password" }));
+
+    expect(writeText).toHaveBeenCalledWith("s3cret!");
+  });
+
+  it("does not clear the clipboard from a stale copy once a newer value has been copied", async () => {
+    const entry = Entry.create({ title: "GitHub", username: "octocat", password: new Password("s3cret!") });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.useFakeTimers();
+    try {
+      renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }), clipboardClearSeconds: 5 });
+      fireEvent.click(screen.getByText("GitHub"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy username" }));
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+        await Promise.resolve();
+      });
+
+      // The username's own clear timer (fires at 5s after its own copy) lands
+      // here, 2s after the password was copied — it must not wipe the password.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(writeText).not.toHaveBeenLastCalledWith("");
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000);
+      });
+      expect(writeText).toHaveBeenLastCalledWith("");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the copied-label change from a newer copy even if an older copy's label timer fires later", async () => {
+    const entry = Entry.create({ title: "GitHub", username: "octocat", password: new Password("s3cret!") });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+
+    vi.useFakeTimers();
+    try {
+      renderShell(vault);
+      fireEvent.click(screen.getByText("GitHub"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy username" }));
+        await Promise.resolve();
+        fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+        await Promise.resolve();
+      });
+
+      // Both copies' 1.5s label timers land here at the same instant: the
+      // username copy's timer runs first (scheduled first) and must not
+      // clear a label that now belongs to the password copy.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+
+      expect(screen.queryByText("Copied")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("resets the selected entry and reveal state when switching groups", async () => {
@@ -461,7 +626,7 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Delete entry" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
-      expect(await screen.findByText("Failed to delete entry.")).toBeInTheDocument();
+      expect(await screen.findByText("nope")).toBeInTheDocument();
     });
   });
 
@@ -532,6 +697,12 @@ describe("VaultShell", () => {
           onLock={vi.fn()}
           onSave={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
+          onClipboardClearSecondsChange={vi.fn()}
+          onAutoLockChange={vi.fn()}
+          getPasswordChangedTimes={() => new Map()}
+          clipboardWriter={fakeClipboardWriter()}
+          clipboardClearSeconds={20}
+          autoLock={DEFAULT_AUTO_LOCK}
         />,
       );
 
@@ -550,6 +721,12 @@ describe("VaultShell", () => {
           onLock={vi.fn()}
           onSave={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
+          onClipboardClearSecondsChange={vi.fn()}
+          onAutoLockChange={vi.fn()}
+          getPasswordChangedTimes={() => new Map()}
+          clipboardWriter={fakeClipboardWriter()}
+          clipboardClearSeconds={20}
+          autoLock={DEFAULT_AUTO_LOCK}
         />,
       );
 
@@ -749,6 +926,57 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Generate" }));
 
       expect((screen.getByLabelText("Password") as HTMLInputElement).value).toHaveLength(10);
+    });
+  });
+
+  describe("password health", () => {
+    it("switches to the health screen and back to the vault via the nav rail", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "GitHub", password: new Password("Correct-Horse-7!") });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Password health" }));
+
+      expect(screen.getByRole("heading", { name: "Password Health" })).toBeInTheDocument();
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Vault" }));
+
+      expect(screen.getByText("GitHub")).toBeInTheDocument();
+    });
+
+    it("passes password-changed times from the injected getter through to the health screen", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      const getPasswordChangedTimes = vi
+        .fn()
+        .mockReturnValue(new Map([[entry.id.toString(), new Date("2000-01-01T00:00:00.000Z")]]));
+
+      renderShell(vault, { getPasswordChangedTimes });
+
+      await user.click(screen.getByRole("button", { name: "Password health" }));
+
+      expect(getPasswordChangedTimes).toHaveBeenCalled();
+      expect(screen.getByText(/stale passwords/i)).toBeInTheDocument();
+    });
+
+    it("selecting a flagged entry on the health screen jumps back to it in the vault view", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Weak Site", password: new Password("abc") });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Password health" }));
+      await user.click(screen.getByText("Weak Site"));
+
+      expect(screen.getByRole("heading", { name: "Weak Site" })).toBeInTheDocument();
     });
   });
 });

@@ -184,7 +184,7 @@ describe("GroupTree", () => {
       await user.type(screen.getByLabelText("New group name"), "New Group");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
-      expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+      expect(await screen.findByText("nope")).toBeInTheDocument();
     });
 
     it("cancels the add-group form", async () => {
@@ -301,7 +301,7 @@ describe("GroupTree", () => {
       await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
-      expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+      expect(await screen.findByText("nope")).toBeInTheDocument();
     });
   });
 

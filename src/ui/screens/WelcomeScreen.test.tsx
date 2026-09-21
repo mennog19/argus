@@ -134,7 +134,7 @@ describe("WelcomeScreen", () => {
       await user.click(screen.getByRole("button", { name: /open existing vault/i }));
       await user.click(screen.getByRole("button", { name: /choose file & unlock/i }));
 
-      expect(await screen.findByText("Failed to open vault.")).toBeInTheDocument();
+      expect(await screen.findByText("boom")).toBeInTheDocument();
     });
 
     it("returns to idle when Back is clicked", async () => {
@@ -306,7 +306,7 @@ describe("WelcomeScreen", () => {
       await user.type(screen.getByLabelText("Confirm password"), "hunter2");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
-      expect(await screen.findByText("Failed to create vault.")).toBeInTheDocument();
+      expect(await screen.findByText("boom")).toBeInTheDocument();
     });
 
     it("returns to idle when Back is clicked", async () => {

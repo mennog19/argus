@@ -9,6 +9,7 @@ import {
   PasswordPolicyOptions,
   Tags,
 } from "../../domain";
+import { errorMessage } from "../error-message";
 import { GroupOption } from "../vault-browsing";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { TagsEditor } from "./TagsEditor";
@@ -71,7 +72,7 @@ export function EntryForm({
     try {
       await onSubmit(entry, GroupId.fromString(groupId));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to save entry.");
+      setError(errorMessage(cause, "Failed to save entry."));
     } finally {
       setBusy(false);
     }

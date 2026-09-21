@@ -66,6 +66,35 @@ export function SearchIcon({ size = 16, color = "currentColor" }: IconProps) {
   );
 }
 
+export function CopyIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="9" y="9" width="12" height="12" rx="2" fill="none" stroke={color} strokeWidth="2" />
+      <path
+        d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+export function SettingsIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth="2" />
+      <path
+        d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1M18.5 18.5l-2.1-2.1M7.6 7.6 5.5 5.5"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function ChevronIcon({ size = 12, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
@@ -93,6 +122,28 @@ export function GeneratorIcon({ size = 20, color = "currentColor" }: IconProps) 
       <circle cx="9" cy="15" r="1.2" fill={color} />
       <circle cx="15" cy="15" r="1.2" fill={color} />
       <circle cx="12" cy="12" r="1.2" fill={color} />
+    </svg>
+  );
+}
+
+export function HealthIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 20s-7-4.35-9.5-9C.9 7.4 3 4 6.2 4 8.4 4 10 5.2 12 7c2-1.8 3.6-3 5.8-3C21 4 23.1 7.4 21.5 11 19 15.65 12 20 12 20Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 12h3l1.5-3L12 15l1.5-3H19"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

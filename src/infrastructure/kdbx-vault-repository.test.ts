@@ -103,4 +103,25 @@ describe("KdbxVaultRepository", () => {
     const reopened = await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD);
     expect(reopened.name).toBe("Brand New Vault");
   });
+
+  describe("getPasswordChangedTimes", () => {
+    it("throws when called before openVault", () => {
+      const repository = new KdbxVaultRepository();
+
+      expect(() => repository.getPasswordChangedTimes()).toThrow(
+        "No vault is open; call openVault before getPasswordChangedTimes",
+      );
+    });
+
+    it("returns a password-changed time for every entry in the opened vault", async () => {
+      const bytes = await createFixtureBytes();
+      const repository = new KdbxVaultRepository();
+      const vault = await repository.openVault(bytes, MASTER_PASSWORD);
+
+      const times = repository.getPasswordChangedTimes();
+
+      const untouched = vault.rootGroup.entries.find((e) => e.title === "Untouched Site")!;
+      expect(times.has(untouched.id.toString())).toBe(true);
+    });
+  });
 });

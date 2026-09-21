@@ -144,7 +144,7 @@ describe("LockedScreen", () => {
 
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
-    expect(await screen.findByText("Failed to unlock vault.")).toBeInTheDocument();
+    expect(await screen.findByText("boom")).toBeInTheDocument();
   });
 
   it("calls onChooseDifferentVault when the link is clicked", async () => {

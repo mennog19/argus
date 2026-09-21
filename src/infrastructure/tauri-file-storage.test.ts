@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { readFile, writeFile } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
+import { copyFile, exists, readFile, stat, writeFile } from "@tauri-apps/plugin-fs";
 import { TauriFileStorage } from "./tauri-file-storage";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
+  exists: vi.fn(),
+  stat: vi.fn(),
+  copyFile: vi.fn(),
 }));
 
 describe("TauriFileStorage", () => {
@@ -38,5 +46,53 @@ describe("TauriFileStorage", () => {
     await storage.writeFile("C:/vaults/new.kdbx", data);
 
     expect(writeFile).toHaveBeenCalledWith("C:/vaults/new.kdbx", new Uint8Array(data));
+  });
+
+  it("reports whether a file exists", async () => {
+    vi.mocked(exists).mockResolvedValue(true);
+    const storage = new TauriFileStorage();
+
+    const result = await storage.exists("C:/vaults/mine.kdbx");
+
+    expect(exists).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
+    expect(result).toBe(true);
+  });
+
+  it("returns a file's last-modified time in epoch milliseconds", async () => {
+    const mtime = new Date("2026-01-01T00:00:00.000Z");
+    vi.mocked(stat).mockResolvedValue({ mtime } as Awaited<ReturnType<typeof stat>>);
+    const storage = new TauriFileStorage();
+
+    const result = await storage.lastModified("C:/vaults/mine.kdbx");
+
+    expect(stat).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
+    expect(result).toBe(mtime.getTime());
+  });
+
+  it("falls back to 0 when the platform reports no mtime", async () => {
+    vi.mocked(stat).mockResolvedValue({ mtime: null } as Awaited<ReturnType<typeof stat>>);
+    const storage = new TauriFileStorage();
+
+    const result = await storage.lastModified("C:/vaults/mine.kdbx");
+
+    expect(result).toBe(0);
+  });
+
+  it("copies a file to a new path", async () => {
+    const storage = new TauriFileStorage();
+
+    await storage.copyFile("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
+
+    expect(copyFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
+  });
+
+  it("grants filesystem access to a path through the app's own command", async () => {
+    const storage = new TauriFileStorage();
+
+    await storage.grantAccess("C:/vaults/mine.kdbx.bak1");
+
+    expect(invoke).toHaveBeenCalledWith("grant_file_access", {
+      path: "C:/vaults/mine.kdbx.bak1",
+    });
   });
 });
