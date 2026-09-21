@@ -96,10 +96,14 @@ describe("GroupTree", () => {
 
     expect(rowButton("Nested")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: `Collapse ${work.name}` }));
+    const collapse = screen.getByRole("button", { name: `Collapse ${work.name}` });
+    expect(collapse).toHaveAttribute("aria-expanded", "true");
+    await user.click(collapse);
     expect(screen.queryByRole("button", { name: /^nested/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: `Expand ${work.name}` }));
+    const expand = screen.getByRole("button", { name: `Expand ${work.name}` });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    await user.click(expand);
     expect(rowButton("Nested")).toBeInTheDocument();
   });
 
@@ -197,6 +201,46 @@ describe("GroupTree", () => {
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(screen.queryByLabelText("New group name")).not.toBeInTheDocument();
+    });
+
+    it("submits the add-group form with Enter", async () => {
+      const user = userEvent.setup();
+      const onCreateGroup = vi.fn().mockResolvedValue(undefined);
+      const { root } = buildTree();
+
+      render(<GroupTree {...baseProps(root, { onCreateGroup })} />);
+
+      await user.click(screen.getByRole("button", { name: "Add group" }));
+      await user.type(screen.getByLabelText("New group name"), "Keyboard{Enter}");
+
+      expect(onCreateGroup).toHaveBeenCalledWith(root.id, "Keyboard");
+    });
+
+    it("cancels the add-group form with Escape, ignoring other keys", async () => {
+      const user = userEvent.setup();
+      const { root } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      await user.click(screen.getByRole("button", { name: "Add group" }));
+      await user.type(screen.getByLabelText("New group name"), "x");
+      expect(screen.getByLabelText("New group name")).toHaveValue("x");
+      await user.keyboard("{Escape}");
+
+      expect(screen.queryByLabelText("New group name")).not.toBeInTheDocument();
+    });
+
+    it("marks the name input invalid while a validation error is shown", async () => {
+      const user = userEvent.setup();
+      const { root } = buildTree();
+
+      render(<GroupTree {...baseProps(root)} />);
+
+      await user.click(screen.getByRole("button", { name: "Add group" }));
+      expect(screen.getByLabelText("New group name")).toHaveAttribute("aria-invalid", "false");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByLabelText("New group name")).toHaveAttribute("aria-invalid", "true");
     });
   });
 

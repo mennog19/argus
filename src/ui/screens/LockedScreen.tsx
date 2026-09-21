@@ -4,6 +4,7 @@ import { VaultAccessService } from "../../application/vault-access-service";
 import { errorMessage } from "../error-message";
 import { ArgusMark } from "../ArgusMark";
 import { basename } from "../format";
+import { EyeIcon, EyeOffIcon } from "../icons";
 
 interface LockedScreenProps {
   filePath: string;
@@ -61,8 +62,14 @@ export function LockedScreen({
             aria-label="Master password"
             autoFocus
           />
-          <button type="button" onClick={() => setRevealed((value) => !value)}>
-            {revealed ? "Hide" : "Show"}
+          <button
+            type="button"
+            className="field-reveal-button"
+            aria-label={revealed ? "Hide password" : "Show password"}
+            title={revealed ? "Hide password" : "Show password"}
+            onClick={() => setRevealed((value) => !value)}
+          >
+            {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
           </button>
         </div>
         {error && <div className="field-error">{error}</div>}

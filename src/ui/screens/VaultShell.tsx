@@ -6,6 +6,8 @@ import { UrlOpener } from "../../application/url-opener";
 import {
   CopyIcon,
   EditIcon,
+  EyeIcon,
+  EyeOffIcon,
   GeneratorIcon,
   HealthIcon,
   LockIcon,
@@ -523,8 +525,14 @@ function EntryDetail({
               >
                 <CopyIcon size={14} />
               </button>
-              <button type="button" onClick={onToggleReveal}>
-                {revealed ? "Hide" : "Show"}
+              <button
+                type="button"
+                className="icon-button-small"
+                aria-label={revealed ? "Hide password" : "Show password"}
+                title={revealed ? "Hide password" : "Show password"}
+                onClick={onToggleReveal}
+              >
+                {revealed ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
               </button>
             </div>
           </div>

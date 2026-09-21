@@ -12,10 +12,20 @@ export function LockIcon({ size = 20, color = "currentColor" }: IconProps) {
   );
 }
 
-export function PlusIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function PlusIcon({
+  size = 16,
+  color = "currentColor",
+  strokeWidth = 2,
+}: IconProps & { strokeWidth?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M12 5v14M5 12h14"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -52,7 +62,13 @@ export function TrashIcon({ size = 16, color = "currentColor" }: IconProps) {
 export function XIcon({ size = 14, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -62,6 +78,51 @@ export function SearchIcon({ size = 16, color = "currentColor" }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="11" cy="11" r="7" fill="none" stroke={color} strokeWidth="2" />
       <path d="M20 20l-4.5-4.5" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function EyeIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth="2" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.6 5.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.5M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7c1.9 0 3.6-.6 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M3 3l18 18" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function FolderIcon({ size = 16, color = "currentColor" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -98,7 +159,14 @@ export function SettingsIcon({ size = 20, color = "currentColor" }: IconProps) {
 export function ChevronIcon({ size = 12, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M9 6l6 6-6 6" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M9 6l6 6-6 6"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -158,7 +226,14 @@ export function RefreshIcon({ size = 16, color = "currentColor" }: IconProps) {
         strokeWidth="2"
         strokeLinecap="round"
       />
-      <path d="M17 4v4h-4M7 20v-4h4" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M17 4v4h-4M7 20v-4h4"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

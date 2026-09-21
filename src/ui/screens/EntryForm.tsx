@@ -10,6 +10,7 @@ import {
   Tags,
 } from "../../domain";
 import { IconPicker } from "../entry-icons/IconPicker";
+import { EyeIcon, EyeOffIcon } from "../icons";
 import { errorMessage } from "../error-message";
 import { GroupOption } from "../vault-browsing";
 import { TagsEditor } from "./TagsEditor";
@@ -123,8 +124,14 @@ export function EntryForm({
           <button type="button" onClick={handleGenerate}>
             Generate
           </button>
-          <button type="button" onClick={() => setRevealed((value) => !value)}>
-            {revealed ? "Hide" : "Show"}
+          <button
+            type="button"
+            className="field-reveal-button"
+            aria-label={revealed ? "Hide password" : "Show password"}
+            title={revealed ? "Hide password" : "Show password"}
+            onClick={() => setRevealed((value) => !value)}
+          >
+            {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
           </button>
         </div>
       </div>

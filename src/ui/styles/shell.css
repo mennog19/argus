@@ -185,6 +185,29 @@
   cursor: pointer;
 }
 
+/* Our own eye toggle replaces the faint, focus-only native reveal button
+   that WebView2 (Edge) injects into password inputs. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+.field-input-with-action .field-reveal-button {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  color: var(--color-text-dim);
+  transition: color 120ms ease;
+}
+
+.field-input-with-action .field-reveal-button:hover,
+.field-input-with-action .field-reveal-button:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
 .field-error {
   font-size: 12.5px;
   color: var(--color-danger);
@@ -415,11 +438,14 @@
 }
 
 .group-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
-  padding-right: 4px;
+  min-height: 36px;
+  padding-right: 6px;
   border-radius: 8px;
+  transition: background 120ms ease;
 }
 
 .group-row:hover {
@@ -430,64 +456,141 @@
   background: var(--color-surface);
 }
 
-.group-disclosure {
-  width: 16px;
-  height: 16px;
+.group-disclosure,
+.group-disclosure-spacer {
+  width: 18px;
+  height: 18px;
   flex: none;
+}
+
+.group-disclosure {
   border: none;
+  border-radius: 5px;
   background: transparent;
   color: var(--color-text-dimmer);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition:
+    transform 150ms ease,
+    color 120ms ease;
+}
+
+.group-disclosure:hover {
+  color: var(--color-text);
+}
+
+.group-disclosure.expanded {
+  transform: rotate(90deg);
 }
 
 .group-row-name {
   flex: 1;
   min-width: 0;
   display: flex;
-  justify-content: space-between;
-  padding: 9px 6px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 4px;
   border: none;
   background: transparent;
   color: var(--color-text);
+  font: inherit;
   font-size: 13.5px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
 }
 
+.group-row-name svg {
+  flex: none;
+  color: var(--color-text-dimmer);
+  transition: color 120ms ease;
+}
+
+.group-row.active .group-row-name {
+  font-weight: 600;
+}
+
+.group-row.active .group-row-name svg {
+  color: var(--color-accent);
+}
+
+.group-row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-row-count {
+  flex: none;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-dim);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* Actions and count share the row's trailing slot: the count shows at rest,
+   the actions take its place on hover or keyboard focus. Collapsing the
+   actions to zero width (rather than display:none) keeps them tabbable. */
 .group-row-actions {
   display: flex;
   align-items: center;
   gap: 2px;
+  max-width: 0;
+  overflow: hidden;
   opacity: 0;
+  transition: opacity 120ms ease;
 }
 
-.group-row:hover .group-row-actions {
+.group-row:hover .group-row-actions,
+.group-row:focus-within .group-row-actions {
+  max-width: 90px;
   opacity: 1;
 }
 
+.group-row:hover .group-row-count,
+.group-row:focus-within .group-row-count {
+  display: none;
+}
+
 .group-row-actions button {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
+  flex: none;
   border: none;
+  border-radius: 6px;
   background: transparent;
-  color: var(--color-text-dimmer);
+  color: var(--color-text-dim);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 5px;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
-.group-row-actions button:hover {
+.group-row-actions button:hover,
+.group-row-actions button:focus-visible {
   background: rgba(255, 255, 255, 0.08);
   color: var(--color-text);
+  outline: none;
 }
 
-.group-inline-form,
+.group-row-actions button.danger:hover,
+.group-row-actions button.danger:focus-visible {
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  color: var(--color-danger-strong);
+}
+
 .group-inline-confirm {
   display: flex;
   align-items: center;
@@ -495,9 +598,166 @@
   padding: 4px 10px;
 }
 
-.group-inline-form .field-input {
-  padding: 7px 9px;
+/* "+" beside the Groups heading: a real, bordered target so it can't be
+   mistaken for a divider or a minus. */
+.group-add-button {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 7px;
+  border: 1px solid var(--color-border-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.group-add-button:hover,
+.group-add-button:focus-visible,
+.group-add-button.active {
+  color: var(--color-accent-hover);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  outline: none;
+}
+
+/* Inline create / rename / delete card inside the group sidebar. */
+.group-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 6px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: group-composer-in 140ms ease-out;
+}
+
+@keyframes group-composer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-composer {
+    animation: none;
+  }
+}
+
+.group-composer-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-input);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.group-composer-input::placeholder {
+  color: var(--color-text-dimmer);
+}
+
+.group-composer-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.group-composer-input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+}
+
+.group-composer-title {
+  padding: 2px 2px 0;
   font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-composer-error {
+  padding: 0 2px;
+  font-size: 11.5px;
+  color: var(--color-danger);
+}
+
+.group-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.group-composer-cancel,
+.group-composer-save,
+.group-composer-delete {
+  padding: 5px 11px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.group-composer-cancel {
+  border: none;
+  background: transparent;
+  color: var(--color-text-dim);
+}
+
+.group-composer-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.group-composer-save {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+}
+
+.group-composer-save:hover {
+  background: var(--color-accent-hover);
+}
+
+.group-composer-danger {
+  border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+}
+
+.group-composer-delete {
+  border: none;
+  background: var(--color-danger);
+  color: var(--color-accent-on);
+}
+
+.group-composer-delete:hover {
+  background: var(--color-danger-strong);
+}
+
+.group-composer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .group-inline-confirm span {

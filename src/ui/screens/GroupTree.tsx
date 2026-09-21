@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Group, GroupId } from "../../domain";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
-import { ChevronIcon, EditIcon, PlusIcon, TrashIcon } from "../icons";
+import { ChevronIcon, EditIcon, FolderIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface GroupTreeProps {
   rootGroup: Group;
@@ -22,6 +22,7 @@ type Editor =
   | { kind: "delete"; group: Group };
 
 const INDENT_PX = 14;
+const ROW_INSET_PX = 4;
 
 export function GroupTree({
   rootGroup,
@@ -125,25 +126,46 @@ export function GroupTree({
     });
   }
 
-  function renderInlineForm(label: string, onSave: () => void) {
+  function renderInlineForm(label: string, indent: number, onSave: () => void) {
     return (
-      <div className="group-inline-form">
+      <form
+        className="group-composer"
+        style={{ marginLeft: indent }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave();
+        }}
+      >
         <input
           type="text"
-          className="field-input"
+          className="group-composer-input"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              cancelEditor();
+            }
+          }}
           placeholder="Group name"
           aria-label={label}
+          aria-invalid={error !== undefined}
           autoFocus
         />
-        <button type="button" className="link-muted" onClick={onSave} disabled={busy}>
-          Save
-        </button>
-        <button type="button" className="link-muted" onClick={cancelEditor} disabled={busy}>
-          Cancel
-        </button>
-      </div>
+        {error && <div className="group-composer-error">{error}</div>}
+        <div className="group-composer-actions">
+          <button
+            type="button"
+            className="group-composer-cancel"
+            onClick={cancelEditor}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="group-composer-save" disabled={busy}>
+            Save
+          </button>
+        </div>
+      </form>
     );
   }
 
@@ -154,93 +176,98 @@ export function GroupTree({
     const isRenaming = editor?.kind === "rename" && editor.group.id.equals(group.id);
     const isDeleting = editor?.kind === "delete" && editor.group.id.equals(group.id);
     const isAddingChild = editor?.kind === "add" && editor.parentId.equals(group.id);
-    const indent = 10 + depth * INDENT_PX;
+    const indent = ROW_INSET_PX + depth * INDENT_PX;
 
     return (
       <div key={idStr} className="group-node">
         {isDeleting ? (
-          <div className="group-inline-confirm" style={{ paddingLeft: indent }}>
-            <span>Delete &quot;{group.name}&quot;?</span>
-            <button
-              type="button"
-              className="link-muted"
-              onClick={() => void submitDelete(group)}
-              disabled={busy}
-            >
-              Delete
-            </button>
-            <button type="button" className="link-muted" onClick={cancelEditor} disabled={busy}>
-              Cancel
-            </button>
-          </div>
-        ) : isRenaming ? (
-          <div className="group-inline-form" style={{ paddingLeft: indent }}>
-            <input
-              type="text"
-              className="field-input"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label={`Rename ${group.name}`}
-              autoFocus
-            />
-            <button
-              type="button"
-              className="link-muted"
-              onClick={() => void submitRename(group)}
-              disabled={busy}
-            >
-              Save
-            </button>
-            <button type="button" className="link-muted" onClick={cancelEditor} disabled={busy}>
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className={`group-row${isActive ? " active" : ""}`} style={{ paddingLeft: indent }}>
-            {group.groups.length > 0 && (
+          <div
+            className="group-composer group-composer-danger"
+            style={{ marginLeft: indent - ROW_INSET_PX }}
+          >
+            <span className="group-composer-title">Delete &quot;{group.name}&quot;?</span>
+            {error && <div className="group-composer-error">{error}</div>}
+            <div className="group-composer-actions">
               <button
                 type="button"
-                className="group-disclosure"
+                className="group-composer-cancel"
+                onClick={cancelEditor}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="group-composer-delete"
+                onClick={() => void submitDelete(group)}
+                disabled={busy}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ) : isRenaming ? (
+          renderInlineForm(
+            `Rename ${group.name}`,
+            indent - ROW_INSET_PX,
+            () => void submitRename(group),
+          )
+        ) : (
+          <div className={`group-row${isActive ? " active" : ""}`} style={{ paddingLeft: indent }}>
+            {group.groups.length > 0 ? (
+              <button
+                type="button"
+                className={`group-disclosure${isCollapsed ? "" : " expanded"}`}
                 aria-label={isCollapsed ? `Expand ${group.name}` : `Collapse ${group.name}`}
+                aria-expanded={!isCollapsed}
                 onClick={() => toggleCollapsed(idStr)}
               >
-                <ChevronIcon size={11} />
+                <ChevronIcon size={12} />
               </button>
+            ) : (
+              <span className="group-disclosure-spacer" />
             )}
             <button type="button" className="group-row-name" onClick={() => onSelect(idStr)}>
-              <span>{group.name}</span>
-              <span className="sidebar-row-count">{group.entries.length}</span>
+              <FolderIcon size={15} />
+              <span className="group-row-label">{group.name}</span>
+              <span className="group-row-count">{group.entries.length}</span>
             </button>
             <span className="group-row-actions">
               <button
                 type="button"
                 aria-label={`Add subgroup to ${group.name}`}
+                title="New subgroup"
                 onClick={() => startAdd(group.id)}
               >
-                <PlusIcon size={12} />
+                <PlusIcon size={15} strokeWidth={2.25} />
               </button>
               <button
                 type="button"
                 aria-label={`Rename ${group.name}`}
+                title="Rename"
                 onClick={() => startRename(group)}
               >
-                <EditIcon size={12} />
+                <EditIcon size={14} />
               </button>
               <button
                 type="button"
+                className="danger"
                 aria-label={`Delete ${group.name}`}
+                title="Delete"
                 onClick={() => startDelete(group)}
               >
-                <TrashIcon size={12} />
+                <TrashIcon size={14} />
               </button>
             </span>
           </div>
         )}
 
-        {isAddingChild && renderInlineForm("New group name", () => void submitAdd(group.id))}
-        {(isRenaming || isDeleting || isAddingChild) && error && (
-          <div className="field-error">{error}</div>
-        )}
+        {isAddingChild &&
+          renderInlineForm(
+            "New group name",
+            indent + INDENT_PX - ROW_INSET_PX,
+            () => void submitAdd(group.id),
+          )}
 
         {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1))}
       </div>
@@ -269,16 +296,17 @@ export function GroupTree({
         <div className="sidebar-section-label">Groups</div>
         <button
           type="button"
-          className="icon-button-small"
+          className={`group-add-button${isAddingTopLevel ? " active" : ""}`}
           aria-label="Add group"
+          title="New group"
           onClick={() => startAdd(rootGroup.id)}
         >
-          <PlusIcon size={13} />
+          <PlusIcon size={14} strokeWidth={2.5} />
         </button>
       </div>
 
-      {isAddingTopLevel && renderInlineForm("New group name", () => void submitAdd(rootGroup.id))}
-      {isAddingTopLevel && error && <div className="field-error">{error}</div>}
+      {isAddingTopLevel &&
+        renderInlineForm("New group name", 0, () => void submitAdd(rootGroup.id))}
 
       {visibleGroups.map((group) => renderGroup(group, 0))}
 

@@ -102,10 +102,10 @@ describe("LockedScreen", () => {
     const input = screen.getByLabelText("Master password");
     expect(input).toHaveAttribute("type", "password");
 
-    await user.click(screen.getByRole("button", { name: "Show" }));
+    await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(input).toHaveAttribute("type", "text");
 
-    await user.click(screen.getByRole("button", { name: "Hide" }));
+    await user.click(screen.getByRole("button", { name: "Hide password" }));
     expect(input).toHaveAttribute("type", "password");
   });
 

@@ -279,10 +279,10 @@ describe("VaultShell", () => {
 
     expect(screen.getByText("••••••••")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Show" }));
+    await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(screen.queryByText("••••••••")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Hide" }));
+    await user.click(screen.getByRole("button", { name: "Hide password" }));
     expect(screen.getByText("••••••••")).toBeInTheDocument();
   });
 

@@ -101,10 +101,10 @@ describe("EntryForm", () => {
 
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
 
-    await user.click(screen.getByRole("button", { name: "Show" }));
+    await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
 
-    await user.click(screen.getByRole("button", { name: "Hide" }));
+    await user.click(screen.getByRole("button", { name: "Hide password" }));
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
   });
 
