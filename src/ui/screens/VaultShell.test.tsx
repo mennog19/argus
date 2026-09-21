@@ -993,4 +993,84 @@ describe("VaultShell", () => {
       expect(screen.getByRole("heading", { name: "Weak Site" })).toBeInTheDocument();
     });
   });
+  describe("dragging an entry onto a group", () => {
+    function buildVault() {
+      const entry = Entry.create({ title: "Bank" });
+      const work = Group.create("Work");
+      const vault = new Vault("Root", Group.create("Root").addEntry(entry).addGroup(work));
+      return { vault, entry, work };
+    }
+
+    function fakeTransfer() {
+      const data = new Map<string, string>();
+      return {
+        types: [] as string[],
+        effectAllowed: "all",
+        dropEffect: "none",
+        setData(type: string, value: string) {
+          data.set(type, value);
+          this.types.push(type);
+        },
+        getData: (type: string) => data.get(type) ?? "",
+      };
+    }
+
+    function entryRow(title: string) {
+      return screen.getByText(title).closest(".entry-row") as HTMLElement;
+    }
+
+    function groupRow(name: string) {
+      return screen
+        .getByRole("button", { name: new RegExp(`^${name}`) })
+        .closest(".group-row") as HTMLElement;
+    }
+
+    it("marks the dragged entry and the group sidebar until the drag ends", () => {
+      const { vault } = buildVault();
+      renderShell(vault);
+      const dataTransfer = fakeTransfer();
+
+      fireEvent.dragStart(entryRow("Bank"), { dataTransfer });
+
+      expect(dataTransfer.effectAllowed).toBe("move");
+      expect(entryRow("Bank")).toHaveClass("dragging");
+      expect(document.querySelector(".group-sidebar")).toHaveClass("entry-drag-active");
+
+      fireEvent.dragEnd(entryRow("Bank"));
+
+      expect(entryRow("Bank")).not.toHaveClass("dragging");
+      expect(document.querySelector(".group-sidebar")).not.toHaveClass("entry-drag-active");
+    });
+
+    it("moves the entry into the group it's dropped on and saves", async () => {
+      const { vault, entry, work } = buildVault();
+      const { onSave } = renderShell(vault);
+      const dataTransfer = fakeTransfer();
+
+      fireEvent.dragStart(entryRow("Bank"), { dataTransfer });
+      fireEvent.dragOver(groupRow("Work"), { dataTransfer });
+      fireEvent.drop(groupRow("Work"), { dataTransfer });
+
+      await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      const saved: Vault = vi.mocked(onSave).mock.calls[0][0];
+      expect(saved.findGroup(work.id)?.entries.map((e) => e.id.toString())).toEqual([
+        entry.id.toString(),
+      ]);
+      expect(saved.rootGroup.entries).toEqual([]);
+    });
+
+    it("doesn't save when the entry is dropped on the group it's already in", async () => {
+      const entry = Entry.create({ title: "Bank" });
+      const work = Group.create("Work").addEntry(entry);
+      const vault = new Vault("Root", Group.create("Root").addGroup(work));
+      const { onSave } = renderShell(vault);
+      const dataTransfer = fakeTransfer();
+
+      fireEvent.dragStart(entryRow("Bank"), { dataTransfer });
+      fireEvent.drop(groupRow("Work"), { dataTransfer });
+
+      await vi.waitFor(() => expect(groupRow("Work")).toHaveClass("drop-flash"));
+      expect(onSave).not.toHaveBeenCalled();
+    });
+  });
 });

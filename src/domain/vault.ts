@@ -214,13 +214,28 @@ export class Vault {
     return vault.removeGroup(groupId).addGroup(recycleBinId, group);
   }
 
-  /** Moves a recycled entry back out of the recycle bin into `targetGroupId`. */
-  restoreEntry(entryId: EntryId, targetGroupId: GroupId): Vault {
+  /**
+   * Moves an entry into `targetGroupId`. Returns this vault unchanged when the
+   * entry already lives directly in that group.
+   */
+  moveEntry(entryId: EntryId, targetGroupId: GroupId): Vault {
     const entry = this.findEntry(entryId);
     if (!entry) {
       throw new Error(`Entry not found: ${entryId.toString()}`);
     }
+    const target = this.findGroup(targetGroupId);
+    if (!target) {
+      throw new Error(`Group not found: ${targetGroupId.toString()}`);
+    }
+    if (target.entries.some((candidate) => candidate.id.equals(entryId))) {
+      return this;
+    }
     return this.removeEntry(entryId).addEntry(targetGroupId, entry);
+  }
+
+  /** Moves a recycled entry back out of the recycle bin into `targetGroupId`. */
+  restoreEntry(entryId: EntryId, targetGroupId: GroupId): Vault {
+    return this.moveEntry(entryId, targetGroupId);
   }
 
   /** Moves a recycled group back out of the recycle bin into `targetGroupId`. */

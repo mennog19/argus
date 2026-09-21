@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { DragEvent, useState } from "react";
 import { Group, GroupId } from "../../domain";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
+import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { ChevronIcon, EditIcon, FolderIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface GroupTreeProps {
@@ -14,6 +15,9 @@ interface GroupTreeProps {
   onCreateGroup: (parentId: GroupId, name: string) => Promise<void>;
   onRenameGroup: (groupId: GroupId, name: string) => Promise<void>;
   onDeleteGroup: (groupId: GroupId) => Promise<void>;
+  /** True while an entry from the list is being dragged, so groups can show they accept drops. */
+  entryDragActive: boolean;
+  onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
 }
 
 type Editor =
@@ -34,12 +38,17 @@ export function GroupTree({
   onCreateGroup,
   onRenameGroup,
   onDeleteGroup,
+  entryDragActive,
+  onDropEntry,
 }: GroupTreeProps) {
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined);
+  const [flashId, setFlashId] = useState<string | undefined>(undefined);
+  const [dropError, setDropError] = useState<string | undefined>(undefined);
 
   function startAdd(parentId: GroupId) {
     setEditor({ kind: "add", parentId });
@@ -111,6 +120,35 @@ export function GroupTree({
       setError(errorMessage(cause, "Something went wrong."));
     } finally {
       setBusy(false);
+    }
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>, groupId: string) {
+    if (!event.dataTransfer.types.includes(ENTRY_DRAG_TYPE)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetId(groupId);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>, groupId: string) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+    setDropTargetId((current) => (current === groupId ? undefined : current));
+  }
+
+  async function handleDrop(event: DragEvent<HTMLDivElement>, group: Group) {
+    event.preventDefault();
+    setDropTargetId(undefined);
+    const entryId = event.dataTransfer.getData(ENTRY_DRAG_TYPE);
+    try {
+      await onDropEntry(entryId, group.id);
+      setDropError(undefined);
+      setFlashId(group.id.toString());
+    } catch (cause) {
+      setDropError(errorMessage(cause, "Couldn't move the entry."));
     }
   }
 
@@ -213,7 +251,17 @@ export function GroupTree({
             () => void submitRename(group),
           )
         ) : (
-          <div className={`group-row${isActive ? " active" : ""}`} style={{ paddingLeft: indent }}>
+          <div
+            className={`group-row${isActive ? " active" : ""}${
+              dropTargetId === idStr ? " drop-target" : ""
+            }${flashId === idStr ? " drop-flash" : ""}`}
+            style={{ paddingLeft: indent }}
+            onDragEnter={(event) => handleDragOver(event, idStr)}
+            onDragOver={(event) => handleDragOver(event, idStr)}
+            onDragLeave={(event) => handleDragLeave(event, idStr)}
+            onDrop={(event) => void handleDrop(event, group)}
+            onAnimationEnd={() => setFlashId(undefined)}
+          >
             {group.groups.length > 0 ? (
               <button
                 type="button"
@@ -280,7 +328,7 @@ export function GroupTree({
   );
 
   return (
-    <div className="group-sidebar">
+    <div className={`group-sidebar${entryDragActive ? " entry-drag-active" : ""}`}>
       <div className="sidebar-section-label">Vault</div>
       <button
         type="button"
@@ -307,6 +355,11 @@ export function GroupTree({
 
       {isAddingTopLevel &&
         renderInlineForm("New group name", 0, () => void submitAdd(rootGroup.id))}
+      {dropError && (
+        <div className="group-drop-error" role="alert">
+          {dropError}
+        </div>
+      )}
 
       {visibleGroups.map((group) => renderGroup(group, 0))}
 

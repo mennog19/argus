@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Entry, Group } from "../../domain";
 import { GroupTree } from "./GroupTree";
+import { ENTRY_DRAG_TYPE } from "../entry-drag";
 
 function buildTree() {
   const nested = Group.create("Nested");
@@ -32,6 +33,8 @@ function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[
     onCreateGroup: vi.fn().mockResolvedValue(undefined),
     onRenameGroup: vi.fn().mockResolvedValue(undefined),
     onDeleteGroup: vi.fn().mockResolvedValue(undefined),
+    entryDragActive: false,
+    onDropEntry: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -346,6 +349,113 @@ describe("GroupTree", () => {
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(await screen.findByText("nope")).toBeInTheDocument();
+    });
+  });
+
+  describe("dropping an entry onto a group", () => {
+    function entryTransfer(entryId = "entry-1") {
+      return {
+        types: [ENTRY_DRAG_TYPE],
+        dropEffect: "none",
+        getData: (type: string) => (type === ENTRY_DRAG_TYPE ? entryId : ""),
+      };
+    }
+
+    function groupRow(name: string) {
+      return rowButton(name).closest(".group-row") as HTMLElement;
+    }
+
+    function dragLeave(row: HTMLElement, relatedTarget: Element | null) {
+      const event = createEvent.dragLeave(row);
+      Object.defineProperty(event, "relatedTarget", { value: relatedTarget });
+      fireEvent(row, event);
+    }
+
+    it("outlines every group while an entry drag is active", () => {
+      const { root } = buildTree();
+
+      const { container } = render(<GroupTree {...baseProps(root, { entryDragActive: true })} />);
+
+      expect(container.querySelector(".group-sidebar")).toHaveClass("entry-drag-active");
+    });
+
+    it("highlights the hovered group as a move target", () => {
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const row = groupRow("Work");
+      const dataTransfer = entryTransfer();
+
+      fireEvent.dragEnter(row, { dataTransfer });
+      fireEvent.dragOver(row, { dataTransfer });
+
+      expect(row).toHaveClass("drop-target");
+      expect(dataTransfer.dropEffect).toBe("move");
+    });
+
+    it("ignores drags that don't carry an entry, like files", () => {
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const row = groupRow("Work");
+
+      fireEvent.dragOver(row, { dataTransfer: { types: ["Files"] } });
+
+      expect(row).not.toHaveClass("drop-target");
+    });
+
+    it("keeps the highlight while moving over the row's own children, clears it on leaving", () => {
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const row = groupRow("Work");
+
+      fireEvent.dragOver(row, { dataTransfer: entryTransfer() });
+      dragLeave(row, rowButton("Work"));
+      expect(row).toHaveClass("drop-target");
+
+      dragLeave(row, null);
+      expect(row).not.toHaveClass("drop-target");
+    });
+
+    it("doesn't clear another group's highlight when leaving a stale row", () => {
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+
+      fireEvent.dragOver(groupRow("Personal"), { dataTransfer: entryTransfer() });
+      dragLeave(groupRow("Work"), null);
+
+      expect(groupRow("Personal")).toHaveClass("drop-target");
+    });
+
+    it("moves the dropped entry into the group and flashes the row", async () => {
+      const onDropEntry = vi.fn().mockResolvedValue(undefined);
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root, { onDropEntry })} />);
+      const row = groupRow("Work");
+
+      fireEvent.dragOver(row, { dataTransfer: entryTransfer("abc") });
+      fireEvent.drop(row, { dataTransfer: entryTransfer("abc") });
+
+      expect(onDropEntry).toHaveBeenCalledWith("abc", work.id);
+      expect(row).not.toHaveClass("drop-target");
+      await vi.waitFor(() => expect(row).toHaveClass("drop-flash"));
+
+      // jsdom has no AnimationEvent, so React listens for the prefixed name.
+      fireEvent(row, new Event("webkitAnimationEnd", { bubbles: true }));
+      expect(row).not.toHaveClass("drop-flash");
+    });
+
+    it("shows an error when the move fails, and clears it after a later successful drop", async () => {
+      const onDropEntry = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("Save failed"))
+        .mockResolvedValueOnce(undefined);
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root, { onDropEntry })} />);
+
+      fireEvent.drop(groupRow("Work"), { dataTransfer: entryTransfer() });
+      expect(await screen.findByRole("alert")).toHaveTextContent("Save failed");
+
+      fireEvent.drop(groupRow("Work"), { dataTransfer: entryTransfer() });
+      await vi.waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
     });
   });
 

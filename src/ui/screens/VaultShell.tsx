@@ -19,6 +19,7 @@ import {
   XIcon,
 } from "../icons";
 import { errorMessage } from "../error-message";
+import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import {
   collectAllEntries,
@@ -75,6 +76,7 @@ export function VaultShell({
   const [revealed, setRevealed] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>({ kind: "none" });
   const [searchQuery, setSearchQuery] = useState("");
+  const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
 
   const rootGroup = vault.rootGroup;
   const recycleBin = vault.recycleBin;
@@ -159,6 +161,13 @@ export function VaultShell({
     }
     await persist(next);
     setFormMode({ kind: "none" });
+  }
+
+  async function handleDropEntry(entryId: string, groupId: GroupId) {
+    const next = vault.moveEntry(EntryId.fromString(entryId), groupId);
+    if (next !== vault) {
+      await persist(next);
+    }
   }
 
   async function handleDeleteEntry(entryId: EntryId) {
@@ -266,6 +275,8 @@ export function VaultShell({
             onCreateGroup={handleCreateGroup}
             onRenameGroup={handleRenameGroup}
             onDeleteGroup={handleDeleteGroup}
+            entryDragActive={draggingEntryId !== undefined}
+            onDropEntry={handleDropEntry}
           />
 
           {isRecycleBinSelected && recycleBin ? (
@@ -319,7 +330,16 @@ export function VaultShell({
                     <button
                       key={entry.id.toString()}
                       type="button"
-                      className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}`}
+                      className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}${
+                        entry.id.toString() === draggingEntryId ? " dragging" : ""
+                      }`}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(ENTRY_DRAG_TYPE, entry.id.toString());
+                        event.dataTransfer.effectAllowed = "move";
+                        setDraggingEntryId(entry.id.toString());
+                      }}
+                      onDragEnd={() => setDraggingEntryId(undefined)}
                       onClick={() => selectEntry(entry.id.toString())}
                     >
                       <EntryAvatar entry={entry} />

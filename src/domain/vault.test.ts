@@ -330,6 +330,44 @@ describe("Vault", () => {
       });
     });
 
+    describe("moveEntry", () => {
+      it("moves an entry from its current group into the target group", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const work = Group.create("Work");
+        const vault = new Vault("Root", Group.create("Root").addEntry(entry).addGroup(work));
+
+        const moved = vault.moveEntry(entry.id, work.id);
+
+        expect(moved.rootGroup.entries).toEqual([]);
+        expect(moved.findGroup(work.id)?.entries.map((e) => e.id.toString())).toEqual([
+          entry.id.toString(),
+        ]);
+      });
+
+      it("returns the same vault when the entry is already in the target group", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const vault = new Vault("Root", Group.create("Root").addEntry(entry));
+
+        expect(vault.moveEntry(entry.id, vault.rootGroup.id)).toBe(vault);
+      });
+
+      it("throws when the entry doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.moveEntry(EntryId.create(), vault.rootGroup.id)).toThrow(
+          "Entry not found",
+        );
+      });
+
+      it("throws when the target group doesn't exist, leaving the entry in place", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const vault = new Vault("Root", Group.create("Root").addEntry(entry));
+
+        expect(() => vault.moveEntry(entry.id, GroupId.create())).toThrow("Group not found");
+        expect(vault.findEntry(entry.id)).toBe(entry);
+      });
+    });
+
     describe("restoreEntry", () => {
       it("moves an entry out of the recycle bin into the target group", () => {
         const entry = Entry.create({ title: "Bank" });
