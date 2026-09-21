@@ -294,7 +294,10 @@ describe("VaultShell", () => {
 
     vi.useFakeTimers();
     try {
-      renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }), clipboardClearSeconds: 5 });
+      renderShell(vault, {
+        clipboardWriter: fakeClipboardWriter({ writeText }),
+        clipboardClearSeconds: 5,
+      });
       fireEvent.click(screen.getByText("GitHub"));
 
       await act(async () => {
@@ -334,14 +337,21 @@ describe("VaultShell", () => {
   });
 
   it("does not clear the clipboard from a stale copy once a newer value has been copied", async () => {
-    const entry = Entry.create({ title: "GitHub", username: "octocat", password: new Password("s3cret!") });
+    const entry = Entry.create({
+      title: "GitHub",
+      username: "octocat",
+      password: new Password("s3cret!"),
+    });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
     const writeText = vi.fn().mockResolvedValue(undefined);
 
     vi.useFakeTimers();
     try {
-      renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }), clipboardClearSeconds: 5 });
+      renderShell(vault, {
+        clipboardWriter: fakeClipboardWriter({ writeText }),
+        clipboardClearSeconds: 5,
+      });
       fireEvent.click(screen.getByText("GitHub"));
 
       await act(async () => {
@@ -373,7 +383,11 @@ describe("VaultShell", () => {
   });
 
   it("keeps the copied-label change from a newer copy even if an older copy's label timer fires later", async () => {
-    const entry = Entry.create({ title: "GitHub", username: "octocat", password: new Password("s3cret!") });
+    const entry = Entry.create({
+      title: "GitHub",
+      username: "octocat",
+      password: new Password("s3cret!"),
+    });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
 
@@ -405,7 +419,7 @@ describe("VaultShell", () => {
   it("resets the selected entry and reveal state when switching groups", async () => {
     const user = userEvent.setup();
     const rootEntry = Entry.create({ title: "Root Entry" });
-    const work = Group.create("Work").addEntry(Entry.create({ title: "Work Entry" }));
+    const work = Group.create("Work").addEntry(Entry.create({ title: "Payroll" }));
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, rootEntry);
     vault = vault.addGroup(vault.rootGroup.id, work);

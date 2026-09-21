@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import {
-  CustomFields,
   Entry,
+  EntryIcon,
   generatePassword,
   GroupId,
   Password,
@@ -9,9 +9,9 @@ import {
   PasswordPolicyOptions,
   Tags,
 } from "../../domain";
+import { IconPicker } from "../entry-icons/IconPicker";
 import { errorMessage } from "../error-message";
 import { GroupOption } from "../vault-browsing";
-import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { TagsEditor } from "./TagsEditor";
 
 interface EntryFormProps {
@@ -39,7 +39,7 @@ export function EntryForm({
   const [notes, setNotes] = useState(initialEntry?.notes ?? "");
   const [groupId, setGroupId] = useState(initialGroupId);
   const [tags, setTags] = useState(initialEntry?.tags ?? new Tags());
-  const [customFields, setCustomFields] = useState(initialEntry?.customFields ?? new CustomFields());
+  const [icon, setIcon] = useState(initialEntry?.icon ?? EntryIcon.AUTO);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -63,7 +63,7 @@ export function EntryForm({
       url,
       notes,
       tags,
-      customFields,
+      icon,
     };
     const entry = initialEntry ? initialEntry.update(fields) : Entry.create(fields);
 
@@ -80,6 +80,8 @@ export function EntryForm({
 
   return (
     <form className="entry-form" onSubmit={(event) => void handleSubmit(event)}>
+      <IconPicker value={icon} title={title} url={url} onChange={setIcon} />
+
       <div className="field-group">
         <label className="field-label" htmlFor="entry-title">
           Title
@@ -174,11 +176,6 @@ export function EntryForm({
       <div className="field-group">
         <span className="field-label">Tags</span>
         <TagsEditor tags={tags} onChange={setTags} />
-      </div>
-
-      <div className="field-group">
-        <span className="field-label">Custom fields</span>
-        <CustomFieldsEditor fields={customFields} onChange={setCustomFields} />
       </div>
 
       {error && <div className="field-error">{error}</div>}

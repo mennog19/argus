@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomField, CustomFields, Entry, GroupId, Password, Tag, Tags } from "../../domain";
+import {
+  CustomField,
+  CustomFields,
+  Entry,
+  EntryIcon,
+  GroupId,
+  Password,
+  Tag,
+  Tags,
+} from "../../domain";
 import { EntryForm } from "./EntryForm";
 
 const groupOptions = [
@@ -67,13 +76,14 @@ describe("EntryForm", () => {
     expect(screen.getByLabelText("Title")).toHaveValue("GitHub");
     expect(screen.getByLabelText("Username")).toHaveValue("octocat");
     expect(screen.getByText("work")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("PIN")).toBeInTheDocument();
+    expect(screen.queryByText("Custom fields")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [entry] = onSubmit.mock.calls[0];
     expect(entry.id.equals(existing.id)).toBe(true);
     expect(entry.password.reveal()).toBe("old-pass");
+    expect(entry.customFields).toEqual(new CustomFields([new CustomField("PIN", "1234")]));
   });
 
   it("toggles password reveal", async () => {
@@ -177,9 +187,7 @@ describe("EntryForm", () => {
     await user.type(screen.getByLabelText("Title"), "GitHub");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(
-      await screen.findByText("forbidden path: C:/vaults/mine.kdbx.bak1"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("forbidden path: C:/vaults/mine.kdbx.bak1")).toBeInTheDocument();
   });
 
   it("calls onCancel when Cancel is clicked", async () => {
@@ -199,5 +207,40 @@ describe("EntryForm", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it("saves the chosen icon, and keeps an existing entry's icon when untouched", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const existing = Entry.create({ title: "Trip", icon: EntryIcon.library("plane") });
+
+    const { unmount } = render(
+      <EntryForm
+        initialEntry={existing}
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit.mock.calls[0][0].icon.toString()).toBe("library:plane");
+    unmount();
+
+    render(
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    await user.type(screen.getByLabelText("Title"), "Holiday");
+    await user.click(screen.getByRole("button", { name: "Change icon" }));
+    await user.click(screen.getByRole("button", { name: "Luggage" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit.mock.calls[1][0].icon.toString()).toBe("library:luggage");
   });
 });

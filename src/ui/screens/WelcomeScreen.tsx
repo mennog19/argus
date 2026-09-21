@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { OpenedVault, VaultAccessService } from "../../application/vault-access-service";
 import { RecentVaultEntry } from "../../application/settings";
 import { errorMessage } from "../error-message";
-import { LockIcon } from "../icons";
+import { ArgusMark } from "../ArgusMark";
 import { basename, formatRelativeTime } from "../format";
 
 interface WelcomeScreenProps {
@@ -84,9 +84,7 @@ export function WelcomeScreen({
 
   return (
     <div className="screen-centered">
-      <div className="icon-badge">
-        <LockIcon size={30} color="var(--color-accent)" />
-      </div>
+      <ArgusMark />
       <div className="screen-heading">
         <h1>{mode === "create" ? "Create a new vault" : "Open your vault"}</h1>
         {mode === "idle" && <p>Choose a vault to unlock, or create a new one.</p>}
