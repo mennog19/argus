@@ -25,7 +25,12 @@ describe("EntryIcon", () => {
   });
 
   it("round-trips through parse", () => {
-    for (const icon of [EntryIcon.AUTO, EntryIcon.library("star"), EntryIcon.brand("gog.com")]) {
+    for (const icon of [
+      EntryIcon.AUTO,
+      EntryIcon.library("star"),
+      EntryIcon.library("star", 235),
+      EntryIcon.brand("gog.com"),
+    ]) {
       expect(EntryIcon.parse(icon.toString())?.equals(icon)).toBe(true);
     }
   });
@@ -35,5 +40,23 @@ describe("EntryIcon", () => {
     expect(EntryIcon.parse("star")).toBeUndefined();
     expect(EntryIcon.parse("custom:star")).toBeUndefined();
     expect(EntryIcon.parse("library:Not Valid")).toBeUndefined();
+    expect(EntryIcon.parse("library:star:")).toBeUndefined();
+    expect(EntryIcon.parse("library:star:not-a-number")).toBeUndefined();
+    expect(EntryIcon.parse("library:star:360")).toBeUndefined();
+    expect(EntryIcon.parse("brand:github:180")).toBeUndefined();
+  });
+
+  it("supports an optional hue override on library icons", () => {
+    const tinted = EntryIcon.library("star", 235);
+    expect(tinted.hue).toBe(235);
+    expect(tinted.toString()).toBe("library:star:235");
+    expect(EntryIcon.parse("library:star:235")).toEqual(tinted);
+    expect(tinted.equals(EntryIcon.library("star"))).toBe(false);
+  });
+
+  it("rejects an out-of-range or non-integer hue", () => {
+    expect(() => EntryIcon.library("star", -1)).toThrow("Invalid icon hue: -1");
+    expect(() => EntryIcon.library("star", 360)).toThrow("Invalid icon hue: 360");
+    expect(() => EntryIcon.library("star", 1.5)).toThrow("Invalid icon hue: 1.5");
   });
 });

@@ -138,6 +138,22 @@ describe("icons through the mapper", () => {
     expect(mapped.icon.toString()).toBe("library:luggage");
   });
 
+  it("survives a save and reload with a manual colour override", async () => {
+    configureKdbxCrypto();
+    const db = Kdbx.create(new Credentials(ProtectedValue.fromString("pw")), "Test");
+    let vault = vaultFromKdbx(db);
+    const entry = Entry.create({ title: "Trip", icon: EntryIcon.library("luggage", 235) });
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+    applyVaultToKdbx(db, vault);
+
+    const reloaded = await Kdbx.load(
+      await db.save(),
+      new Credentials(ProtectedValue.fromString("pw")),
+    );
+    const [mapped] = vaultFromKdbx(reloaded).rootGroup.entries;
+    expect(mapped.icon.toString()).toBe("library:luggage:235");
+  });
+
   it("leaves an icon Argus can't show alone when other fields change", () => {
     const db = Kdbx.create(new Credentials(null), "Test");
     const kdbxEntry = db.createEntry(db.getDefaultGroup());

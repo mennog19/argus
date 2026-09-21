@@ -11,7 +11,7 @@ export interface EntryIconSubject {
 
 export type ResolvedEntryIcon =
   | { kind: "sigil"; seed: string }
-  | { kind: "library"; icon: LibraryIcon; seed: string }
+  | { kind: "library"; icon: LibraryIcon; seed: string; hue?: number }
   | { kind: "brand"; icon: BrandIcon };
 
 /**
@@ -27,7 +27,7 @@ export function resolveEntryIcon(
   if (icon.kind === "library") {
     const library = findLibraryIcon(icon.key);
     if (library) {
-      return { kind: "library", icon: library, seed };
+      return { kind: "library", icon: library, seed, hue: icon.hue };
     }
   }
   const chosenBrand = icon.kind === "brand" ? brands.find(icon.key) : undefined;

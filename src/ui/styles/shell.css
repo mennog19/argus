@@ -1256,6 +1256,40 @@ input[type="password"]::-ms-clear {
   font-size: 12.5px;
 }
 
+.icon-picker-colors {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.icon-picker-color {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: oklch(58% 0.11 var(--swatch-hue));
+  box-shadow: 0 0 0 1px var(--color-border-strong);
+}
+
+.icon-picker-color-auto {
+  background:
+    conic-gradient(
+      from 0deg,
+      oklch(65% 0.12 25),
+      oklch(65% 0.12 145),
+      oklch(65% 0.12 265),
+      oklch(65% 0.12 25)
+    );
+}
+
+.icon-picker-color[aria-pressed="true"] {
+  border-color: var(--color-text);
+}
+
 .icon-picker-panel {
   display: flex;
   flex-direction: column;

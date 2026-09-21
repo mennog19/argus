@@ -21,7 +21,8 @@ export interface Sigil {
   pupilRadius: number;
 }
 
-const HUES = [25, 55, 85, 145, 175, 205, 235, 265, 300, 335];
+/** The fixed muted palette sigils (and manual hue overrides) are drawn from. */
+export const HUES = [25, 55, 85, 145, 175, 205, 235, 265, 300, 335];
 const SEGMENT_COUNTS = [3, 4, 5, 6, 8];
 
 /** FNV-1a, 32-bit. Stable across runs and platforms. */
