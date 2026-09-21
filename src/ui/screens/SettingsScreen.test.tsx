@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { AutoLockSettings } from "../../application/settings";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 import { SettingsScreen } from "./SettingsScreen";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
@@ -8,21 +8,44 @@ const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep
 function renderSettings(
   clipboardClearSeconds = 20,
   autoLock: AutoLockSettings = DEFAULT_AUTO_LOCK,
+  groupDeleteMode: GroupDeleteMode = "deleteContents",
 ) {
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
+  const onGroupDeleteModeChange = vi.fn();
   render(
     <SettingsScreen
       clipboardClearSeconds={clipboardClearSeconds}
       autoLock={autoLock}
+      groupDeleteMode={groupDeleteMode}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
+      onGroupDeleteModeChange={onGroupDeleteModeChange}
     />,
   );
-  return { onClipboardClearSecondsChange, onAutoLockChange };
+  return { onClipboardClearSecondsChange, onAutoLockChange, onGroupDeleteModeChange };
 }
 
 describe("SettingsScreen", () => {
+  it("shows the current group delete mode", () => {
+    renderSettings(20, DEFAULT_AUTO_LOCK, "keepContents");
+
+    expect(screen.getByRole("radio", { name: /keep its entries/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /delete its entries/i })).not.toBeChecked();
+  });
+
+  it("reports a group delete mode change in either direction", () => {
+    const { onGroupDeleteModeChange } = renderSettings();
+
+    fireEvent.click(screen.getByRole("radio", { name: /keep its entries/i }));
+    expect(onGroupDeleteModeChange).toHaveBeenLastCalledWith("keepContents");
+
+    cleanup();
+    const second = renderSettings(20, DEFAULT_AUTO_LOCK, "keepContents");
+    fireEvent.click(screen.getByRole("radio", { name: /delete its entries/i }));
+    expect(second.onGroupDeleteModeChange).toHaveBeenLastCalledWith("deleteContents");
+  });
+
   it("shows the current clipboard clear delay", () => {
     renderSettings(30);
 

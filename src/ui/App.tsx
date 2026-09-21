@@ -9,12 +9,15 @@ import {
   AutoLockSettings,
   DEFAULT_AUTO_LOCK,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+  DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
+  GroupDeleteMode,
   recordVaultOpened,
   SettingsStore,
   withAutoLock,
   withClipboardClearSeconds,
   withGeneratorPolicy,
+  withGroupDeleteMode,
 } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
@@ -214,6 +217,16 @@ function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter, wi
     }
   }
 
+  async function handleGroupDeleteModeChange(mode: GroupDeleteMode) {
+    const updated = withGroupDeleteMode(settings, mode);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -245,11 +258,13 @@ function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter, wi
         generatorPolicy={settings.generatorPolicy ?? {}}
         clipboardClearSeconds={settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS}
         autoLock={settings.autoLock ?? DEFAULT_AUTO_LOCK}
+        groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
         onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
         onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
+        onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
         getPasswordChangedTimes={() => vaultAccessService.getPasswordChangedTimes()}
       />
       {conflict && (

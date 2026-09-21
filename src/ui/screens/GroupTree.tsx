@@ -1,5 +1,6 @@
 import { DragEvent, useState } from "react";
 import { Group, GroupId } from "../../domain";
+import { GroupDeleteMode } from "../../application/settings";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
@@ -15,6 +16,8 @@ interface GroupTreeProps {
   onCreateGroup: (parentId: GroupId, name: string) => Promise<void>;
   onRenameGroup: (groupId: GroupId, name: string) => Promise<void>;
   onDeleteGroup: (groupId: GroupId) => Promise<void>;
+  /** Only used to tell the user, while confirming a delete, what happens to the group's contents. */
+  groupDeleteMode: GroupDeleteMode;
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */
   entryDragActive: boolean;
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
@@ -38,6 +41,7 @@ export function GroupTree({
   onCreateGroup,
   onRenameGroup,
   onDeleteGroup,
+  groupDeleteMode,
   entryDragActive,
   onDropEntry,
 }: GroupTreeProps) {
@@ -224,6 +228,11 @@ export function GroupTree({
             style={{ marginLeft: indent - ROW_INSET_PX }}
           >
             <span className="group-composer-title">Delete &quot;{group.name}&quot;?</span>
+            <span className="group-composer-hint">
+              {groupDeleteMode === "keepContents"
+                ? "Its entries and subgroups will move to the parent group."
+                : "Its entries and subgroups will be deleted too."}
+            </span>
             {error && <div className="group-composer-error">{error}</div>}
             <div className="group-composer-actions">
               <button

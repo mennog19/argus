@@ -198,8 +198,7 @@ export class Vault {
     return vault.removeEntry(entryId).addEntry(recycleBinId, entry);
   }
 
-  /** Soft-deletes a group (with its full subtree) by moving it into the recycle bin. */
-  deleteGroup(groupId: GroupId): Vault {
+  private findDeletableGroup(groupId: GroupId): Group {
     if (this.rootGroup.id.equals(groupId)) {
       throw new Error("Cannot remove the root group");
     }
@@ -210,8 +209,37 @@ export class Vault {
     if (!group) {
       throw new Error(`Group not found: ${groupId.toString()}`);
     }
+    return group;
+  }
+
+  /** Soft-deletes a group (with its full subtree) by moving it into the recycle bin. */
+  deleteGroup(groupId: GroupId): Vault {
+    const group = this.findDeletableGroup(groupId);
     const { vault, recycleBinId } = this.ensureRecycleBin();
     return vault.removeGroup(groupId).addGroup(recycleBinId, group);
+  }
+
+  /**
+   * Ungroups a group: its direct entries and subgroups move up into its parent
+   * group, and the now-empty group is soft-deleted into the recycle bin.
+   */
+  deleteGroupKeepingContents(groupId: GroupId): Vault {
+    const group = this.findDeletableGroup(groupId);
+    const { vault, recycleBinId } = this.ensureRecycleBin();
+    const result = updateGroupContainingGroup(vault.rootGroup, groupId, (parent) => {
+      let updated = parent.removeGroup(groupId);
+      for (const child of group.groups) {
+        updated = updated.addGroup(child);
+      }
+      for (const entry of group.entries) {
+        updated = updated.addEntry(entry);
+      }
+      return updated;
+    });
+    return new Vault(vault.name, result.group, recycleBinId).addGroup(
+      recycleBinId,
+      new Group(group.id, group.name),
+    );
   }
 
   /**

@@ -33,6 +33,7 @@ function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[
     onCreateGroup: vi.fn().mockResolvedValue(undefined),
     onRenameGroup: vi.fn().mockResolvedValue(undefined),
     onDeleteGroup: vi.fn().mockResolvedValue(undefined),
+    groupDeleteMode: "deleteContents" as const,
     entryDragActive: false,
     onDropEntry: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -318,10 +319,22 @@ describe("GroupTree", () => {
 
       await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
       expect(screen.getByText('Delete "Work"?')).toBeInTheDocument();
+      expect(screen.getByText(/will be deleted too/i)).toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(onDeleteGroup).toHaveBeenCalledWith(work.id);
+    });
+
+    it("explains that contents move to the parent group when keeping contents", async () => {
+      const user = userEvent.setup();
+      const work = Group.create("Work");
+      const root = Group.create("Root").addGroup(work);
+
+      render(<GroupTree {...baseProps(root, { groupDeleteMode: "keepContents" })} />);
+
+      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      expect(screen.getByText(/will move to the parent group/i)).toBeInTheDocument();
     });
 
     it("cancels the delete confirmation without calling onDeleteGroup", async () => {
