@@ -1,7 +1,11 @@
 import { Consts, KdbxEntry } from "kdbxweb";
 import { EntryIcon } from "../domain";
 
-/** Entry CustomData key holding Argus's own icon choice (`library:star`, `brand:github`). */
+/**
+ * Entry CustomData key holding Argus's own icon choice (`library:star`,
+ * `brand:github`, or `library:star:235` for a library icon with a manual
+ * colour override).
+ */
 export const ICON_CUSTOM_DATA_KEY = "Argus.Icon";
 
 const Icons = Consts.Icons;

@@ -56,6 +56,15 @@ describe("EntryAvatar", () => {
     expect(container.querySelector(".entry-tile-glyph")).toBeInTheDocument();
   });
 
+  it("lets a manual hue override the name-derived colour of a chosen icon", () => {
+    const { root } = renderAvatar(
+      "https://example.com",
+      EntryIcon.library("luggage", 235),
+    );
+    expect(root.dataset.hue).toBe("235");
+    expect(root.style.getPropertyValue("--sigil-hue")).toBe("235");
+  });
+
   it("renders the large variant", () => {
     expect(renderAvatar("", EntryIcon.AUTO, "lg").root).toHaveClass("entry-tile", "entry-tile-lg");
     expect(renderAvatar("https://github.com", EntryIcon.AUTO, "lg").root).toHaveClass(

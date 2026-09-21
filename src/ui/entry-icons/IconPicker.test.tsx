@@ -130,6 +130,50 @@ describe("IconPicker", () => {
     expect(screen.queryByRole("button", { name: "Use automatic" })).not.toBeInTheDocument();
   });
 
+  it("shows colour swatches only for a chosen library icon", async () => {
+    const { unmount } = render(<Harness />);
+    expect(screen.queryByRole("group", { name: "Icon colour" })).not.toBeInTheDocument();
+    unmount();
+
+    render(<Harness initial={EntryIcon.brand("github")} />);
+    expect(screen.queryByRole("group", { name: "Icon colour" })).not.toBeInTheDocument();
+  });
+
+  it("overrides a library icon's name-derived colour with a chosen hue", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={EntryIcon.library("star")} onChange={onChange} />);
+
+    expect(screen.getByRole("button", { name: "Match name" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Set colour, hue 235" }));
+    expect(onChange).toHaveBeenCalledWith(EntryIcon.library("star", 235));
+    expect(screen.getByRole("button", { name: "Set colour, hue 235" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Match name" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Match name" }));
+    expect(onChange).toHaveBeenCalledWith(EntryIcon.library("star"));
+  });
+
+  it("keeps a colour override when switching to a different library icon", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={EntryIcon.library("star", 235)} onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Change icon" }));
+    await user.click(screen.getByRole("button", { name: "Luggage" }));
+    expect(onChange).toHaveBeenCalledWith(EntryIcon.library("luggage", 235));
+  });
+
   it("uses the bundled brand catalog by default", async () => {
     const user = userEvent.setup();
     render(<IconPicker value={EntryIcon.AUTO} title="" url="" onChange={() => {}} />);

@@ -31,6 +31,12 @@ describe("resolveEntryIcon", () => {
     expect(resolved.kind).toBe("library");
     expect(resolved.kind === "library" && resolved.icon.key).toBe("star");
     expect(resolved.kind === "library" && resolved.seed).toBe("github.com");
+    expect(resolved.kind === "library" && resolved.hue).toBeUndefined();
+  });
+
+  it("carries a manual hue override through for a chosen library icon", () => {
+    const resolved = resolve("https://github.com", EntryIcon.library("star", 235));
+    expect(resolved.kind === "library" && resolved.hue).toBe(235);
   });
 
   it("honours an explicitly chosen brand, whatever the URL", () => {

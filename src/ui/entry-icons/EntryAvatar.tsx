@@ -67,12 +67,13 @@ export function EntryTile({
   }
 
   const sigil = sigilFor(resolved.seed);
+  const hue = resolved.kind === "library" ? (resolved.hue ?? sigil.hue) : sigil.hue;
   return (
     <div
       className={`entry-tile${sizeClass}`}
-      style={{ "--sigil-hue": sigil.hue } as CSSProperties}
+      style={{ "--sigil-hue": hue } as CSSProperties}
       data-kind={resolved.kind}
-      data-hue={sigil.hue}
+      data-hue={hue}
       aria-hidden="true"
     >
       {resolved.kind === "library" ? (
