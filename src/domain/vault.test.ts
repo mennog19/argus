@@ -330,6 +330,67 @@ describe("Vault", () => {
       });
     });
 
+    describe("deleteGroupKeepingContents", () => {
+      it("moves the group's entries and subgroups into its parent and recycles the empty group", () => {
+        const directEntry = Entry.create({ title: "Direct" });
+        const nestedEntry = Entry.create({ title: "Nested" });
+        const child = Group.create("Child").addEntry(nestedEntry);
+        const target = Group.create("Target").addGroup(child).addEntry(directEntry);
+        const siblingEntry = Entry.create({ title: "Sibling" });
+        const parent = Group.create("Parent").addGroup(target).addEntry(siblingEntry);
+        const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+        const updated = vault.deleteGroupKeepingContents(target.id);
+
+        const updatedParent = updated.findGroup(parent.id)!;
+        expect(updatedParent.groups.map((g) => g.name)).toEqual(["Child"]);
+        expect(updatedParent.entries.map((e) => e.title)).toEqual(["Sibling", "Direct"]);
+        expect(updatedParent.groups[0].entries[0].id.equals(nestedEntry.id)).toBe(true);
+        const recycled = updated.recycleBin!.groups;
+        expect(recycled).toHaveLength(1);
+        expect(recycled[0].id.equals(target.id)).toBe(true);
+        expect(recycled[0].groups).toEqual([]);
+        expect(recycled[0].entries).toEqual([]);
+      });
+
+      it("reuses an existing recycle bin", () => {
+        const entry = Entry.create({ title: "Bank" });
+        const target = Group.create("Target");
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry).addGroup(target));
+        vault = vault.deleteEntry(entry.id);
+
+        const updated = vault.deleteGroupKeepingContents(target.id);
+
+        expect(updated.recycleBinId).toEqual(vault.recycleBinId);
+        expect(updated.recycleBin!.entries.map((e) => e.title)).toEqual(["Bank"]);
+        expect(updated.recycleBin!.groups.map((g) => g.name)).toEqual(["Target"]);
+      });
+
+      it("throws when trying to remove the root group", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.deleteGroupKeepingContents(vault.rootGroup.id)).toThrow(
+          "Cannot remove the root group",
+        );
+      });
+
+      it("throws when trying to delete the recycle bin itself", () => {
+        const entry = Entry.create({ title: "Bank" });
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry));
+        vault = vault.deleteEntry(entry.id);
+
+        expect(() => vault.deleteGroupKeepingContents(vault.recycleBinId!)).toThrow(
+          "Cannot delete the recycle bin",
+        );
+      });
+
+      it("throws when the group doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.deleteGroupKeepingContents(GroupId.create())).toThrow("Group not found");
+      });
+    });
+
     describe("moveEntry", () => {
       it("moves an entry from its current group into the target group", () => {
         const entry = Entry.create({ title: "Bank" });

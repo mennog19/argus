@@ -6,6 +6,7 @@ import {
   withAutoLock,
   withClipboardClearSeconds,
   withGeneratorPolicy,
+  withGroupDeleteMode,
 } from "./settings";
 
 describe("recordVaultOpened", () => {
@@ -109,6 +110,19 @@ describe("withAutoLock", () => {
     });
 
     expect(result.autoLock).toEqual({ idleTimeoutMinutes: 10, lockOnMinimize: true, lockOnSleep: false });
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+});
+
+describe("withGroupDeleteMode", () => {
+  it("records the group delete mode without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withGroupDeleteMode(settings, "keepContents");
+
+    expect(result.groupDeleteMode).toBe("keepContents");
     expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });

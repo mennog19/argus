@@ -505,6 +505,36 @@ describe("App", () => {
     );
   });
 
+  it("persists a group delete mode change made in the vault shell's settings screen", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const settingsStore = fakeSettingsStore();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        settingsStore={settingsStore}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("radio", { name: /keep its entries/i }));
+
+    expect(settingsStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ groupDeleteMode: "keepContents" }),
+    );
+    expect(screen.getByRole("radio", { name: /keep its entries/i })).toBeChecked();
+  });
+
   it("locks the vault after the configured idle timeout with no activity", async () => {
     const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
     const settings: AppSettings = {

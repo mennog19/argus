@@ -16,6 +16,15 @@ export interface AutoLockSettings {
 
 export const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
 
+/**
+ * What deleting a group does with what's inside it: `"deleteContents"` moves
+ * the group with its whole subtree into the recycle bin; `"keepContents"`
+ * moves its entries and subgroups up into the parent group first.
+ */
+export type GroupDeleteMode = "deleteContents" | "keepContents";
+
+export const DEFAULT_GROUP_DELETE_MODE: GroupDeleteMode = "deleteContents";
+
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
   /** Shared password generator settings, used by both the dedicated generator
@@ -28,6 +37,8 @@ export interface AppSettings {
   readonly clipboardClearSeconds?: number;
   /** Undefined until the user changes it, at which point `DEFAULT_AUTO_LOCK` applies. */
   readonly autoLock?: AutoLockSettings;
+  /** Undefined until the user changes it, at which point `DEFAULT_GROUP_DELETE_MODE` applies. */
+  readonly groupDeleteMode?: GroupDeleteMode;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -79,4 +90,9 @@ export function withClipboardClearSeconds(settings: AppSettings, seconds: number
 /** Returns settings with `autoLock` recorded as the auto-lock configuration. */
 export function withAutoLock(settings: AppSettings, autoLock: AutoLockSettings): AppSettings {
   return { ...settings, autoLock };
+}
+
+/** Returns settings with `mode` recorded as the group delete behaviour. */
+export function withGroupDeleteMode(settings: AppSettings, mode: GroupDeleteMode): AppSettings {
+  return { ...settings, groupDeleteMode: mode };
 }

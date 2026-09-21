@@ -12,7 +12,7 @@ import {
   Tags,
   Vault,
 } from "../../domain";
-import { AutoLockSettings } from "../../application/settings";
+import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
@@ -40,6 +40,7 @@ function renderShell(
     onClipboardClearSecondsChange?: (seconds: number) => void;
     autoLock?: AutoLockSettings;
     onAutoLockChange?: (autoLock: AutoLockSettings) => void;
+    groupDeleteMode?: GroupDeleteMode;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
@@ -52,6 +53,7 @@ function renderShell(
   const onClipboardClearSecondsChange = overrides.onClipboardClearSecondsChange ?? vi.fn();
   const autoLock = overrides.autoLock ?? DEFAULT_AUTO_LOCK;
   const onAutoLockChange = overrides.onAutoLockChange ?? vi.fn();
+  const groupDeleteMode = overrides.groupDeleteMode ?? "deleteContents";
   render(
     <VaultShell
       vault={vault}
@@ -60,11 +62,13 @@ function renderShell(
       generatorPolicy={generatorPolicy}
       clipboardClearSeconds={clipboardClearSeconds}
       autoLock={autoLock}
+      groupDeleteMode={groupDeleteMode}
       onLock={onLock}
       onSave={onSave}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
+      onGroupDeleteModeChange={vi.fn()}
       getPasswordChangedTimes={getPasswordChangedTimes}
     />,
   );
@@ -258,6 +262,8 @@ describe("VaultShell", () => {
         clipboardWriter={fakeClipboardWriter()}
         clipboardClearSeconds={20}
         autoLock={DEFAULT_AUTO_LOCK}
+        groupDeleteMode="deleteContents"
+        onGroupDeleteModeChange={vi.fn()}
       />,
     );
 
@@ -717,6 +723,8 @@ describe("VaultShell", () => {
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
           autoLock={DEFAULT_AUTO_LOCK}
+        groupDeleteMode="deleteContents"
+        onGroupDeleteModeChange={vi.fn()}
         />,
       );
 
@@ -741,6 +749,8 @@ describe("VaultShell", () => {
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
           autoLock={DEFAULT_AUTO_LOCK}
+        groupDeleteMode="deleteContents"
+        onGroupDeleteModeChange={vi.fn()}
         />,
       );
 
@@ -779,6 +789,25 @@ describe("VaultShell", () => {
       const savedVault: Vault = onSave.mock.calls[0][0];
       expect(savedVault.rootGroup.groups.map((g) => g.name)).toEqual(["Recycle Bin"]);
       expect(savedVault.recycleBin?.groups.map((g) => g.name)).toEqual(["Work"]);
+    });
+
+    it("keeps a deleted group's entries in its parent when the delete mode is keepContents", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Bank" });
+      const work = Group.create("Work").addEntry(entry);
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave, groupDeleteMode: "keepContents" });
+
+      await user.click(screen.getByRole("button", { name: `Delete ${work.name}` }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.rootGroup.entries.map((e) => e.title)).toEqual(["Bank"]);
+      expect(savedVault.recycleBin?.groups.map((g) => g.name)).toEqual(["Work"]);
+      expect(savedVault.recycleBin?.groups[0].entries).toEqual([]);
     });
   });
 

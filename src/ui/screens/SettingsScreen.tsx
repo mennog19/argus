@@ -1,17 +1,21 @@
-import { AutoLockSettings } from "../../application/settings";
+import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 
 interface SettingsScreenProps {
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
+  groupDeleteMode: GroupDeleteMode;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
+  onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
 }
 
 export function SettingsScreen({
   clipboardClearSeconds,
   autoLock,
+  groupDeleteMode,
   onClipboardClearSecondsChange,
   onAutoLockChange,
+  onGroupDeleteModeChange,
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
@@ -84,6 +88,32 @@ export function SettingsScreen({
             />
             Lock when the system sleeps
           </label>
+        </div>
+
+        <div className="detail-card padded">
+          <div className="field-group" role="radiogroup" aria-labelledby="settings-group-delete">
+            <span className="field-label" id="settings-group-delete">
+              When deleting a group
+            </span>
+            <label className="generator-checkbox">
+              <input
+                type="radio"
+                name="settings-group-delete"
+                checked={groupDeleteMode === "deleteContents"}
+                onChange={() => onGroupDeleteModeChange("deleteContents")}
+              />
+              Delete its entries and subgroups too
+            </label>
+            <label className="generator-checkbox">
+              <input
+                type="radio"
+                name="settings-group-delete"
+                checked={groupDeleteMode === "keepContents"}
+                onChange={() => onGroupDeleteModeChange("keepContents")}
+              />
+              Keep its entries and subgroups (move them to the parent group)
+            </label>
+          </div>
         </div>
       </div>
     </div>

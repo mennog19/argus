@@ -740,6 +740,12 @@ input[type="password"]::-ms-clear {
   white-space: nowrap;
 }
 
+.group-composer-hint {
+  padding: 0 2px;
+  font-size: 11.5px;
+  color: var(--color-text-dimmer);
+}
+
 .group-composer-error {
   padding: 0 2px;
   font-size: 11.5px;

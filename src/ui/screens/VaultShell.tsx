@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Entry, EntryId, Group, GroupId, PasswordPolicyOptions, Vault } from "../../domain";
-import { AutoLockSettings } from "../../application/settings";
+import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import {
@@ -43,11 +43,13 @@ interface VaultShellProps {
   generatorPolicy: PasswordPolicyOptions;
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
+  groupDeleteMode: GroupDeleteMode;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
+  onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   getPasswordChangedTimes: () => Map<string, Date>;
 }
 
@@ -63,11 +65,13 @@ export function VaultShell({
   generatorPolicy,
   clipboardClearSeconds,
   autoLock,
+  groupDeleteMode,
   onLock,
   onSave,
   onGeneratorPolicyChange,
   onClipboardClearSecondsChange,
   onAutoLockChange,
+  onGroupDeleteModeChange,
   getPasswordChangedTimes,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
@@ -142,7 +146,11 @@ export function VaultShell({
   }
 
   async function handleDeleteGroup(groupId: GroupId) {
-    await persist(vault.deleteGroup(groupId));
+    await persist(
+      groupDeleteMode === "keepContents"
+        ? vault.deleteGroupKeepingContents(groupId)
+        : vault.deleteGroup(groupId),
+    );
     if (effectiveGroupId === groupId.toString()) {
       selectGroup(ALL_ITEMS);
     }
@@ -260,8 +268,10 @@ export function VaultShell({
         <SettingsScreen
           clipboardClearSeconds={clipboardClearSeconds}
           autoLock={autoLock}
+          groupDeleteMode={groupDeleteMode}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
           onAutoLockChange={onAutoLockChange}
+          onGroupDeleteModeChange={onGroupDeleteModeChange}
         />
       ) : (
         <>
@@ -275,6 +285,7 @@ export function VaultShell({
             onCreateGroup={handleCreateGroup}
             onRenameGroup={handleRenameGroup}
             onDeleteGroup={handleDeleteGroup}
+            groupDeleteMode={groupDeleteMode}
             entryDragActive={draggingEntryId !== undefined}
             onDropEntry={handleDropEntry}
           />
