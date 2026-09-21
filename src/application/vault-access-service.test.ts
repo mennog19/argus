@@ -30,6 +30,7 @@ function fakeFileStorage(overrides: Partial<FileStorage> = {}): FileStorage {
     exists: vi.fn().mockResolvedValue(false),
     lastModified: vi.fn().mockResolvedValue(0),
     copyFile: vi.fn(),
+    grantAccess: vi.fn(),
     ...overrides,
   };
 }
@@ -282,6 +283,23 @@ describe("VaultAccessService", () => {
       );
     });
 
+    it("asks for filesystem access to the backup paths before touching them", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await service.saveVault(vault, "C:/vaults/mine.kdbx", { force: true });
+
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak1");
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak2");
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak3");
+      const granted = vi.mocked(fileStorage.grantAccess).mock.invocationCallOrder;
+      const copied = vi.mocked(fileStorage.copyFile).mock.invocationCallOrder;
+      expect(Math.max(...granted)).toBeLessThan(Math.min(...copied));
+    });
+
     it("does not rotate backups when the file does not already exist", async () => {
       const vault = Vault.create("My Vault");
       const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
@@ -292,6 +310,7 @@ describe("VaultAccessService", () => {
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
       expect(fileStorage.copyFile).not.toHaveBeenCalled();
+      expect(fileStorage.grantAccess).not.toHaveBeenCalled();
     });
   });
 

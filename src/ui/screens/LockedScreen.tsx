@@ -1,6 +1,7 @@
 import { KeyboardEvent, useState } from "react";
 import { Vault } from "../../domain";
 import { VaultAccessService } from "../../application/vault-access-service";
+import { errorMessage } from "../error-message";
 import { LockIcon } from "../icons";
 import { basename } from "../format";
 
@@ -29,7 +30,7 @@ export function LockedScreen({
       const vault = await vaultAccessService.openVaultAtPath(filePath, password);
       onUnlocked(vault);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to unlock vault.");
+      setError(errorMessage(cause, "Failed to unlock vault."));
     } finally {
       setBusy(false);
     }

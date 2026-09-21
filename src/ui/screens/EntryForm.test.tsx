@@ -162,7 +162,7 @@ describe("EntryForm", () => {
 
   it("shows a generic error message when onSubmit rejects with a non-Error value", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn().mockRejectedValue("boom");
+    const onSubmit = vi.fn().mockRejectedValue("forbidden path: C:/vaults/mine.kdbx.bak1");
 
     render(
       <EntryForm
@@ -177,7 +177,9 @@ describe("EntryForm", () => {
     await user.type(screen.getByLabelText("Title"), "GitHub");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByText("Failed to save entry.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("forbidden path: C:/vaults/mine.kdbx.bak1"),
+    ).toBeInTheDocument();
   });
 
   it("calls onCancel when Cancel is clicked", async () => {

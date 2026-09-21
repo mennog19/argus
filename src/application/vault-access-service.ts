@@ -112,6 +112,12 @@ export class VaultAccessService {
   }
 
   private async rotateBackups(filePath: string): Promise<void> {
+    // Backup paths are derived here rather than picked by the user, so the OS
+    // layer has to be told about them before they can be read or written.
+    for (const suffix of BACKUP_SUFFIXES) {
+      await this.fileStorage.grantAccess(filePath + suffix);
+    }
+
     for (let i = BACKUP_SUFFIXES.length - 1; i > 0; i--) {
       const source = filePath + BACKUP_SUFFIXES[i - 1];
       if (await this.fileStorage.exists(source)) {

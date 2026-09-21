@@ -159,7 +159,7 @@ describe("RecycleBinPanel", () => {
       await user.click(screen.getByRole("button", { name: "Delete Forever" }));
       await user.click(screen.getByRole("button", { name: "Delete Forever" }));
 
-      expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+      expect(await screen.findByText("nope")).toBeInTheDocument();
     });
   });
 

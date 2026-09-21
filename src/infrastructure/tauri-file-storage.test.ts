@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
 import { copyFile, exists, readFile, stat, writeFile } from "@tauri-apps/plugin-fs";
 import { TauriFileStorage } from "./tauri-file-storage";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readFile: vi.fn(),
@@ -79,5 +84,15 @@ describe("TauriFileStorage", () => {
     await storage.copyFile("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
 
     expect(copyFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
+  });
+
+  it("grants filesystem access to a path through the app's own command", async () => {
+    const storage = new TauriFileStorage();
+
+    await storage.grantAccess("C:/vaults/mine.kdbx.bak1");
+
+    expect(invoke).toHaveBeenCalledWith("grant_file_access", {
+      path: "C:/vaults/mine.kdbx.bak1",
+    });
   });
 });

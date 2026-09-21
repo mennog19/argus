@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Group, GroupId } from "../../domain";
 import { collectAllEntries } from "../vault-browsing";
+import { errorMessage } from "../error-message";
 import { ChevronIcon, EditIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface GroupTreeProps {
@@ -19,10 +20,6 @@ type Editor =
   | { kind: "add"; parentId: GroupId }
   | { kind: "rename"; group: Group }
   | { kind: "delete"; group: Group };
-
-function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "Something went wrong.";
-}
 
 const INDENT_PX = 14;
 
@@ -78,7 +75,7 @@ export function GroupTree({
       setEditor(undefined);
       setDraft("");
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(errorMessage(cause, "Something went wrong."));
     } finally {
       setBusy(false);
     }
@@ -97,7 +94,7 @@ export function GroupTree({
       setEditor(undefined);
       setDraft("");
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(errorMessage(cause, "Something went wrong."));
     } finally {
       setBusy(false);
     }
@@ -110,7 +107,7 @@ export function GroupTree({
       await onDeleteGroup(group.id);
       setEditor(undefined);
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(errorMessage(cause, "Something went wrong."));
     } finally {
       setBusy(false);
     }

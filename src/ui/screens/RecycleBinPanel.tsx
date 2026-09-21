@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EntryId, Group, GroupId } from "../../domain";
 import { collectAllEntries } from "../vault-browsing";
+import { errorMessage } from "../error-message";
 import { initialOf } from "../format";
 
 interface RecycleBinPanelProps {
@@ -16,10 +17,6 @@ type PendingAction =
   | { kind: "deleteEntryForever"; entryId: EntryId }
   | { kind: "deleteGroupForever"; groupId: GroupId }
   | { kind: "empty" };
-
-function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "Something went wrong.";
-}
 
 export function RecycleBinPanel({
   binGroup,
@@ -44,7 +41,7 @@ export function RecycleBinPanel({
       await action();
       setPending(undefined);
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(errorMessage(cause, "Something went wrong."));
     } finally {
       setBusy(false);
     }

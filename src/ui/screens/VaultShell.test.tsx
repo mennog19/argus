@@ -626,7 +626,7 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Delete entry" }));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
-      expect(await screen.findByText("Failed to delete entry.")).toBeInTheDocument();
+      expect(await screen.findByText("nope")).toBeInTheDocument();
     });
   });
 

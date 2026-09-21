@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { OpenedVault, VaultAccessService } from "../../application/vault-access-service";
 import { RecentVaultEntry } from "../../application/settings";
+import { errorMessage } from "../error-message";
 import { LockIcon } from "../icons";
 import { basename, formatRelativeTime } from "../format";
 
@@ -46,7 +47,7 @@ export function WelcomeScreen({
         onOpened(opened);
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to open vault.");
+      setError(errorMessage(cause, "Failed to open vault."));
     } finally {
       setBusy(false);
     }
@@ -75,7 +76,7 @@ export function WelcomeScreen({
         onOpened(opened);
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to create vault.");
+      setError(errorMessage(cause, "Failed to create vault."));
     } finally {
       setBusy(false);
     }

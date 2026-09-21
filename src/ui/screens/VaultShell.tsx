@@ -16,6 +16,7 @@ import {
   VaultIcon,
   XIcon,
 } from "../icons";
+import { errorMessage } from "../error-message";
 import { initialOf } from "../format";
 import {
   collectAllEntries,
@@ -419,7 +420,7 @@ function EntryDetail({
     try {
       await onDelete();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to delete entry.");
+      setError(errorMessage(cause, "Failed to delete entry."));
     } finally {
       setBusy(false);
     }
