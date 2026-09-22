@@ -8,6 +8,7 @@ import {
   withClipboardClearSeconds,
   withGeneratorPolicy,
   withGroupDeleteMode,
+  withTheme,
 } from "./settings";
 
 describe("recordVaultOpened", () => {
@@ -151,5 +152,18 @@ describe("withAccentColor", () => {
     const result = withAccentColor(DEFAULT_SETTINGS, { kind: "custom", hue: 210 });
 
     expect(result.accentColor).toEqual({ kind: "custom", hue: 210 });
+  });
+});
+
+describe("withTheme", () => {
+  it("records the theme without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withTheme(settings, "light");
+
+    expect(result.theme).toBe("light");
+    expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });

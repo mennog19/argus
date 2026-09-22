@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Entry, EntryId, Group, GroupId, Icon, PasswordPolicyOptions, Vault } from "../../domain";
-import { AccentColor, AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
@@ -48,6 +48,7 @@ interface VaultShellProps {
   autoLock: AutoLockSettings;
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
+  theme: Theme;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
@@ -55,6 +56,7 @@ interface VaultShellProps {
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
+  onThemeChange: (theme: Theme) => void;
 }
 
 const ALL_ITEMS = "__all__";
@@ -73,6 +75,7 @@ export function VaultShell({
   autoLock,
   groupDeleteMode,
   accentColor,
+  theme,
   onLock,
   onSave,
   onGeneratorPolicyChange,
@@ -80,6 +83,7 @@ export function VaultShell({
   onAutoLockChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
+  onThemeChange,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -285,10 +289,12 @@ export function VaultShell({
           autoLock={autoLock}
           groupDeleteMode={groupDeleteMode}
           accentColor={accentColor}
+          theme={theme}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
           onAutoLockChange={onAutoLockChange}
           onGroupDeleteModeChange={onGroupDeleteModeChange}
           onAccentColorChange={onAccentColorChange}
+          onThemeChange={onThemeChange}
         />
       ) : (
         <>

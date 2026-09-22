@@ -18,14 +18,17 @@ import {
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
   DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
+  DEFAULT_THEME,
   GroupDeleteMode,
   recordVaultOpened,
   SettingsStore,
+  Theme,
   withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
   withGeneratorPolicy,
   withGroupDeleteMode,
+  withTheme,
 } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
 import { accentColorCssVars, accentColorHue } from "./accent-color";
@@ -146,6 +149,10 @@ function App({
     document.documentElement.style.setProperty("--color-accent", accent);
     document.documentElement.style.setProperty("--color-accent-hover", accentHover);
   }, [settings.accentColor]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme ?? DEFAULT_THEME;
+  }, [settings.theme]);
 
   async function refreshFileInfo(filePath: string) {
     try {
@@ -273,6 +280,16 @@ function App({
     }
   }
 
+  async function handleThemeChange(theme: Theme) {
+    const updated = withTheme(settings, theme);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -308,6 +325,7 @@ function App({
         autoLock={settings.autoLock ?? DEFAULT_AUTO_LOCK}
         groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
         accentColor={settings.accentColor ?? DEFAULT_ACCENT_COLOR}
+        theme={settings.theme ?? DEFAULT_THEME}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
@@ -315,6 +333,7 @@ function App({
         onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
         onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
+        onThemeChange={(theme) => void handleThemeChange(theme)}
       />
       {conflict && (
         <div className="modal-overlay">

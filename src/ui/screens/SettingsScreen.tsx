@@ -1,5 +1,5 @@
 import { CSSProperties } from "react";
-import { AccentColor, AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
@@ -12,10 +12,12 @@ interface SettingsScreenProps {
   autoLock: AutoLockSettings;
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
+  theme: Theme;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
+  onThemeChange: (theme: Theme) => void;
 }
 
 export function SettingsScreen({
@@ -26,10 +28,12 @@ export function SettingsScreen({
   autoLock,
   groupDeleteMode,
   accentColor,
+  theme,
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
+  onThemeChange,
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
@@ -72,6 +76,29 @@ export function SettingsScreen({
           <section className="detail-section">
             <div className="detail-section-label">Appearance</div>
             <div className="detail-card padded">
+              <div className="field-group">
+                <span className="field-label">Theme</span>
+                <div className="generator-mode-toggle" role="radiogroup" aria-label="Theme">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === "dark"}
+                    className={`btn-secondary${theme === "dark" ? " active" : ""}`}
+                    onClick={() => onThemeChange("dark")}
+                  >
+                    Dark
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === "light"}
+                    className={`btn-secondary${theme === "light" ? " active" : ""}`}
+                    onClick={() => onThemeChange("light")}
+                  >
+                    Light
+                  </button>
+                </div>
+              </div>
               <div className="field-group">
                 <span className="field-label">Accent color</span>
                 <div className="accent-color-swatches" role="radiogroup" aria-label="Accent color">

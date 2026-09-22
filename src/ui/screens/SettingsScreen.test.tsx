@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { AccentColor, AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsScreen } from "./SettingsScreen";
 
@@ -16,12 +16,14 @@ function renderSettings(
     autoLock?: AutoLockSettings;
     groupDeleteMode?: GroupDeleteMode;
     accentColor?: AccentColor;
+    theme?: Theme;
   } = {},
 ) {
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
   const onAccentColorChange = vi.fn();
+  const onThemeChange = vi.fn();
   render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
@@ -31,10 +33,12 @@ function renderSettings(
       autoLock={overrides.autoLock ?? DEFAULT_AUTO_LOCK}
       groupDeleteMode={overrides.groupDeleteMode ?? "deleteContents"}
       accentColor={overrides.accentColor ?? DEFAULT_ACCENT_COLOR}
+      theme={overrides.theme ?? "dark"}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
       onAccentColorChange={onAccentColorChange}
+      onThemeChange={onThemeChange}
     />,
   );
   return {
@@ -42,6 +46,7 @@ function renderSettings(
     onAutoLockChange,
     onGroupDeleteModeChange,
     onAccentColorChange,
+    onThemeChange,
   };
 }
 
@@ -222,6 +227,31 @@ describe("SettingsScreen", () => {
       fireEvent.change(screen.getByLabelText(/custom color/i), { target: { value: "210" } });
 
       expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "custom", hue: 210 });
+    });
+  });
+
+  describe("theme", () => {
+    it("marks the current theme as checked and the other as unchecked", () => {
+      renderSettings({ theme: "light" });
+
+      expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByRole("radio", { name: "Dark" })).toHaveAttribute("aria-checked", "false");
+    });
+
+    it("reports a theme selection", () => {
+      const { onThemeChange } = renderSettings({ theme: "dark" });
+
+      fireEvent.click(screen.getByRole("radio", { name: "Light" }));
+
+      expect(onThemeChange).toHaveBeenCalledWith("light");
+    });
+
+    it("reports switching back to dark", () => {
+      const { onThemeChange } = renderSettings({ theme: "light" });
+
+      fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+
+      expect(onThemeChange).toHaveBeenCalledWith("dark");
     });
   });
 });

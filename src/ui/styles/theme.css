@@ -36,6 +36,24 @@
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }
 
+:root[data-theme="light"] {
+  --color-bg: #f6f7f9;
+  --color-panel: #ffffff;
+  --color-nav: #eef0f3;
+  --color-surface: #ffffff;
+  --color-input: #f1f2f5;
+  --color-border: rgba(15, 18, 23, 0.08);
+  --color-border-strong: rgba(15, 18, 23, 0.14);
+  --color-text: #14161a;
+  --color-text-dim: rgba(20, 22, 26, 0.58);
+  --color-text-dimmer: rgba(20, 22, 26, 0.46);
+  --color-accent-on: #0b0c0f;
+  --color-danger: oklch(52% 0.19 25);
+  --color-danger-strong: oklch(45% 0.19 25);
+  --color-warning: oklch(53% 0.16 70);
+  --color-success: oklch(45% 0.13 150);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -53,7 +71,7 @@ body {
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(236, 238, 241, 0.32);
+  color: color-mix(in oklab, var(--color-text) 32%, transparent);
 }
 
 input,
@@ -83,7 +101,7 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in oklab, var(--color-text) 12%, transparent);
   border-radius: 6px;
 }
 

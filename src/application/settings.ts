@@ -38,6 +38,11 @@ export type AccentColor =
 
 export const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 
+/** The app's overall color scheme. */
+export type Theme = "dark" | "light";
+
+export const DEFAULT_THEME: Theme = "dark";
+
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
   /** Shared password generator settings, used by both the dedicated generator
@@ -54,6 +59,8 @@ export interface AppSettings {
   readonly groupDeleteMode?: GroupDeleteMode;
   /** Undefined until the user changes it, at which point `DEFAULT_ACCENT_COLOR` applies. */
   readonly accentColor?: AccentColor;
+  /** Undefined until the user changes it, at which point `DEFAULT_THEME` applies. */
+  readonly theme?: Theme;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -115,4 +122,9 @@ export function withGroupDeleteMode(settings: AppSettings, mode: GroupDeleteMode
 /** Returns settings with `accentColor` recorded as the app's accent color. */
 export function withAccentColor(settings: AppSettings, accentColor: AccentColor): AppSettings {
   return { ...settings, accentColor };
+}
+
+/** Returns settings with `theme` recorded as the app's color scheme. */
+export function withTheme(settings: AppSettings, theme: Theme): AppSettings {
+  return { ...settings, theme };
 }

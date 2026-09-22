@@ -13,13 +13,14 @@ import {
   Tags,
   Vault,
 } from "../../domain";
-import { AccentColor, AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
+const DEFAULT_THEME: Theme = "dark";
 
 function fakeUrlOpener(): UrlOpener {
   return { open: vi.fn() };
@@ -44,6 +45,8 @@ function renderShell(
     groupDeleteMode?: GroupDeleteMode;
     accentColor?: AccentColor;
     onAccentColorChange?: (accentColor: AccentColor) => void;
+    theme?: Theme;
+    onThemeChange?: (theme: Theme) => void;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
@@ -58,6 +61,8 @@ function renderShell(
   const groupDeleteMode = overrides.groupDeleteMode ?? "deleteContents";
   const accentColor = overrides.accentColor ?? DEFAULT_ACCENT_COLOR;
   const onAccentColorChange = overrides.onAccentColorChange ?? vi.fn();
+  const theme = overrides.theme ?? DEFAULT_THEME;
+  const onThemeChange = overrides.onThemeChange ?? vi.fn();
   render(
     <VaultShell
       vault={vault}
@@ -70,6 +75,7 @@ function renderShell(
       autoLock={autoLock}
       groupDeleteMode={groupDeleteMode}
       accentColor={accentColor}
+      theme={theme}
       onLock={onLock}
       onSave={onSave}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
@@ -77,6 +83,7 @@ function renderShell(
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={vi.fn()}
       onAccentColorChange={onAccentColorChange}
+      onThemeChange={onThemeChange}
     />,
   );
   return {
@@ -87,6 +94,7 @@ function renderShell(
     onClipboardClearSecondsChange,
     onAutoLockChange,
     onAccentColorChange,
+    onThemeChange,
   };
 }
 
@@ -273,8 +281,10 @@ describe("VaultShell", () => {
         autoLock={DEFAULT_AUTO_LOCK}
         groupDeleteMode="deleteContents"
         accentColor={DEFAULT_ACCENT_COLOR}
+        theme={DEFAULT_THEME}
         onGroupDeleteModeChange={vi.fn()}
         onAccentColorChange={vi.fn()}
+        onThemeChange={vi.fn()}
       />,
     );
 
@@ -801,8 +811,10 @@ describe("VaultShell", () => {
           autoLock={DEFAULT_AUTO_LOCK}
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
+          theme={DEFAULT_THEME}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
+          onThemeChange={vi.fn()}
         />,
       );
 
@@ -830,8 +842,10 @@ describe("VaultShell", () => {
           autoLock={DEFAULT_AUTO_LOCK}
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
+          theme={DEFAULT_THEME}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
+          onThemeChange={vi.fn()}
         />,
       );
 
