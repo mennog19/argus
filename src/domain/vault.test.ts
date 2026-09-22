@@ -135,6 +135,57 @@ describe("Vault", () => {
     });
   });
 
+  describe("reorderGroup", () => {
+    it("reorders top-level groups", () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      const vault = new Vault("Root", Group.create("Root").addGroup(personal).addGroup(work));
+
+      const updated = vault.reorderGroup(work.id, personal.id);
+
+      expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work", "Personal"]);
+    });
+
+    it("reorders subgroups nested two levels deep", () => {
+      const a = Group.create("A");
+      const b = Group.create("B");
+      const parent = Group.create("Parent").addGroup(a).addGroup(b);
+      const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+      const updated = vault.reorderGroup(b.id, a.id);
+
+      expect(updated.findGroup(parent.id)?.groups.map((g) => g.name)).toEqual(["B", "A"]);
+    });
+
+    it("moves a group to the end of its siblings when beforeId is undefined", () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+      const updated = vault.reorderGroup(work.id, undefined);
+
+      expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
+    });
+
+    it("throws when the group doesn't exist", () => {
+      const vault = new Vault("Root", Group.create("Root").addGroup(Group.create("Sibling")));
+
+      expect(() => vault.reorderGroup(GroupId.create(), undefined)).toThrow("Group not found");
+    });
+
+    it("throws when beforeId belongs to a different parent", () => {
+      const inOtherParent = Group.create("Elsewhere");
+      const otherParent = Group.create("OtherParent").addGroup(inOtherParent);
+      const work = Group.create("Work");
+      const vault = new Vault(
+        "Root",
+        Group.create("Root").addGroup(work).addGroup(otherParent),
+      );
+
+      expect(() => vault.reorderGroup(work.id, inOtherParent.id)).toThrow("Group not found");
+    });
+  });
+
   describe("renameGroup", () => {
     it("renames the root group", () => {
       const vault = Vault.create("Root");

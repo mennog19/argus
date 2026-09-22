@@ -143,6 +143,21 @@ export class Vault {
     return new Vault(this.name, result.group, this.recycleBinId);
   }
 
+  /**
+   * Reorders `groupId` to sit immediately before `beforeId` among its
+   * siblings, or at the end when `beforeId` is `undefined`. Both ids must
+   * belong to the same parent group.
+   */
+  reorderGroup(groupId: GroupId, beforeId: GroupId | undefined): Vault {
+    const result = updateGroupContainingGroup(this.rootGroup, groupId, (owner) =>
+      owner.moveGroupBefore(groupId, beforeId),
+    );
+    if (!result.found) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    return new Vault(this.name, result.group, this.recycleBinId);
+  }
+
   renameGroup(groupId: GroupId, name: string): Vault {
     const result = updateGroupById(this.rootGroup, groupId, (group) => group.rename(name));
     if (!result.found) {

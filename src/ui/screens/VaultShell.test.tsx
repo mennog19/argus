@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   CustomField,
@@ -23,6 +23,7 @@ import {
 } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
+import { GROUP_DRAG_TYPE } from "../group-drag";
 import { VaultShell } from "./VaultShell";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
@@ -827,6 +828,37 @@ describe("VaultShell", () => {
 
       const savedVault: Vault = onSave.mock.calls[0][0];
       expect(savedVault.findGroup(work.id)?.icon.equals(Icon.library("star"))).toBe(true);
+    });
+
+    it("reorders top-level groups by dragging one onto another", async () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work);
+      vault = vault.addGroup(vault.rootGroup.id, personal);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      const dataTransfer = {
+        types: [GROUP_DRAG_TYPE],
+        dropEffect: "none",
+        effectAllowed: "none",
+        setData: () => {},
+        getData: (type: string) => (type === GROUP_DRAG_TYPE ? personal.id.toString() : ""),
+      };
+      const personalRow = rowButton("Personal").closest(".group-row") as HTMLElement;
+      const workRow = rowButton("Work").closest(".group-row") as HTMLElement;
+      fireEvent.dragStart(personalRow, { dataTransfer });
+      // jsdom has no DragEvent, so fireEvent's plain Event fallback drops
+      // clientY silently — set it directly on the event, same workaround
+      // GroupTree.test.tsx uses for relatedTarget on dragLeave.
+      const dropEvent = createEvent.drop(workRow, { dataTransfer });
+      Object.defineProperty(dropEvent, "clientY", { value: -1000 });
+      fireEvent(workRow, dropEvent);
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
     });
 
     it("deleting a group other than the currently selected one leaves the selection untouched", async () => {

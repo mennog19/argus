@@ -764,6 +764,30 @@ input[type="radio"]:checked::after {
   }
 }
 
+/* Reordering groups by dragging a row among its siblings. */
+.group-row.dragging {
+  opacity: 0.4;
+}
+
+.group-row.reorder-before::before,
+.group-row.reorder-after::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.group-row.reorder-before::before {
+  top: -1px;
+}
+
+.group-row.reorder-after::after {
+  bottom: -1px;
+}
+
 .group-drop-error {
   margin: 2px 4px 6px;
   font-size: 11.5px;

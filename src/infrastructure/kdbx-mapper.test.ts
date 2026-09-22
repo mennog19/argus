@@ -21,6 +21,16 @@ function createDb(name = "Test Vault"): Kdbx {
   return Kdbx.create(new Credentials(null), name);
 }
 
+// Kdbx.create() always seeds a "Recycle Bin" child on the default group, so
+// order assertions on top-level groups filter it out to focus on the groups
+// under test.
+function nonBinGroupNames(db: Kdbx): (string | undefined)[] {
+  return db
+    .getDefaultGroup()
+    .groups.filter((g) => g.name !== "Recycle Bin")
+    .map((g) => g.name);
+}
+
 describe("vaultFromKdbx", () => {
   it("maps the database name and root group name", () => {
     const db = createDb("My Vault");
@@ -199,6 +209,59 @@ describe("applyVaultToKdbx", () => {
     const kdbxChild = db.getDefaultGroup().groups.find((g) => g.name === "Personal");
     expect(kdbxChild).toBeDefined();
     expect(kdbxUuidToDomainId(kdbxChild!.uuid)).toBe(newGroup.id.toString());
+  });
+
+  it("persists a reordered set of top-level groups", () => {
+    const db = createDb();
+    let vault = vaultFromKdbx(db);
+    const personal = Group.create("Personal");
+    const work = Group.create("Work");
+    vault = vault.addGroup(vault.rootGroup.id, personal);
+    vault = vault.addGroup(vault.rootGroup.id, work);
+    applyVaultToKdbx(db, vault);
+    expect(nonBinGroupNames(db)).toEqual(["Personal", "Work"]);
+
+    const reordered = vault.reorderGroup(work.id, personal.id);
+    applyVaultToKdbx(db, reordered);
+
+    expect(nonBinGroupNames(db)).toEqual(["Work", "Personal"]);
+    const reMapped = vaultFromKdbx(db);
+    expect(
+      reMapped.rootGroup.groups.filter((g) => g.name !== "Recycle Bin").map((g) => g.name),
+    ).toEqual(["Work", "Personal"]);
+  });
+
+  it("persists a reordered set of nested subgroups", () => {
+    const db = createDb();
+    let vault = vaultFromKdbx(db);
+    const parent = Group.create("Parent");
+    vault = vault.addGroup(vault.rootGroup.id, parent);
+    const a = Group.create("A");
+    const b = Group.create("B");
+    vault = vault.addGroup(parent.id, a);
+    vault = vault.addGroup(parent.id, b);
+    applyVaultToKdbx(db, vault);
+
+    const reordered = vault.reorderGroup(b.id, a.id);
+    applyVaultToKdbx(db, reordered);
+
+    const kdbxParent = db.getDefaultGroup().groups.find((g) => g.name === "Parent")!;
+    expect(kdbxParent.groups.map((g) => g.name)).toEqual(["B", "A"]);
+  });
+
+  it("places a newly created group at its domain position, not just appended", () => {
+    const db = createDb();
+    let vault = vaultFromKdbx(db);
+    const existing = Group.create("Existing");
+    vault = vault.addGroup(vault.rootGroup.id, existing);
+    applyVaultToKdbx(db, vault);
+
+    const inserted = Group.create("Inserted");
+    vault = vault.addGroup(vault.rootGroup.id, inserted);
+    vault = vault.reorderGroup(inserted.id, existing.id);
+    applyVaultToKdbx(db, vault);
+
+    expect(nonBinGroupNames(db)).toEqual(["Inserted", "Existing"]);
   });
 
   it("updates a changed entry, pushing history, and leaves an unchanged entry's history alone", () => {

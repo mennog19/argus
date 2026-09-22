@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Entry, Group, Icon } from "../../domain";
 import { GroupTree } from "./GroupTree";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
+import { GROUP_DRAG_TYPE } from "../group-drag";
 
 function buildTree() {
   const nested = Group.create("Nested");
@@ -42,6 +43,7 @@ function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[
     groupDeleteMode: "deleteContents" as const,
     entryDragActive: false,
     onDropEntry: vi.fn().mockResolvedValue(undefined),
+    onReorderGroup: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -617,6 +619,206 @@ describe("GroupTree", () => {
 
       fireEvent.drop(groupRow("Work"), { dataTransfer: entryTransfer() });
       await vi.waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    });
+  });
+
+  describe("reordering groups by dragging", () => {
+    function groupTransfer(groupId: string) {
+      return {
+        types: [GROUP_DRAG_TYPE],
+        dropEffect: "none",
+        effectAllowed: "none",
+        setData: () => {},
+        getData: (type: string) => (type === GROUP_DRAG_TYPE ? groupId : ""),
+      };
+    }
+
+    function groupRow(name: string) {
+      return rowButton(name).closest(".group-row") as HTMLElement;
+    }
+
+    // jsdom has no DragEvent, so fireEvent's plain Event fallback silently
+    // drops clientY — set it directly on the event, the same workaround
+    // used above for relatedTarget on dragLeave.
+    function dragOverAt(row: HTMLElement, dataTransfer: unknown, clientY: number) {
+      const event = createEvent.dragOver(row, { dataTransfer });
+      Object.defineProperty(event, "clientY", { value: clientY });
+      fireEvent(row, event);
+    }
+
+    function dropAt(row: HTMLElement, dataTransfer: unknown, clientY: number) {
+      const event = createEvent.drop(row, { dataTransfer });
+      Object.defineProperty(event, "clientY", { value: clientY });
+      fireEvent(row, event);
+    }
+
+    function dragLeaveGroup(row: HTMLElement, dataTransfer: unknown, relatedTarget: Element | null) {
+      const event = createEvent.dragLeave(row, { dataTransfer });
+      Object.defineProperty(event, "relatedTarget", { value: relatedTarget });
+      fireEvent(row, event);
+    }
+
+    it("reorders a group to sit before its sibling when dropped on the top half", () => {
+      const onReorderGroup = vi.fn().mockResolvedValue(undefined);
+      const { root, work, personal } = buildTree();
+      render(<GroupTree {...baseProps(root, { onReorderGroup })} />);
+      const dataTransfer = groupTransfer(personal.id.toString());
+
+      fireEvent.dragStart(groupRow("Personal"), { dataTransfer });
+      dropAt(groupRow("Work"), dataTransfer, -1000);
+
+      expect(onReorderGroup).toHaveBeenCalledWith(personal.id, work.id);
+    });
+
+    it("reorders a group to the end when dropped on the bottom half of the last sibling", () => {
+      const onReorderGroup = vi.fn().mockResolvedValue(undefined);
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root, { onReorderGroup })} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dropAt(groupRow("Personal"), dataTransfer, 1000);
+
+      expect(onReorderGroup).toHaveBeenCalledWith(work.id, undefined);
+    });
+
+    it("lands before a trailing recycle bin instead of past it", () => {
+      const onReorderGroup = vi.fn().mockResolvedValue(undefined);
+      const { root, work } = buildTree();
+      const recycleBin = Group.create("Recycle Bin");
+      const rootWithBin = root.addGroup(recycleBin);
+      render(<GroupTree {...baseProps(rootWithBin, { onReorderGroup, recycleBin })} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dropAt(groupRow("Personal"), dataTransfer, 1000);
+
+      expect(onReorderGroup).toHaveBeenCalledWith(work.id, recycleBin.id);
+    });
+
+    it("shows a reorder indicator on the hovered row's edge while dragging", () => {
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dragOverAt(groupRow("Personal"), dataTransfer, -1000);
+      expect(groupRow("Personal")).toHaveClass("reorder-before");
+
+      dragOverAt(groupRow("Personal"), dataTransfer, 1000);
+      expect(groupRow("Personal")).toHaveClass("reorder-after");
+      expect(groupRow("Personal")).not.toHaveClass("reorder-before");
+    });
+
+    it("doesn't clear a different row's reorder indicator when leaving a stale row", () => {
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dragOverAt(groupRow("Personal"), dataTransfer, -1000);
+      expect(groupRow("Personal")).toHaveClass("reorder-before");
+
+      dragLeaveGroup(groupRow("Work"), dataTransfer, null);
+
+      expect(groupRow("Personal")).toHaveClass("reorder-before");
+    });
+
+    it("clears the reorder indicator when leaving the row it's showing on", () => {
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dragOverAt(groupRow("Personal"), dataTransfer, -1000);
+      expect(groupRow("Personal")).toHaveClass("reorder-before");
+
+      dragLeaveGroup(groupRow("Personal"), dataTransfer, null);
+
+      expect(groupRow("Personal")).not.toHaveClass("reorder-before");
+    });
+
+    it("ignores a group drag-leave when no reorder indicator is showing", () => {
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dragLeaveGroup(groupRow("Personal"), dataTransfer, null);
+
+      expect(groupRow("Personal")).not.toHaveClass("reorder-before");
+      expect(groupRow("Personal")).not.toHaveClass("reorder-after");
+    });
+
+    it("dims the row being dragged and clears it on drag end", () => {
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer: groupTransfer("whatever") });
+      expect(groupRow("Work")).toHaveClass("dragging");
+
+      fireEvent.dragEnd(groupRow("Work"));
+      expect(groupRow("Work")).not.toHaveClass("dragging");
+    });
+
+    it("shows no indicator and does not reorder across different parents", () => {
+      const onReorderGroup = vi.fn();
+      const { root, nested } = buildTree();
+      render(<GroupTree {...baseProps(root, { onReorderGroup })} />);
+      const dataTransfer = groupTransfer(nested.id.toString());
+
+      fireEvent.dragStart(groupRow("Nested"), { dataTransfer });
+      dragOverAt(groupRow("Personal"), dataTransfer, -1000);
+      expect(groupRow("Personal")).not.toHaveClass("reorder-before");
+      expect(groupRow("Personal")).not.toHaveClass("reorder-after");
+
+      dropAt(groupRow("Personal"), dataTransfer, -1000);
+      expect(onReorderGroup).not.toHaveBeenCalled();
+    });
+
+    it("ignores a group drag-over before any drag has started", () => {
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+
+      dragOverAt(groupRow("Personal"), groupTransfer("whatever"), -1000);
+
+      expect(groupRow("Personal")).not.toHaveClass("reorder-before");
+    });
+
+    it("shows no indicator when a group is dragged over itself", () => {
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root)} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dragOverAt(groupRow("Work"), dataTransfer, -1000);
+
+      expect(groupRow("Work")).not.toHaveClass("reorder-before");
+      expect(groupRow("Work")).not.toHaveClass("reorder-after");
+    });
+
+    it("ignores dropping a group onto itself", () => {
+      const onReorderGroup = vi.fn();
+      const { root, work } = buildTree();
+      render(<GroupTree {...baseProps(root, { onReorderGroup })} />);
+      const dataTransfer = groupTransfer(work.id.toString());
+
+      fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+      dropAt(groupRow("Work"), dataTransfer, -1000);
+
+      expect(onReorderGroup).not.toHaveBeenCalled();
+    });
+
+    it("shows an error message when onReorderGroup rejects", async () => {
+      const onReorderGroup = vi.fn().mockRejectedValue(new Error("Reorder failed"));
+      const { root, personal } = buildTree();
+      render(<GroupTree {...baseProps(root, { onReorderGroup })} />);
+      const dataTransfer = groupTransfer(personal.id.toString());
+
+      fireEvent.dragStart(groupRow("Personal"), { dataTransfer });
+      dropAt(groupRow("Work"), dataTransfer, -1000);
+
+      expect(await screen.findByText("Reorder failed")).toBeInTheDocument();
     });
   });
 

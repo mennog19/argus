@@ -11,6 +11,7 @@ import { GroupDeleteMode } from "../../application/settings";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
+import { GROUP_DRAG_TYPE } from "../group-drag";
 import { GroupAvatar } from "../entry-icons/EntryAvatar";
 import { IconPicker } from "../entry-icons/IconPicker";
 import { ChevronIcon, EditIcon, MoreIcon, PaletteIcon, PlusIcon, TrashIcon } from "../icons";
@@ -31,6 +32,30 @@ interface GroupTreeProps {
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */
   entryDragActive: boolean;
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
+  /** Reorders `groupId` to sit before `beforeId` among its siblings, or at the end when `beforeId` is undefined. */
+  onReorderGroup: (groupId: GroupId, beforeId: GroupId | undefined) => Promise<void>;
+}
+
+/** Which edge of a row a dragged sibling group is currently hovering over. */
+interface ReorderTarget {
+  groupId: string;
+  edge: "before" | "after";
+}
+
+/**
+ * Resolves the `beforeId` to pass to `onReorderGroup` for a drop on
+ * `hoveredId`'s given edge, within `siblings` — the full ordered list the
+ * hovered group belongs to (root level uses the underlying, unfiltered
+ * group list so dropping after the last visible group still lands before
+ * a trailing recycle bin rather than past it).
+ */
+function resolveBeforeId(
+  siblings: readonly Group[],
+  hoveredId: string,
+  edge: "before" | "after",
+): GroupId | undefined {
+  const index = siblings.findIndex((g) => g.id.toString() === hoveredId);
+  return edge === "before" ? siblings[index].id : siblings[index + 1]?.id;
 }
 
 /** Where a floating panel's trigger button sat, in viewport coordinates, when it was opened. */
@@ -84,6 +109,7 @@ export function GroupTree({
   groupDeleteMode,
   entryDragActive,
   onDropEntry,
+  onReorderGroup,
 }: GroupTreeProps) {
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
   const [floating, setFloating] = useState<Floating | undefined>(undefined);
@@ -94,6 +120,8 @@ export function GroupTree({
   const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined);
   const [flashId, setFlashId] = useState<string | undefined>(undefined);
   const [dropError, setDropError] = useState<string | undefined>(undefined);
+  const [draggingGroupId, setDraggingGroupId] = useState<string | undefined>(undefined);
+  const [reorderTarget, setReorderTarget] = useState<ReorderTarget | undefined>(undefined);
   const floatingRef = useRef<HTMLDivElement>(null);
 
   // Closes the open menu/popover on an outside click or Escape, but not on a
@@ -245,6 +273,9 @@ export function GroupTree({
   }
 
   async function handleDrop(event: DragEvent<HTMLDivElement>, group: Group) {
+    if (!event.dataTransfer.types.includes(ENTRY_DRAG_TYPE)) {
+      return;
+    }
     event.preventDefault();
     setDropTargetId(undefined);
     const entryId = event.dataTransfer.getData(ENTRY_DRAG_TYPE);
@@ -254,6 +285,77 @@ export function GroupTree({
       setFlashId(group.id.toString());
     } catch (cause) {
       setDropError(errorMessage(cause, "Couldn't move the entry."));
+    }
+  }
+
+  function handleGroupDragStart(event: DragEvent<HTMLDivElement>, group: Group) {
+    event.dataTransfer.setData(GROUP_DRAG_TYPE, group.id.toString());
+    event.dataTransfer.effectAllowed = "move";
+    setDraggingGroupId(group.id.toString());
+  }
+
+  function handleGroupDragEnd() {
+    setDraggingGroupId(undefined);
+    setReorderTarget(undefined);
+  }
+
+  function reorderEdgeFor(event: DragEvent<HTMLDivElement>): "before" | "after" {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+  }
+
+  /** Only shows a reorder indicator when the dragged group is one of `siblings` and isn't itself. */
+  function handleGroupDragOver(
+    event: DragEvent<HTMLDivElement>,
+    group: Group,
+    siblings: readonly Group[],
+  ) {
+    if (!event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
+      return;
+    }
+    const groupId = group.id.toString();
+    if (!draggingGroupId || draggingGroupId === groupId) {
+      return;
+    }
+    if (!siblings.some((g) => g.id.toString() === draggingGroupId)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setReorderTarget({ groupId, edge: reorderEdgeFor(event) });
+  }
+
+  function handleGroupDragLeave(event: DragEvent<HTMLDivElement>, groupId: string) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+    setReorderTarget((current) => (current?.groupId === groupId ? undefined : current));
+  }
+
+  async function handleGroupDrop(
+    event: DragEvent<HTMLDivElement>,
+    group: Group,
+    siblings: readonly Group[],
+  ) {
+    if (!event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
+      return;
+    }
+    event.preventDefault();
+    setReorderTarget(undefined);
+    const groupIdStr = group.id.toString();
+    const draggedIdStr = event.dataTransfer.getData(GROUP_DRAG_TYPE);
+    if (!draggedIdStr || draggedIdStr === groupIdStr) {
+      return;
+    }
+    if (!siblings.some((g) => g.id.toString() === draggedIdStr)) {
+      return;
+    }
+    const beforeId = resolveBeforeId(siblings, groupIdStr, reorderEdgeFor(event));
+    try {
+      await onReorderGroup(GroupId.fromString(draggedIdStr), beforeId);
+      setDropError(undefined);
+    } catch (cause) {
+      setDropError(errorMessage(cause, "Couldn't reorder the group."));
     }
   }
 
@@ -312,7 +414,7 @@ export function GroupTree({
     );
   }
 
-  function renderGroup(group: Group, depth: number) {
+  function renderGroup(group: Group, depth: number, siblings: readonly Group[]) {
     const idStr = group.id.toString();
     const isActive = selectedGroupId === idStr;
     const isCollapsed = collapsed.has(idStr);
@@ -368,12 +470,29 @@ export function GroupTree({
           <div
             className={`group-row${isActive ? " active" : ""}${
               dropTargetId === idStr ? " drop-target" : ""
-            }${flashId === idStr ? " drop-flash" : ""}`}
+            }${flashId === idStr ? " drop-flash" : ""}${
+              draggingGroupId === idStr ? " dragging" : ""
+            }${reorderTarget?.groupId === idStr ? ` reorder-${reorderTarget.edge}` : ""}`}
             style={{ paddingLeft: indent }}
-            onDragEnter={(event) => handleDragOver(event, idStr)}
-            onDragOver={(event) => handleDragOver(event, idStr)}
-            onDragLeave={(event) => handleDragLeave(event, idStr)}
-            onDrop={(event) => void handleDrop(event, group)}
+            draggable
+            onDragStart={(event) => handleGroupDragStart(event, group)}
+            onDragEnd={handleGroupDragEnd}
+            onDragEnter={(event) => {
+              handleDragOver(event, idStr);
+              handleGroupDragOver(event, group, siblings);
+            }}
+            onDragOver={(event) => {
+              handleDragOver(event, idStr);
+              handleGroupDragOver(event, group, siblings);
+            }}
+            onDragLeave={(event) => {
+              handleDragLeave(event, idStr);
+              handleGroupDragLeave(event, idStr);
+            }}
+            onDrop={(event) => {
+              void handleDrop(event, group);
+              void handleGroupDrop(event, group, siblings);
+            }}
             onAnimationEnd={() => setFlashId(undefined)}
           >
             {group.groups.length > 0 ? (
@@ -476,7 +595,7 @@ export function GroupTree({
           </div>
         )}
 
-        {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1))}
+        {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1, group.groups))}
       </div>
     );
   }
@@ -520,7 +639,7 @@ export function GroupTree({
         </div>
       )}
 
-      {visibleGroups.map((group) => renderGroup(group, 0))}
+      {visibleGroups.map((group) => renderGroup(group, 0, rootGroup.groups))}
 
       {recycleBin && (
         <>
