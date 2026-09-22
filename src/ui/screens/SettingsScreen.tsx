@@ -37,6 +37,7 @@ interface SettingsScreenProps {
   contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  onOpenMergeWizard: () => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
@@ -58,6 +59,7 @@ export function SettingsScreen({
   contentProtection,
   entryFieldVisibility,
   onChangeMasterPassword,
+  onOpenMergeWizard,
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
@@ -366,6 +368,15 @@ export function SettingsScreen({
                   />
                 </label>
               ))}
+            </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Merge</div>
+            <div className="detail-card padded">
+              <button type="button" className="btn-secondary" onClick={onOpenMergeWizard}>
+                Merge another vault in…
+              </button>
             </div>
           </section>
 

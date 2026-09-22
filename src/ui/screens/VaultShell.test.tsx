@@ -23,6 +23,7 @@ import {
 } from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
+import { VaultMergeSource } from "../../application/vault-merge-source";
 import { VaultShell } from "./VaultShell";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
@@ -35,6 +36,10 @@ function fakeUrlOpener(): UrlOpener {
 
 function fakeClipboardWriter(overrides: Partial<ClipboardWriter> = {}): ClipboardWriter {
   return { writeText: vi.fn(), ...overrides };
+}
+
+function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
+  return { pickAndOpen: vi.fn(), ...overrides };
 }
 
 function renderShell(
@@ -59,6 +64,7 @@ function renderShell(
     onContentProtectionChange?: (contentProtection: boolean) => void;
     entryFieldVisibility?: EntryFieldVisibility;
     onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
+    mergeSource?: VaultMergeSource;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
@@ -81,6 +87,7 @@ function renderShell(
   const onContentProtectionChange = overrides.onContentProtectionChange ?? vi.fn();
   const entryFieldVisibility = overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY;
   const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
+  const mergeSource = overrides.mergeSource ?? fakeMergeSource();
   render(
     <VaultShell
       vault={vault}
@@ -96,6 +103,7 @@ function renderShell(
       theme={theme}
       contentProtection={contentProtection}
       entryFieldVisibility={entryFieldVisibility}
+      mergeSource={mergeSource}
       onLock={onLock}
       onSave={onSave}
       onChangeMasterPassword={onChangeMasterPassword}
@@ -121,6 +129,7 @@ function renderShell(
     onThemeChange,
     onContentProtectionChange,
     onEntryFieldVisibilityChange,
+    mergeSource,
   };
 }
 
@@ -311,6 +320,7 @@ describe("VaultShell", () => {
         theme={DEFAULT_THEME}
         contentProtection={true}
         entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+        mergeSource={fakeMergeSource()}
         onGroupDeleteModeChange={vi.fn()}
         onAccentColorChange={vi.fn()}
         onThemeChange={vi.fn()}
@@ -876,6 +886,7 @@ describe("VaultShell", () => {
           theme={DEFAULT_THEME}
           contentProtection={true}
           entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+          mergeSource={fakeMergeSource()}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
           onThemeChange={vi.fn()}
@@ -912,6 +923,7 @@ describe("VaultShell", () => {
           theme={DEFAULT_THEME}
           contentProtection={true}
           entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+          mergeSource={fakeMergeSource()}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
           onThemeChange={vi.fn()}
@@ -1232,6 +1244,24 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
       expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-pw");
+    });
+
+    it("opens the merge wizard from the settings screen", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      expect(screen.getByRole("heading", { name: /merge another vault in/i })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(
+        screen.queryByRole("heading", { name: /merge another vault in/i }),
+      ).not.toBeInTheDocument();
     });
   });
 

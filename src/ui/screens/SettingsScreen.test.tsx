@@ -28,10 +28,12 @@ function renderSettings(
     contentProtection?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
     onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
+    onOpenMergeWizard?: () => void;
   } = {},
 ) {
   const onChangeMasterPassword =
     overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
+  const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
@@ -52,6 +54,7 @@ function renderSettings(
       contentProtection={overrides.contentProtection ?? true}
       entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
       onChangeMasterPassword={onChangeMasterPassword}
+      onOpenMergeWizard={onOpenMergeWizard}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
@@ -63,6 +66,7 @@ function renderSettings(
   );
   return {
     onChangeMasterPassword,
+    onOpenMergeWizard,
     onClipboardClearSecondsChange,
     onAutoLockChange,
     onGroupDeleteModeChange,
@@ -287,6 +291,16 @@ describe("SettingsScreen", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
     expect(onContentProtectionChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("merge", () => {
+    it("reports a request to open the merge wizard", () => {
+      const { onOpenMergeWizard } = renderSettings();
+
+      fireEvent.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      expect(onOpenMergeWizard).toHaveBeenCalled();
+    });
   });
 
   describe("master password", () => {

@@ -37,6 +37,7 @@ import {
   withTheme,
 } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
+import { VaultMergeSource } from "../application/vault-merge-source";
 import { accentColorCssVars, accentColorHue } from "./accent-color";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { LockedScreen } from "./screens/LockedScreen";
@@ -51,6 +52,7 @@ interface AppProps {
   clipboardWriter: ClipboardWriter;
   windowEvents: WindowEvents;
   windowProtection: WindowProtection;
+  mergeSource: VaultMergeSource;
 }
 
 const IDLE_CHECK_INTERVAL_MS = 10_000;
@@ -75,6 +77,7 @@ function App({
   clipboardWriter,
   windowEvents,
   windowProtection,
+  mergeSource,
 }: AppProps) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
@@ -382,6 +385,7 @@ function App({
         theme={settings.theme ?? DEFAULT_THEME}
         contentProtection={settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION}
         entryFieldVisibility={settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
+        mergeSource={mergeSource}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onChangeMasterPassword={handleChangeMasterPassword(screen.vault, screen.filePath)}

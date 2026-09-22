@@ -1981,6 +1981,98 @@ input[type="radio"]:checked::after {
   gap: 10px;
 }
 
+.modal-card-wide {
+  max-width: 720px;
+  width: 100%;
+  max-height: 85vh;
+}
+
+.merge-wizard {
+  overflow: hidden;
+}
+
+.merge-wizard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.merge-reveal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-dim);
+}
+
+.merge-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.merge-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-dimmer);
+}
+
+.merge-entry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  font-size: 13.5px;
+}
+
+.merge-entry-title {
+  font-weight: 600;
+}
+
+.merge-entry-username {
+  color: var(--color-text-dim);
+  margin-left: auto;
+}
+
+.merge-conflict-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.merge-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.merge-diff-table td {
+  padding: 6px 8px;
+  border-top: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.merge-diff-table td:first-child {
+  color: var(--color-text-dimmer);
+  white-space: nowrap;
+  width: 110px;
+}
+
+.merge-summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-dim);
+}
+
 .health-summary {
   margin: 0 0 24px;
   font-size: 13.5px;
