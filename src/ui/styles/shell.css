@@ -738,7 +738,8 @@ input[type="radio"]:checked::after {
   display: none;
 }
 
-.group-row.drop-target {
+.group-row.drop-target,
+.group-row.reorder-into {
   background: color-mix(in srgb, var(--color-accent) 16%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-accent) 75%, transparent);
 }
@@ -764,7 +765,8 @@ input[type="radio"]:checked::after {
   }
 }
 
-/* Reordering groups by dragging a row among its siblings. */
+/* Reordering groups by dragging a row among its siblings (top/bottom edge),
+   or reparenting it into another group (middle — see .reorder-into above). */
 .group-row.dragging {
   opacity: 0.4;
 }

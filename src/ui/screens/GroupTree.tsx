@@ -34,12 +34,17 @@ interface GroupTreeProps {
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
   /** Reorders `groupId` to sit before `beforeId` among its siblings, or at the end when `beforeId` is undefined. */
   onReorderGroup: (groupId: GroupId, beforeId: GroupId | undefined) => Promise<void>;
+  /** Reparents `groupId` to become the last child of `targetGroupId`. */
+  onMoveGroupToParent: (groupId: GroupId, targetGroupId: GroupId) => Promise<void>;
 }
 
-/** Which edge of a row a dragged sibling group is currently hovering over. */
+/** Which part of a row a dragged group is currently hovering over. */
+type DropZone = "before" | "after" | "into";
+
+/** Which row a dragged group is currently hovering over, and where on it. */
 interface ReorderTarget {
   groupId: string;
-  edge: "before" | "after";
+  edge: DropZone;
 }
 
 /**
@@ -56,6 +61,17 @@ function resolveBeforeId(
 ): GroupId | undefined {
   const index = siblings.findIndex((g) => g.id.toString() === hoveredId);
   return edge === "before" ? siblings[index].id : siblings[index + 1]?.id;
+}
+
+/** Every group id in `group`'s own subtree, including itself — used to block dropping a group into itself or a descendant. */
+function collectSubtreeIds(group: Group): ReadonlySet<string> {
+  const ids = new Set<string>([group.id.toString()]);
+  for (const child of group.groups) {
+    for (const id of collectSubtreeIds(child)) {
+      ids.add(id);
+    }
+  }
+  return ids;
 }
 
 /** Where a floating panel's trigger button sat, in viewport coordinates, when it was opened. */
@@ -77,8 +93,7 @@ type Editor =
  * for either to fit. Only one is ever open at a time.
  */
 type Floating =
-  | { kind: "menu"; group: Group; anchor: Anchor }
-  | { kind: "icon"; group: Group; anchor: Anchor };
+  { kind: "menu"; group: Group; anchor: Anchor } | { kind: "icon"; group: Group; anchor: Anchor };
 
 const INDENT_PX = 14;
 const ROW_INSET_PX = 4;
@@ -110,6 +125,7 @@ export function GroupTree({
   entryDragActive,
   onDropEntry,
   onReorderGroup,
+  onMoveGroupToParent,
 }: GroupTreeProps) {
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
   const [floating, setFloating] = useState<Floating | undefined>(undefined);
@@ -121,6 +137,7 @@ export function GroupTree({
   const [flashId, setFlashId] = useState<string | undefined>(undefined);
   const [dropError, setDropError] = useState<string | undefined>(undefined);
   const [draggingGroupId, setDraggingGroupId] = useState<string | undefined>(undefined);
+  const [draggingSubtreeIds, setDraggingSubtreeIds] = useState<ReadonlySet<string>>(new Set());
   const [reorderTarget, setReorderTarget] = useState<ReorderTarget | undefined>(undefined);
   const floatingRef = useRef<HTMLDivElement>(null);
 
@@ -292,19 +309,33 @@ export function GroupTree({
     event.dataTransfer.setData(GROUP_DRAG_TYPE, group.id.toString());
     event.dataTransfer.effectAllowed = "move";
     setDraggingGroupId(group.id.toString());
+    setDraggingSubtreeIds(collectSubtreeIds(group));
   }
 
   function handleGroupDragEnd() {
     setDraggingGroupId(undefined);
+    setDraggingSubtreeIds(new Set());
     setReorderTarget(undefined);
   }
 
-  function reorderEdgeFor(event: DragEvent<HTMLDivElement>): "before" | "after" {
+  /** The top/bottom quarters of a row reorder among siblings; the middle reparents into it. */
+  function dropZoneFor(event: DragEvent<HTMLDivElement>): DropZone {
     const rect = event.currentTarget.getBoundingClientRect();
-    return event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    const relativeY = event.clientY - rect.top;
+    if (relativeY < rect.height * 0.25) {
+      return "before";
+    }
+    if (relativeY > rect.height * 0.75) {
+      return "after";
+    }
+    return "into";
   }
 
-  /** Only shows a reorder indicator when the dragged group is one of `siblings` and isn't itself. */
+  /**
+   * Shows a reorder indicator when the dragged group is one of `siblings` and
+   * isn't itself, or a reparent indicator for any other group that isn't the
+   * dragged group's own subtree (which would create a cycle).
+   */
   function handleGroupDragOver(
     event: DragEvent<HTMLDivElement>,
     group: Group,
@@ -317,12 +348,22 @@ export function GroupTree({
     if (!draggingGroupId || draggingGroupId === groupId) {
       return;
     }
+    const zone = dropZoneFor(event);
+    if (zone === "into") {
+      if (draggingSubtreeIds.has(groupId)) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      setReorderTarget({ groupId, edge: "into" });
+      return;
+    }
     if (!siblings.some((g) => g.id.toString() === draggingGroupId)) {
       return;
     }
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    setReorderTarget({ groupId, edge: reorderEdgeFor(event) });
+    setReorderTarget({ groupId, edge: zone });
   }
 
   function handleGroupDragLeave(event: DragEvent<HTMLDivElement>, groupId: string) {
@@ -347,10 +388,24 @@ export function GroupTree({
     if (!draggedIdStr || draggedIdStr === groupIdStr) {
       return;
     }
+    const zone = dropZoneFor(event);
+    if (zone === "into") {
+      if (draggingSubtreeIds.has(groupIdStr)) {
+        return;
+      }
+      try {
+        await onMoveGroupToParent(GroupId.fromString(draggedIdStr), group.id);
+        setDropError(undefined);
+        setFlashId(groupIdStr);
+      } catch (cause) {
+        setDropError(errorMessage(cause, "Couldn't move the group."));
+      }
+      return;
+    }
     if (!siblings.some((g) => g.id.toString() === draggedIdStr)) {
       return;
     }
-    const beforeId = resolveBeforeId(siblings, groupIdStr, reorderEdgeFor(event));
+    const beforeId = resolveBeforeId(siblings, groupIdStr, zone);
     try {
       await onReorderGroup(GroupId.fromString(draggedIdStr), beforeId);
       setDropError(undefined);
@@ -546,11 +601,12 @@ export function GroupTree({
           )}
 
         {menu && (
-          <div ref={floatingRef} className="group-row-menu" style={floatingStyle(menu.anchor, ROW_MENU_WIDTH)}>
-            <button
-              type="button"
-              onClick={(event) => openIconPopover(group, event)}
-            >
+          <div
+            ref={floatingRef}
+            className="group-row-menu"
+            style={floatingStyle(menu.anchor, ROW_MENU_WIDTH)}
+          >
+            <button type="button" onClick={(event) => openIconPopover(group, event)}>
               <PaletteIcon size={14} />
               Change icon
             </button>

@@ -302,6 +302,29 @@ export class Vault {
     return this.removeGroup(groupId).addGroup(targetGroupId, group);
   }
 
+  /**
+   * Reparents `groupId` to become the last child of `targetGroupId` (drag-and-drop
+   * "drop into a folder"). Returns this vault unchanged when it's already a direct
+   * child of that group.
+   */
+  moveGroupToParent(groupId: GroupId, targetGroupId: GroupId): Vault {
+    const group = this.findGroup(groupId);
+    if (!group) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    const target = this.findGroup(targetGroupId);
+    if (!target) {
+      throw new Error(`Group not found: ${targetGroupId.toString()}`);
+    }
+    if (findGroupInTree(group, targetGroupId)) {
+      throw new Error("Cannot move a group into itself or one of its own subgroups");
+    }
+    if (target.groups.some((child) => child.id.equals(groupId))) {
+      return this;
+    }
+    return this.removeGroup(groupId).addGroup(targetGroupId, group);
+  }
+
   /** Permanently deletes everything currently in the recycle bin, leaving it empty. */
   emptyRecycleBin(): Vault {
     if (!this.recycleBinId) {

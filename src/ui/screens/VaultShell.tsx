@@ -195,6 +195,13 @@ export function VaultShell({
     await persist(vault.reorderGroup(groupId, beforeId));
   }
 
+  async function handleMoveGroupToParent(groupId: GroupId, targetGroupId: GroupId) {
+    const next = vault.moveGroupToParent(groupId, targetGroupId);
+    if (next !== vault) {
+      await persist(next);
+    }
+  }
+
   async function handleDeleteGroup(groupId: GroupId) {
     await persist(
       groupDeleteMode === "keepContents"
@@ -351,6 +358,7 @@ export function VaultShell({
             entryDragActive={draggingEntryId !== undefined}
             onDropEntry={handleDropEntry}
             onReorderGroup={handleReorderGroup}
+            onMoveGroupToParent={handleMoveGroupToParent}
           />
 
           {isRecycleBinSelected && recycleBin ? (

@@ -861,6 +861,61 @@ describe("VaultShell", () => {
       expect(savedVault.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
     });
 
+    it("reparents a group by dragging it onto the middle of another group's row", async () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work);
+      vault = vault.addGroup(vault.rootGroup.id, personal);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      const dataTransfer = {
+        types: [GROUP_DRAG_TYPE],
+        dropEffect: "none",
+        effectAllowed: "none",
+        setData: () => {},
+        getData: (type: string) => (type === GROUP_DRAG_TYPE ? personal.id.toString() : ""),
+      };
+      const personalRow = rowButton("Personal").closest(".group-row") as HTMLElement;
+      const workRow = rowButton("Work").closest(".group-row") as HTMLElement;
+      fireEvent.dragStart(personalRow, { dataTransfer });
+      const dropEvent = createEvent.drop(workRow, { dataTransfer });
+      Object.defineProperty(dropEvent, "clientY", { value: 0 });
+      fireEvent(workRow, dropEvent);
+
+      const savedVault: Vault = onSave.mock.calls[0][0];
+      expect(savedVault.rootGroup.groups.map((g) => g.name)).toEqual(["Work"]);
+      expect(savedVault.findGroup(work.id)?.groups.map((g) => g.name)).toEqual(["Personal"]);
+    });
+
+    it("does not save when dropping a group onto the parent it's already directly inside", async () => {
+      const work = Group.create("Work");
+      const nested = Group.create("Nested");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work.addGroup(nested));
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      const dataTransfer = {
+        types: [GROUP_DRAG_TYPE],
+        dropEffect: "none",
+        effectAllowed: "none",
+        setData: () => {},
+        getData: (type: string) => (type === GROUP_DRAG_TYPE ? nested.id.toString() : ""),
+      };
+      const nestedRow = rowButton("Nested").closest(".group-row") as HTMLElement;
+      const workRow = rowButton("Work").closest(".group-row") as HTMLElement;
+      fireEvent.dragStart(nestedRow, { dataTransfer });
+      const dropEvent = createEvent.drop(workRow, { dataTransfer });
+      Object.defineProperty(dropEvent, "clientY", { value: 0 });
+      fireEvent(workRow, dropEvent);
+
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
     it("deleting a group other than the currently selected one leaves the selection untouched", async () => {
       const user = userEvent.setup();
       const work = Group.create("Work");

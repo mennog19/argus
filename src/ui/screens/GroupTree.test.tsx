@@ -44,6 +44,7 @@ function baseProps(root: Group, overrides: Partial<Parameters<typeof GroupTree>[
     entryDragActive: false,
     onDropEntry: vi.fn().mockResolvedValue(undefined),
     onReorderGroup: vi.fn().mockResolvedValue(undefined),
+    onMoveGroupToParent: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -386,9 +387,10 @@ describe("GroupTree", () => {
       await openRowMenu(user, work.name);
       await openRowMenu(user, personal.name);
 
-      expect(
-        screen.getByRole("button", { name: `More actions for ${work.name}` }),
-      ).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByRole("button", { name: `More actions for ${work.name}` })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
       expect(
         screen.getByRole("button", { name: `More actions for ${personal.name}` }),
       ).toHaveAttribute("aria-expanded", "true");
@@ -652,7 +654,11 @@ describe("GroupTree", () => {
       fireEvent(row, event);
     }
 
-    function dragLeaveGroup(row: HTMLElement, dataTransfer: unknown, relatedTarget: Element | null) {
+    function dragLeaveGroup(
+      row: HTMLElement,
+      dataTransfer: unknown,
+      relatedTarget: Element | null,
+    ) {
       const event = createEvent.dragLeave(row, { dataTransfer });
       Object.defineProperty(event, "relatedTarget", { value: relatedTarget });
       fireEvent(row, event);
@@ -819,6 +825,61 @@ describe("GroupTree", () => {
       dropAt(groupRow("Work"), dataTransfer, -1000);
 
       expect(await screen.findByText("Reorder failed")).toBeInTheDocument();
+    });
+
+    describe("dragging onto the middle of a row to reparent", () => {
+      it("shows a reparent indicator, not a reorder edge, over the middle of another row", () => {
+        const { root, personal } = buildTree();
+        render(<GroupTree {...baseProps(root)} />);
+        const dataTransfer = groupTransfer(personal.id.toString());
+
+        fireEvent.dragStart(groupRow("Personal"), { dataTransfer });
+        dragOverAt(groupRow("Work"), dataTransfer, 0);
+
+        expect(groupRow("Work")).toHaveClass("reorder-into");
+        expect(groupRow("Work")).not.toHaveClass("reorder-before");
+        expect(groupRow("Work")).not.toHaveClass("reorder-after");
+      });
+
+      it("moves the dragged group into the hovered group and flashes it, even across different parents", async () => {
+        const onMoveGroupToParent = vi.fn().mockResolvedValue(undefined);
+        const { root, nested, personal } = buildTree();
+        render(<GroupTree {...baseProps(root, { onMoveGroupToParent })} />);
+        const dataTransfer = groupTransfer(nested.id.toString());
+        const row = groupRow("Personal");
+
+        fireEvent.dragStart(groupRow("Nested"), { dataTransfer });
+        dropAt(row, dataTransfer, 0);
+
+        expect(onMoveGroupToParent).toHaveBeenCalledWith(nested.id, personal.id);
+        await vi.waitFor(() => expect(row).toHaveClass("drop-flash"));
+      });
+
+      it("blocks reparenting a group into its own descendant", () => {
+        const onMoveGroupToParent = vi.fn();
+        const { root, work } = buildTree();
+        render(<GroupTree {...baseProps(root, { onMoveGroupToParent })} />);
+        const dataTransfer = groupTransfer(work.id.toString());
+
+        fireEvent.dragStart(groupRow("Work"), { dataTransfer });
+        dragOverAt(groupRow("Nested"), dataTransfer, 0);
+        expect(groupRow("Nested")).not.toHaveClass("reorder-into");
+
+        dropAt(groupRow("Nested"), dataTransfer, 0);
+        expect(onMoveGroupToParent).not.toHaveBeenCalled();
+      });
+
+      it("shows an error message when onMoveGroupToParent rejects", async () => {
+        const onMoveGroupToParent = vi.fn().mockRejectedValue(new Error("Move failed"));
+        const { root, personal } = buildTree();
+        render(<GroupTree {...baseProps(root, { onMoveGroupToParent })} />);
+        const dataTransfer = groupTransfer(personal.id.toString());
+
+        fireEvent.dragStart(groupRow("Personal"), { dataTransfer });
+        dropAt(groupRow("Work"), dataTransfer, 0);
+
+        expect(await screen.findByText("Move failed")).toBeInTheDocument();
+      });
     });
   });
 
