@@ -12,6 +12,7 @@ function renderSettings(
   groupDeleteMode: GroupDeleteMode = "deleteContents",
   filePath = "C:/vaults/personal.kdbx",
   fileInfo: VaultFileInfo | undefined = undefined,
+  entryCount = 0,
 ) {
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
@@ -20,6 +21,7 @@ function renderSettings(
     <SettingsScreen
       filePath={filePath}
       fileInfo={fileInfo}
+      entryCount={entryCount}
       clipboardClearSeconds={clipboardClearSeconds}
       autoLock={autoLock}
       groupDeleteMode={groupDeleteMode}
@@ -37,6 +39,20 @@ describe("SettingsScreen", () => {
 
     expect(screen.getByText("personal.kdbx")).toBeInTheDocument();
     expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("shows the number of stored passwords", () => {
+    renderSettings(
+      20,
+      DEFAULT_AUTO_LOCK,
+      "deleteContents",
+      "C:/vaults/personal.kdbx",
+      undefined,
+      7,
+    );
+
+    expect(screen.getByText("Passwords")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
   });
 
   it("shows the vault's size and last-saved time once file info loads", () => {

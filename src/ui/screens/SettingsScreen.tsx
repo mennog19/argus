@@ -5,6 +5,7 @@ import { basename, formatFileSize, formatRelativeTime } from "../format";
 interface SettingsScreenProps {
   filePath: string;
   fileInfo: VaultFileInfo | undefined;
+  entryCount: number;
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
   groupDeleteMode: GroupDeleteMode;
@@ -16,6 +17,7 @@ interface SettingsScreenProps {
 export function SettingsScreen({
   filePath,
   fileInfo,
+  entryCount,
   clipboardClearSeconds,
   autoLock,
   groupDeleteMode,
@@ -39,6 +41,10 @@ export function SettingsScreen({
               <div className="detail-field-row">
                 <span className="detail-field-row-label">File</span>
                 <span className="detail-field-value">{basename(filePath)}</span>
+              </div>
+              <div className="detail-field-row">
+                <span className="detail-field-row-label">Passwords</span>
+                <span className="detail-field-value">{entryCount}</span>
               </div>
               <div className="detail-field-row">
                 <span className="detail-field-row-label">Size</span>

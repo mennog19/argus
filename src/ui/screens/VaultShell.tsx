@@ -274,6 +274,7 @@ export function VaultShell({
         <SettingsScreen
           filePath={filePath}
           fileInfo={fileInfo}
+          entryCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
           clipboardClearSeconds={clipboardClearSeconds}
           autoLock={autoLock}
           groupDeleteMode={groupDeleteMode}

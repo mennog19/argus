@@ -1029,6 +1029,26 @@ describe("VaultShell", () => {
       expect(screen.getByRole("heading", { name: "Weak Site" })).toBeInTheDocument();
     });
   });
+
+  describe("settings", () => {
+    it("shows the number of stored passwords, excluding entries in the recycle bin", async () => {
+      const user = userEvent.setup();
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "GitHub" }));
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Bank" }));
+      const deleted = Entry.create({ title: "Old" });
+      vault = vault.addEntry(vault.rootGroup.id, deleted);
+      vault = vault.deleteEntry(deleted.id);
+
+      renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+
+      expect(screen.getByText("Passwords")).toBeInTheDocument();
+      expect(screen.getByText("2")).toBeInTheDocument();
+    });
+  });
+
   describe("dragging an entry onto a group", () => {
     function buildVault() {
       const entry = Entry.create({ title: "Bank" });
