@@ -1,5 +1,15 @@
-import { useRef, useState } from "react";
-import { Entry, EntryId, Group, GroupId, Icon, PasswordPolicyOptions, Vault } from "../../domain";
+import { useMemo, useRef, useState } from "react";
+import {
+  Entry,
+  EntryId,
+  Group,
+  GroupId,
+  Icon,
+  PasswordPolicyOptions,
+  TOTP_FIELD_KEYS,
+  totpConfigFromCustomFields,
+  Vault,
+} from "../../domain";
 import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ClipboardWriter } from "../../application/clipboard";
@@ -22,6 +32,8 @@ import {
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
+import { formatTotpCode } from "../format";
+import { useTotpCode } from "../use-totp-code";
 import {
   collectAllEntries,
   entriesOf,
@@ -444,7 +456,7 @@ interface EntryDetailProps {
   onDelete: () => Promise<void>;
 }
 
-type CopiedField = "username" | "password" | undefined;
+type CopiedField = "username" | "password" | "totp" | undefined;
 
 function EntryDetail({
   entryWithGroup,
@@ -457,6 +469,14 @@ function EntryDetail({
   onDelete,
 }: EntryDetailProps) {
   const { entry, group } = entryWithGroup;
+  const totpConfig = useMemo(() => totpConfigFromCustomFields(entry.customFields), [entry]);
+  const totpCode = useTotpCode(totpConfig);
+  // The raw TOTP fields have their own card above; only hide them from the
+  // generic list once they've actually been parsed into a usable config, so
+  // a malformed field is still visible somewhere rather than disappearing.
+  const otherCustomFields = totpConfig
+    ? entry.customFields.values.filter((field) => !TOTP_FIELD_KEYS.has(field.key))
+    : entry.customFields.values;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -465,7 +485,7 @@ function EntryDetail({
   const [clearingToken, setClearingToken] = useState(0);
   const copyToken = useRef(0);
 
-  async function handleCopy(value: string, field: "username" | "password") {
+  async function handleCopy(value: string, field: "username" | "password" | "totp") {
     copyToken.current += 1;
     const thisToken = copyToken.current;
     await clipboardWriter.writeText(value);
@@ -608,6 +628,41 @@ function EntryDetail({
           </div>
         </div>
 
+        {totpConfig && (
+          <div className="detail-card">
+            <div className="detail-field-row">
+              <div>
+                <div className="field-label">Authenticator code</div>
+                <div className="detail-field-value totp-code-value">
+                  {totpCode ? formatTotpCode(totpCode.value) : "···· ··"}
+                </div>
+              </div>
+              <div className="detail-field-actions">
+                {copiedField === "totp" && <span className="copied-label">Copied</span>}
+                <button
+                  type="button"
+                  className="icon-button-small"
+                  aria-label="Copy authenticator code"
+                  disabled={!totpCode}
+                  onClick={() => totpCode && void handleCopy(totpCode.value, "totp")}
+                >
+                  <CopyIcon size={17} strokeWidth={2.25} />
+                </button>
+              </div>
+              <div className="totp-progress-bar" aria-hidden="true">
+                <div
+                  className="totp-progress-bar-fill"
+                  style={{
+                    width: totpCode
+                      ? `${(totpCode.secondsRemaining / totpConfig.period) * 100}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="detail-card padded">
           <div className="detail-meta-row">
             <span>Group</span>
@@ -635,10 +690,10 @@ function EntryDetail({
           </div>
         )}
 
-        {entry.customFields.values.length > 0 && (
+        {otherCustomFields.length > 0 && (
           <div className="detail-card padded">
             <div className="field-label">Custom fields</div>
-            {entry.customFields.values.map((field) => (
+            {otherCustomFields.map((field) => (
               <div className="detail-meta-row" key={field.key}>
                 <span>{field.key}</span>
                 <span>{field.isProtected ? "••••••••" : field.value}</span>

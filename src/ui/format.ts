@@ -38,3 +38,8 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 }
+
+/** Groups a TOTP code into 3-digit clusters for readability, e.g. "123 456". */
+export function formatTotpCode(code: string): string {
+  return code.match(/.{1,3}/g)!.join(" ");
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, formatFileSize, formatRelativeTime } from "./format";
+import { basename, formatFileSize, formatRelativeTime, formatTotpCode } from "./format";
 
 describe("basename", () => {
   it("returns the last segment of a forward-slash path", () => {
@@ -71,5 +71,15 @@ describe("formatRelativeTime", () => {
   it("defaults `now` to the current time", () => {
     const iso = new Date().toISOString();
     expect(formatRelativeTime(iso)).toBe("just now");
+  });
+});
+
+describe("formatTotpCode", () => {
+  it("groups a 6-digit code into two triplets", () => {
+    expect(formatTotpCode("123456")).toBe("123 456");
+  });
+
+  it("groups an 8-digit code with a trailing short group", () => {
+    expect(formatTotpCode("12345678")).toBe("123 456 78");
   });
 });

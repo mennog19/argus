@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -1200,6 +1200,138 @@ describe("VaultShell", () => {
 
       await vi.waitFor(() => expect(groupRow("Work")).toHaveClass("drop-flash"));
       expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("TOTP", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.setSystemTime(new Date(40 * 1000));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // The Web Crypto HMAC chain resolves over several real event-loop turns,
+    // not just one microtask, so flush a handful of turns to let it settle.
+    async function flushCrypto(): Promise<void> {
+      for (let i = 0; i < 10; i++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0);
+        });
+      }
+    }
+
+    it("does not show an authenticator code card for an entry without TOTP data", async () => {
+      const entry = Entry.create({ title: "No TOTP" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+      fireEvent.click(screen.getByText("No TOTP"));
+
+      expect(screen.queryByText("Authenticator code")).not.toBeInTheDocument();
+    });
+
+    it("shows a live code for an entry with a modern otp field", async () => {
+      const entry = Entry.create({
+        title: "GitHub",
+        customFields: new CustomFields([
+          new CustomField(
+            "otp",
+            "otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP&digits=6&period=30",
+            true,
+          ),
+        ]),
+      });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+      fireEvent.click(screen.getByText("GitHub"));
+      await flushCrypto();
+
+      expect(screen.getByText("Authenticator code")).toBeInTheDocument();
+      const value = screen.getByText(/^\d{3} \d{3}$/);
+      expect(value).toBeInTheDocument();
+    });
+
+    it("shows a live code for an entry using the classic TOTP Seed/Settings fields", async () => {
+      const entry = Entry.create({
+        title: "Legacy",
+        customFields: new CustomFields([
+          new CustomField("TOTP Seed", "JBSWY3DPEHPK3PXP", true),
+          new CustomField("TOTP Settings", "30;6"),
+        ]),
+      });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+      fireEvent.click(screen.getByText("Legacy"));
+      await flushCrypto();
+
+      expect(screen.getByText(/^\d{3} \d{3}$/)).toBeInTheDocument();
+    });
+
+    it("hides the raw TOTP fields from the generic custom-fields list once parsed", async () => {
+      const entry = Entry.create({
+        title: "GitHub",
+        customFields: new CustomFields([
+          new CustomField("otp", "otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP", true),
+          new CustomField("PIN", "1234"),
+        ]),
+      });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+      fireEvent.click(screen.getByText("GitHub"));
+      await flushCrypto();
+
+      expect(screen.getByText("Custom fields")).toBeInTheDocument();
+      expect(screen.queryByText("otp")).not.toBeInTheDocument();
+      expect(screen.getByText("PIN")).toBeInTheDocument();
+    });
+
+    it("still lists an unparseable otp field in the generic custom-fields card", async () => {
+      const entry = Entry.create({
+        title: "Broken",
+        customFields: new CustomFields([new CustomField("otp", "not a uri", true)]),
+      });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault);
+      fireEvent.click(screen.getByText("Broken"));
+
+      expect(screen.queryByText("Authenticator code")).not.toBeInTheDocument();
+      expect(screen.getByText("otp")).toBeInTheDocument();
+    });
+
+    it("copies the current code and shows a transient copied label", async () => {
+      const entry = Entry.create({
+        title: "GitHub",
+        customFields: new CustomFields([
+          new CustomField("otp", "otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP", true),
+        ]),
+      });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      const writeText = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }) });
+      fireEvent.click(screen.getByText("GitHub"));
+      await flushCrypto();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy authenticator code" }));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^\d{6}$/));
+      expect(screen.getByText("Copied")).toBeInTheDocument();
     });
   });
 });
