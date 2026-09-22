@@ -41,6 +41,7 @@ function renderShell(
   vault: Vault,
   overrides: {
     onSave?: (vault: Vault) => Promise<void>;
+    onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
     onLock?: () => void;
     generatorPolicy?: PasswordPolicyOptions;
     onGeneratorPolicyChange?: (policy: PasswordPolicyOptions) => void;
@@ -61,6 +62,8 @@ function renderShell(
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
+  const onChangeMasterPassword =
+    overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
   const onLock = overrides.onLock ?? vi.fn();
   const generatorPolicy = overrides.generatorPolicy ?? {};
   const onGeneratorPolicyChange = overrides.onGeneratorPolicyChange ?? vi.fn();
@@ -95,6 +98,7 @@ function renderShell(
       entryFieldVisibility={entryFieldVisibility}
       onLock={onLock}
       onSave={onSave}
+      onChangeMasterPassword={onChangeMasterPassword}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
@@ -107,6 +111,7 @@ function renderShell(
   );
   return {
     onSave,
+    onChangeMasterPassword,
     onLock,
     onGeneratorPolicyChange,
     clipboardWriter,
@@ -294,6 +299,7 @@ describe("VaultShell", () => {
         generatorPolicy={{}}
         onLock={vi.fn()}
         onSave={vi.fn()}
+        onChangeMasterPassword={vi.fn()}
         onGeneratorPolicyChange={vi.fn()}
         onClipboardClearSecondsChange={vi.fn()}
         onAutoLockChange={vi.fn()}
@@ -858,6 +864,7 @@ describe("VaultShell", () => {
           generatorPolicy={{}}
           onLock={vi.fn()}
           onSave={vi.fn()}
+          onChangeMasterPassword={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
           onAutoLockChange={vi.fn()}
@@ -893,6 +900,7 @@ describe("VaultShell", () => {
           generatorPolicy={{}}
           onLock={vi.fn()}
           onSave={vi.fn()}
+          onChangeMasterPassword={vi.fn()}
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
           onAutoLockChange={vi.fn()}
@@ -1208,6 +1216,21 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
       expect(onContentProtectionChange).toHaveBeenCalledWith(false);
+    });
+
+    it("submits a master password change made in the settings screen", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      const { onChangeMasterPassword } = renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.type(screen.getByLabelText("Current password"), "old-pw");
+      await user.type(screen.getByLabelText("New password"), "new-pw");
+      await user.type(screen.getByLabelText("Confirm new password"), "new-pw");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-pw");
     });
   });
 

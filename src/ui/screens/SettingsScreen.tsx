@@ -10,6 +10,7 @@ import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
 import { ChevronIcon } from "../icons";
+import { ChangeMasterPasswordCard } from "./ChangeMasterPasswordCard";
 
 const ENTRY_FIELD_TOGGLES: ReadonlyArray<{
   key: keyof EntryFieldVisibility;
@@ -35,6 +36,7 @@ interface SettingsScreenProps {
   theme: Theme;
   contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
+  onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
@@ -55,6 +57,7 @@ export function SettingsScreen({
   theme,
   contentProtection,
   entryFieldVisibility,
+  onChangeMasterPassword,
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
@@ -116,6 +119,11 @@ export function SettingsScreen({
                 </span>
               </div>
             </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Master password</div>
+            <ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />
           </section>
 
           <section className="detail-section">

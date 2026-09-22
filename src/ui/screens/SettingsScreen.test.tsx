@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   AccentColor,
   AutoLockSettings,
@@ -26,8 +27,11 @@ function renderSettings(
     theme?: Theme;
     contentProtection?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
+    onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
   } = {},
 ) {
+  const onChangeMasterPassword =
+    overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
@@ -47,6 +51,7 @@ function renderSettings(
       theme={overrides.theme ?? "dark"}
       contentProtection={overrides.contentProtection ?? true}
       entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
+      onChangeMasterPassword={onChangeMasterPassword}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
@@ -57,6 +62,7 @@ function renderSettings(
     />,
   );
   return {
+    onChangeMasterPassword,
     onClipboardClearSecondsChange,
     onAutoLockChange,
     onGroupDeleteModeChange,
@@ -202,7 +208,9 @@ describe("SettingsScreen", () => {
   it("steps a blank idle timeout up to 1 minute via the stepper button", () => {
     const { onAutoLockChange } = renderSettings();
 
-    fireEvent.click(screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }),
+    );
 
     expect(onAutoLockChange).toHaveBeenCalledWith(
       expect.objectContaining({ idleTimeoutMinutes: 1 }),
@@ -214,12 +222,16 @@ describe("SettingsScreen", () => {
       autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }),
+    );
     expect(onAutoLockChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ idleTimeoutMinutes: 11 }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }),
+    );
     expect(onAutoLockChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ idleTimeoutMinutes: 9 }),
     );
@@ -230,7 +242,9 @@ describe("SettingsScreen", () => {
       autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }),
+    );
 
     expect(onAutoLockChange).toHaveBeenCalledWith(
       expect.objectContaining({ idleTimeoutMinutes: undefined }),
@@ -240,7 +254,9 @@ describe("SettingsScreen", () => {
   it("ignores a decrease of an already-blank idle timeout", () => {
     const { onAutoLockChange } = renderSettings();
 
-    fireEvent.click(screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }),
+    );
 
     expect(onAutoLockChange).not.toHaveBeenCalled();
   });
@@ -271,6 +287,20 @@ describe("SettingsScreen", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
     expect(onContentProtectionChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("master password", () => {
+    it("submits a change through the onChangeMasterPassword callback", async () => {
+      const user = userEvent.setup();
+      const { onChangeMasterPassword } = renderSettings();
+
+      await user.type(screen.getByLabelText("Current password"), "old-pw");
+      await user.type(screen.getByLabelText("New password"), "new-pw");
+      await user.type(screen.getByLabelText("Confirm new password"), "new-pw");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-pw");
+    });
   });
 
   describe("accent color", () => {

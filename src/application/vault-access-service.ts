@@ -116,6 +116,22 @@ export class VaultAccessService {
     await this.rememberMtime(filePath);
   }
 
+  /**
+   * Re-keys the open vault with a new master password and immediately
+   * persists it via `saveVault` (including its conflict check and backup
+   * rotation), so a re-key never leaves the file re-encrypted in memory
+   * without a matching save on disk.
+   */
+  async changeMasterPassword(
+    vault: Vault,
+    filePath: string,
+    currentMasterPassword: string,
+    newMasterPassword: string,
+  ): Promise<void> {
+    await this.repository.changeMasterPassword(currentMasterPassword, newMasterPassword);
+    await this.saveVault(vault, filePath);
+  }
+
   /** Current on-disk size and last-modified time of the vault at `filePath`. */
   async getFileInfo(filePath: string): Promise<VaultFileInfo> {
     const [sizeBytes, lastModifiedMs] = await Promise.all([

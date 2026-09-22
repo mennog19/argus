@@ -72,6 +72,7 @@ interface VaultShellProps {
   entryFieldVisibility: EntryFieldVisibility;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
+  onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
@@ -103,6 +104,7 @@ export function VaultShell({
   entryFieldVisibility,
   onLock,
   onSave,
+  onChangeMasterPassword,
   onGeneratorPolicyChange,
   onClipboardClearSecondsChange,
   onAutoLockChange,
@@ -319,6 +321,7 @@ export function VaultShell({
           theme={theme}
           contentProtection={contentProtection}
           entryFieldVisibility={entryFieldVisibility}
+          onChangeMasterPassword={onChangeMasterPassword}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
           onAutoLockChange={onAutoLockChange}
           onGroupDeleteModeChange={onGroupDeleteModeChange}

@@ -10,6 +10,7 @@ function fakeRepository(overrides: Partial<VaultRepository> = {}): VaultReposito
     openVault: vi.fn(),
     createVault: vi.fn(),
     saveVault: vi.fn(),
+    changeMasterPassword: vi.fn(),
     ...overrides,
   };
 }
@@ -352,6 +353,69 @@ describe("VaultAccessService", () => {
 
       expect(fileStorage.copyFile).not.toHaveBeenCalled();
       expect(fileStorage.grantAccess).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("changeMasterPassword", () => {
+    it("re-keys the vault through the repository, then saves it", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        changeMasterPassword: vi.fn().mockResolvedValue(undefined),
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await service.changeMasterPassword(vault, "C:/vaults/mine.kdbx", "old pw", "new pw");
+
+      expect(repository.changeMasterPassword).toHaveBeenCalledWith("old pw", "new pw");
+      expect(repository.saveVault).toHaveBeenCalledWith(vault);
+      expect(fileStorage.writeFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        expect.any(ArrayBuffer),
+      );
+    });
+
+    it("propagates errors from the repository without saving", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        changeMasterPassword: vi
+          .fn()
+          .mockRejectedValue(new Error("Current password is incorrect.")),
+        saveVault: vi.fn(),
+      });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await expect(
+        service.changeMasterPassword(vault, "C:/vaults/mine.kdbx", "wrong", "new pw"),
+      ).rejects.toThrow("Current password is incorrect.");
+      expect(repository.saveVault).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("surfaces a save conflict raised while persisting the re-keyed vault", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        openVault: vi.fn().mockResolvedValue(vault),
+        changeMasterPassword: vi.fn().mockResolvedValue(undefined),
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        exists: vi.fn().mockResolvedValue(true),
+        lastModified: vi.fn().mockResolvedValueOnce(1000).mockResolvedValueOnce(2000),
+      });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+      await service.openVaultAtPath("C:/vaults/mine.kdbx", "master password");
+
+      await expect(
+        service.changeMasterPassword(vault, "C:/vaults/mine.kdbx", "old pw", "new pw"),
+      ).rejects.toBeInstanceOf(VaultSaveConflictError);
+      expect(repository.changeMasterPassword).toHaveBeenCalledWith("old pw", "new pw");
     });
   });
 });

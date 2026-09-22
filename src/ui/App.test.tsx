@@ -20,6 +20,7 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
     saveVault: vi.fn().mockResolvedValue(undefined),
+    changeMasterPassword: vi.fn().mockResolvedValue(undefined),
     getFileInfo: vi.fn().mockResolvedValue({ sizeBytes: 0, lastModifiedMs: 0 }),
     ...overrides,
   } as unknown as VaultAccessService;
@@ -291,6 +292,126 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "GitHub" })).toBeInTheDocument();
     expect(saveVault).toHaveBeenCalledWith(expect.anything(), "C:/vaults/personal.kdbx");
+  });
+
+  describe("changing the master password", () => {
+    async function createVaultAndOpenSettings(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      await user.click(await screen.findByRole("button", { name: "Settings" }));
+    }
+
+    it("changes the master password through the vault access service", async () => {
+      const user = userEvent.setup();
+      const opened: OpenedVault = {
+        vault: Vault.create("Personal"),
+        filePath: "C:/vaults/personal.kdbx",
+      };
+      const changeMasterPassword = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+            changeMasterPassword,
+          })}
+          settingsStore={fakeSettingsStore()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
+        />,
+      );
+
+      await createVaultAndOpenSettings(user);
+      await user.type(screen.getByLabelText("Current password"), "hunter2");
+      await user.type(screen.getByLabelText("New password"), "hunter3");
+      await user.type(screen.getByLabelText("Confirm new password"), "hunter3");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+      expect(changeMasterPassword).toHaveBeenCalledWith(
+        expect.anything(),
+        "C:/vaults/personal.kdbx",
+        "hunter2",
+        "hunter3",
+      );
+      expect(await screen.findByText("Master password changed.")).toBeInTheDocument();
+    });
+
+    it("shows the error message inline when the current password is incorrect", async () => {
+      const user = userEvent.setup();
+      const opened: OpenedVault = {
+        vault: Vault.create("Personal"),
+        filePath: "C:/vaults/personal.kdbx",
+      };
+      const changeMasterPassword = vi
+        .fn()
+        .mockRejectedValue(new Error("Current password is incorrect."));
+
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+            changeMasterPassword,
+          })}
+          settingsStore={fakeSettingsStore()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
+        />,
+      );
+
+      await createVaultAndOpenSettings(user);
+      await user.type(screen.getByLabelText("Current password"), "wrong");
+      await user.type(screen.getByLabelText("New password"), "hunter3");
+      await user.type(screen.getByLabelText("Confirm new password"), "hunter3");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+      expect(await screen.findByText("Current password is incorrect.")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /vault changed on disk/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the conflict overlay when the file changed on disk since it was opened", async () => {
+      const user = userEvent.setup();
+      const opened: OpenedVault = {
+        vault: Vault.create("Personal"),
+        filePath: "C:/vaults/personal.kdbx",
+      };
+      const changeMasterPassword = vi
+        .fn()
+        .mockRejectedValue(new VaultSaveConflictError(opened.filePath));
+
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+            changeMasterPassword,
+          })}
+          settingsStore={fakeSettingsStore()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
+        />,
+      );
+
+      await createVaultAndOpenSettings(user);
+      await user.type(screen.getByLabelText("Current password"), "hunter2");
+      await user.type(screen.getByLabelText("New password"), "hunter3");
+      await user.type(screen.getByLabelText("Confirm new password"), "hunter3");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+      expect(
+        await screen.findByRole("heading", { name: /vault changed on disk/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("persists a generator policy change made in the vault shell's generator screen", async () => {

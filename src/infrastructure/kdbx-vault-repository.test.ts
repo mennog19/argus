@@ -114,4 +114,39 @@ describe("KdbxVaultRepository", () => {
     const reopened = await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD);
     expect(reopened.name).toBe("Brand New Vault");
   });
+
+  describe("changeMasterPassword", () => {
+    it("re-keys the vault so it can only be reopened with the new password", async () => {
+      const bytes = await createFixtureBytes();
+      const repository = new KdbxVaultRepository();
+      const vault = await repository.openVault(bytes, MASTER_PASSWORD);
+
+      await repository.changeMasterPassword(MASTER_PASSWORD, "new master password");
+      const savedBytes = await repository.saveVault(vault);
+
+      await expect(
+        new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD),
+      ).rejects.toThrow();
+      const reopened = await new KdbxVaultRepository().openVault(savedBytes, "new master password");
+      expect(reopened.name).toBe("Fixture Vault");
+    });
+
+    it("rejects with IncorrectMasterPasswordError when the current password is wrong", async () => {
+      const bytes = await createFixtureBytes();
+      const repository = new KdbxVaultRepository();
+      await repository.openVault(bytes, MASTER_PASSWORD);
+
+      await expect(
+        repository.changeMasterPassword("wrong password", "new master password"),
+      ).rejects.toThrow("Current password is incorrect.");
+    });
+
+    it("throws when called before openVault", async () => {
+      const repository = new KdbxVaultRepository();
+
+      await expect(
+        repository.changeMasterPassword(MASTER_PASSWORD, "new master password"),
+      ).rejects.toThrow("No vault is open; call openVault before changeMasterPassword");
+    });
+  });
 });
