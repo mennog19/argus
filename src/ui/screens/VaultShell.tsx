@@ -191,8 +191,15 @@ export function VaultShell({
     await persist(vault.changeGroupIcon(groupId, icon));
   }
 
-  async function handleReorderGroup(groupId: GroupId, beforeId: GroupId | undefined) {
-    await persist(vault.reorderGroup(groupId, beforeId));
+  async function handleMoveGroupToPosition(
+    groupId: GroupId,
+    targetParentId: GroupId,
+    beforeId: GroupId | undefined,
+  ) {
+    const next = vault.moveGroupToPosition(groupId, targetParentId, beforeId);
+    if (next !== vault) {
+      await persist(next);
+    }
   }
 
   async function handleMoveGroupToParent(groupId: GroupId, targetGroupId: GroupId) {
@@ -357,7 +364,7 @@ export function VaultShell({
             groupDeleteMode={groupDeleteMode}
             entryDragActive={draggingEntryId !== undefined}
             onDropEntry={handleDropEntry}
-            onReorderGroup={handleReorderGroup}
+            onMoveGroupToPosition={handleMoveGroupToPosition}
             onMoveGroupToParent={handleMoveGroupToParent}
           />
 

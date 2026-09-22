@@ -32,8 +32,17 @@ interface GroupTreeProps {
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */
   entryDragActive: boolean;
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
-  /** Reorders `groupId` to sit before `beforeId` among its siblings, or at the end when `beforeId` is undefined. */
-  onReorderGroup: (groupId: GroupId, beforeId: GroupId | undefined) => Promise<void>;
+  /**
+   * Reparents `groupId` into `targetParentId`, positioned before `beforeId`
+   * among its new siblings, or at the end when `beforeId` is undefined.
+   * `targetParentId` may be the group's current parent (a plain reorder) or
+   * a different one (drag it in or out of a level in the same drop).
+   */
+  onMoveGroupToPosition: (
+    groupId: GroupId,
+    targetParentId: GroupId,
+    beforeId: GroupId | undefined,
+  ) => Promise<void>;
   /** Reparents `groupId` to become the last child of `targetGroupId`. */
   onMoveGroupToParent: (groupId: GroupId, targetGroupId: GroupId) => Promise<void>;
 }
@@ -48,7 +57,7 @@ interface ReorderTarget {
 }
 
 /**
- * Resolves the `beforeId` to pass to `onReorderGroup` for a drop on
+ * Resolves the `beforeId` to pass to `onMoveGroupToPosition` for a drop on
  * `hoveredId`'s given edge, within `siblings` — the full ordered list the
  * hovered group belongs to (root level uses the underlying, unfiltered
  * group list so dropping after the last visible group still lands before
@@ -124,7 +133,7 @@ export function GroupTree({
   groupDeleteMode,
   entryDragActive,
   onDropEntry,
-  onReorderGroup,
+  onMoveGroupToPosition,
   onMoveGroupToParent,
 }: GroupTreeProps) {
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
@@ -318,7 +327,7 @@ export function GroupTree({
     setReorderTarget(undefined);
   }
 
-  /** The top/bottom quarters of a row reorder among siblings; the middle reparents into it. */
+  /** The top/bottom quarters of a row reorder around it (possibly into a different parent); the middle reparents into it. */
   function dropZoneFor(event: DragEvent<HTMLDivElement>): DropZone {
     const rect = event.currentTarget.getBoundingClientRect();
     const relativeY = event.clientY - rect.top;
@@ -332,38 +341,23 @@ export function GroupTree({
   }
 
   /**
-   * Shows a reorder indicator when the dragged group is one of `siblings` and
-   * isn't itself, or a reparent indicator for any other group that isn't the
-   * dragged group's own subtree (which would create a cycle).
+   * Shows a reorder or reparent indicator for any hovered row that isn't the
+   * dragged group's own subtree (dropping into itself or a descendant would
+   * create a cycle) — the top/bottom quarters target the hovered row's own
+   * level (which may differ from the dragged group's current parent), the
+   * middle targets becoming a child of the hovered row itself.
    */
-  function handleGroupDragOver(
-    event: DragEvent<HTMLDivElement>,
-    group: Group,
-    siblings: readonly Group[],
-  ) {
+  function handleGroupDragOver(event: DragEvent<HTMLDivElement>, group: Group) {
     if (!event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
       return;
     }
     const groupId = group.id.toString();
-    if (!draggingGroupId || draggingGroupId === groupId) {
-      return;
-    }
-    const zone = dropZoneFor(event);
-    if (zone === "into") {
-      if (draggingSubtreeIds.has(groupId)) {
-        return;
-      }
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-      setReorderTarget({ groupId, edge: "into" });
-      return;
-    }
-    if (!siblings.some((g) => g.id.toString() === draggingGroupId)) {
+    if (!draggingGroupId || draggingSubtreeIds.has(groupId)) {
       return;
     }
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    setReorderTarget({ groupId, edge: zone });
+    setReorderTarget({ groupId, edge: dropZoneFor(event) });
   }
 
   function handleGroupDragLeave(event: DragEvent<HTMLDivElement>, groupId: string) {
@@ -376,6 +370,7 @@ export function GroupTree({
   async function handleGroupDrop(
     event: DragEvent<HTMLDivElement>,
     group: Group,
+    parentId: GroupId,
     siblings: readonly Group[],
   ) {
     if (!event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
@@ -385,14 +380,11 @@ export function GroupTree({
     setReorderTarget(undefined);
     const groupIdStr = group.id.toString();
     const draggedIdStr = event.dataTransfer.getData(GROUP_DRAG_TYPE);
-    if (!draggedIdStr || draggedIdStr === groupIdStr) {
+    if (!draggedIdStr || draggingSubtreeIds.has(groupIdStr)) {
       return;
     }
     const zone = dropZoneFor(event);
     if (zone === "into") {
-      if (draggingSubtreeIds.has(groupIdStr)) {
-        return;
-      }
       try {
         await onMoveGroupToParent(GroupId.fromString(draggedIdStr), group.id);
         setDropError(undefined);
@@ -402,15 +394,12 @@ export function GroupTree({
       }
       return;
     }
-    if (!siblings.some((g) => g.id.toString() === draggedIdStr)) {
-      return;
-    }
     const beforeId = resolveBeforeId(siblings, groupIdStr, zone);
     try {
-      await onReorderGroup(GroupId.fromString(draggedIdStr), beforeId);
+      await onMoveGroupToPosition(GroupId.fromString(draggedIdStr), parentId, beforeId);
       setDropError(undefined);
     } catch (cause) {
-      setDropError(errorMessage(cause, "Couldn't reorder the group."));
+      setDropError(errorMessage(cause, "Couldn't move the group."));
     }
   }
 
@@ -469,7 +458,7 @@ export function GroupTree({
     );
   }
 
-  function renderGroup(group: Group, depth: number, siblings: readonly Group[]) {
+  function renderGroup(group: Group, depth: number, parentId: GroupId, siblings: readonly Group[]) {
     const idStr = group.id.toString();
     const isActive = selectedGroupId === idStr;
     const isCollapsed = collapsed.has(idStr);
@@ -534,11 +523,11 @@ export function GroupTree({
             onDragEnd={handleGroupDragEnd}
             onDragEnter={(event) => {
               handleDragOver(event, idStr);
-              handleGroupDragOver(event, group, siblings);
+              handleGroupDragOver(event, group);
             }}
             onDragOver={(event) => {
               handleDragOver(event, idStr);
-              handleGroupDragOver(event, group, siblings);
+              handleGroupDragOver(event, group);
             }}
             onDragLeave={(event) => {
               handleDragLeave(event, idStr);
@@ -546,7 +535,7 @@ export function GroupTree({
             }}
             onDrop={(event) => {
               void handleDrop(event, group);
-              void handleGroupDrop(event, group, siblings);
+              void handleGroupDrop(event, group, parentId, siblings);
             }}
             onAnimationEnd={() => setFlashId(undefined)}
           >
@@ -651,7 +640,8 @@ export function GroupTree({
           </div>
         )}
 
-        {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1, group.groups))}
+        {!isCollapsed &&
+          group.groups.map((child) => renderGroup(child, depth + 1, group.id, group.groups))}
       </div>
     );
   }
@@ -695,7 +685,7 @@ export function GroupTree({
         </div>
       )}
 
-      {visibleGroups.map((group) => renderGroup(group, 0, rootGroup.groups))}
+      {visibleGroups.map((group) => renderGroup(group, 0, rootGroup.id, rootGroup.groups))}
 
       {recycleBin && (
         <>

@@ -861,6 +861,33 @@ describe("VaultShell", () => {
       expect(savedVault.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
     });
 
+    it("does not save when dropping a group where it already sits", async () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      let vault = Vault.create("Mine");
+      vault = vault.addGroup(vault.rootGroup.id, work);
+      vault = vault.addGroup(vault.rootGroup.id, personal);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      renderShell(vault, { onSave });
+
+      const dataTransfer = {
+        types: [GROUP_DRAG_TYPE],
+        dropEffect: "none",
+        effectAllowed: "none",
+        setData: () => {},
+        getData: (type: string) => (type === GROUP_DRAG_TYPE ? work.id.toString() : ""),
+      };
+      const personalRow = rowButton("Personal").closest(".group-row") as HTMLElement;
+      const workRow = rowButton("Work").closest(".group-row") as HTMLElement;
+      fireEvent.dragStart(workRow, { dataTransfer });
+      const dropEvent = createEvent.drop(personalRow, { dataTransfer });
+      Object.defineProperty(dropEvent, "clientY", { value: 1000 });
+      fireEvent(personalRow, dropEvent);
+
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
     it("reparents a group by dragging it onto the middle of another group's row", async () => {
       const work = Group.create("Work");
       const personal = Group.create("Personal");

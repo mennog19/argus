@@ -642,6 +642,67 @@ describe("Vault", () => {
       });
     });
 
+    describe("moveGroupToPosition", () => {
+      it("moves a group out of a nested parent, positioned before a top-level sibling", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(nested.id, vault.rootGroup.id, personal.id);
+
+        expect(updated.findGroup(work.id)?.groups).toEqual([]);
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work", "Nested", "Personal"]);
+      });
+
+      it("moves a top-level group in, positioned among a nested group's siblings", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(personal.id, work.id, nested.id);
+
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work"]);
+        expect(updated.findGroup(work.id)?.groups.map((g) => g.name)).toEqual([
+          "Personal",
+          "Nested",
+        ]);
+      });
+
+      it("moves a group to the end of the target's children when beforeId is undefined", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(nested.id, vault.rootGroup.id, undefined);
+
+        expect(updated.findGroup(work.id)?.groups).toEqual([]);
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work", "Personal", "Nested"]);
+      });
+
+      it("reduces to a plain same-parent reorder when the target parent doesn't change", () => {
+        const work = Group.create("Work");
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(personal.id, vault.rootGroup.id, work.id);
+
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
+      });
+
+      it("throws when moving a group into itself or one of its own subgroups", () => {
+        const grandchild = Group.create("Grandchild");
+        const parent = Group.create("Parent").addGroup(grandchild);
+        const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+        expect(() => vault.moveGroupToPosition(parent.id, grandchild.id, undefined)).toThrow(
+          "Cannot move a group into itself or one of its own subgroups",
+        );
+      });
+    });
+
     describe("emptyRecycleBin", () => {
       it("removes everything from the recycle bin, keeping the (now empty) bin itself", () => {
         const entry = Entry.create({ title: "Bank" });

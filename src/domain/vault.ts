@@ -325,6 +325,26 @@ export class Vault {
     return this.removeGroup(groupId).addGroup(targetGroupId, group);
   }
 
+  /**
+   * Reparents `groupId` into `targetParentId`, positioned immediately before
+   * `beforeId` among its new siblings (or at the end when `beforeId` is
+   * `undefined`) — drag-and-drop hovering a row's edge to both change a
+   * group's nesting level and place it in one drop. Throws the same
+   * cycle error as {@link moveGroupToParent} when the move would nest a
+   * group inside itself or one of its own subgroups.
+   */
+  moveGroupToPosition(
+    groupId: GroupId,
+    targetParentId: GroupId,
+    beforeId: GroupId | undefined,
+  ): Vault {
+    const moved = this.moveGroupToParent(groupId, targetParentId);
+    if (beforeId === undefined) {
+      return moved;
+    }
+    return moved.reorderGroup(groupId, beforeId);
+  }
+
   /** Permanently deletes everything currently in the recycle bin, leaving it empty. */
   emptyRecycleBin(): Vault {
     if (!this.recycleBinId) {
