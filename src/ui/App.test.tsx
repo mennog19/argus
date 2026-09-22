@@ -303,6 +303,7 @@ describe("App", () => {
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       await user.click(await screen.findByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
     }
 
     it("changes the master password through the vault access service", async () => {

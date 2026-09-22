@@ -8,6 +8,7 @@ interface ChangeMasterPasswordCardProps {
 export function ChangeMasterPasswordCard({
   onChangeMasterPassword,
 }: ChangeMasterPasswordCardProps) {
+  const [revealed, setRevealed] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -45,6 +46,16 @@ export function ChangeMasterPasswordCard({
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!revealed) {
+    return (
+      <div className="detail-card padded">
+        <button type="button" className="btn-secondary" onClick={() => setRevealed(true)}>
+          Change master password
+        </button>
+      </div>
+    );
   }
 
   return (

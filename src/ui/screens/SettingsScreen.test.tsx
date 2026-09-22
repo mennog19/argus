@@ -290,10 +290,18 @@ describe("SettingsScreen", () => {
   });
 
   describe("master password", () => {
+    it("only shows the form after the change master password button is pressed", () => {
+      renderSettings();
+
+      expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /change master password/i })).toBeInTheDocument();
+    });
+
     it("submits a change through the onChangeMasterPassword callback", async () => {
       const user = userEvent.setup();
       const { onChangeMasterPassword } = renderSettings();
 
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
       await user.type(screen.getByLabelText("Current password"), "old-pw");
       await user.type(screen.getByLabelText("New password"), "new-pw");
       await user.type(screen.getByLabelText("Confirm new password"), "new-pw");

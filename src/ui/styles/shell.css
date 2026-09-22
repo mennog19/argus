@@ -1367,6 +1367,12 @@ input[type="radio"]:checked::after {
   margin-top: 14px;
 }
 
+.detail-card.padded > .field-error:not(:first-child),
+.detail-card.padded > .field-success:not(:first-child),
+.detail-card.padded > .btn-primary:not(:first-child) {
+  margin-top: 14px;
+}
+
 .detail-field-row {
   position: relative;
   display: flex;

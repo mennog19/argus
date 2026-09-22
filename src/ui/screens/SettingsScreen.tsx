@@ -122,11 +122,6 @@ export function SettingsScreen({
           </section>
 
           <section className="detail-section">
-            <div className="detail-section-label">Master password</div>
-            <ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />
-          </section>
-
-          <section className="detail-section">
             <div className="detail-section-label">Appearance</div>
             <div className="detail-card padded">
               <div className="field-group">
@@ -372,6 +367,11 @@ export function SettingsScreen({
                 </label>
               ))}
             </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Master password</div>
+            <ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />
           </section>
         </div>
       </div>

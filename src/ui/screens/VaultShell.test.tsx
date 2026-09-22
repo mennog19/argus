@@ -1225,6 +1225,7 @@ describe("VaultShell", () => {
       const { onChangeMasterPassword } = renderShell(vault);
 
       await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
       await user.type(screen.getByLabelText("Current password"), "old-pw");
       await user.type(screen.getByLabelText("New password"), "new-pw");
       await user.type(screen.getByLabelText("Confirm new password"), "new-pw");
