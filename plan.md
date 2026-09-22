@@ -29,8 +29,6 @@ A feature branch isn't done until:
 ## Todo
 
 - Opt-in, off-by-default online breach-check (HIBP-style).
-- on password entry show dynamic safety
-- option to change master key
 - import en export functionaliteit voor settings
 - merge file functionality
 - way to order groups

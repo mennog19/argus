@@ -228,6 +228,26 @@ function App({
     };
   }
 
+  function handleChangeMasterPassword(vault: Vault, filePath: string) {
+    return async (currentPassword: string, newPassword: string) => {
+      try {
+        await vaultAccessService.changeMasterPassword(
+          vault,
+          filePath,
+          currentPassword,
+          newPassword,
+        );
+        void refreshFileInfo(filePath);
+      } catch (cause) {
+        if (cause instanceof VaultSaveConflictError) {
+          setConflict({ nextVault: vault, filePath });
+          return;
+        }
+        throw cause;
+      }
+    };
+  }
+
   // Only rendered from within `{conflict && (...)}` below, so `conflict` is
   // always set by the time either handler can be invoked.
   async function handleOverwriteConflict() {
@@ -364,6 +384,7 @@ function App({
         entryFieldVisibility={settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
+        onChangeMasterPassword={handleChangeMasterPassword(screen.vault, screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
         onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
         onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
