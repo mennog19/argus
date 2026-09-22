@@ -217,6 +217,46 @@ input[type="password"]::-ms-clear {
   padding-left: 2px;
 }
 
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding-left: 2px;
+}
+
+.password-strength-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.password-strength.weak {
+  color: var(--color-danger);
+}
+
+.password-strength.weak .password-strength-dot {
+  background: var(--color-danger);
+}
+
+.password-strength.fair {
+  color: var(--color-text-dim);
+}
+
+.password-strength.fair .password-strength-dot {
+  background: var(--color-text-dimmer);
+}
+
+.password-strength.strong {
+  color: var(--color-success);
+}
+
+.password-strength.strong .password-strength-dot {
+  background: var(--color-success);
+}
+
 input[type="checkbox"],
 input[type="radio"] {
   position: relative;

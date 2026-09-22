@@ -8,8 +8,11 @@ import {
   GroupId,
   parseTotpInput,
   Password,
+  passwordStrength,
+  PasswordHealthPolicy,
   PasswordPolicy,
   PasswordPolicyOptions,
+  PasswordStrength,
   Tags,
   TOTP_FIELD_KEYS,
   totpConfigFromCustomFields,
@@ -20,6 +23,14 @@ import { EyeIcon, EyeOffIcon } from "../icons";
 import { errorMessage } from "../error-message";
 import { GroupOption } from "../vault-browsing";
 import { TagsEditor } from "./TagsEditor";
+
+const STRENGTH_LABELS: Record<PasswordStrength, string> = {
+  weak: "Weak",
+  fair: "Fair",
+  strong: "Strong",
+};
+
+const HEALTH_POLICY = new PasswordHealthPolicy();
 
 interface EntryFormProps {
   initialEntry?: Entry;
@@ -61,6 +72,9 @@ export function EntryForm({
   const [icon, setIcon] = useState(initialEntry?.icon ?? Icon.AUTO);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+
+  const strength =
+    password === "" ? undefined : passwordStrength(new Password(password), HEALTH_POLICY);
 
   function handleGenerate() {
     const generated = generatePassword(new PasswordPolicy(generatorPolicy));
@@ -184,6 +198,12 @@ export function EntryForm({
               {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
             </button>
           </div>
+          {strength && (
+            <div className={`password-strength ${strength}`} aria-live="polite">
+              <span className="password-strength-dot" />
+              {STRENGTH_LABELS[strength]}
+            </div>
+          )}
         </div>
       )}
 

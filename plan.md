@@ -28,7 +28,6 @@ A feature branch isn't done until:
 
 ## Todo
 
-- flag to not show on obs en screenrecordings
 - Opt-in, off-by-default online breach-check (HIBP-style).
 - on password entry show dynamic safety
 - option to change master key
@@ -37,3 +36,4 @@ A feature branch isn't done until:
 - way to order groups
 - sort between entries, e.g. last used, alfabetical
 - autofill
+- stats schermpje?

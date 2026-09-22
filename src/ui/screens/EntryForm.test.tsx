@@ -105,6 +105,53 @@ describe("EntryForm", () => {
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
   });
 
+  it("shows no strength badge until a password is entered", () => {
+    render(
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Weak")).not.toBeInTheDocument();
+    expect(screen.queryByText("Fair")).not.toBeInTheDocument();
+    expect(screen.queryByText("Strong")).not.toBeInTheDocument();
+  });
+
+  it("shows a live strength badge that updates as the password changes", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <EntryForm
+        initialGroupId="root-id"
+        groupOptions={groupOptions}
+        generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const passwordInput = screen.getByLabelText("Password");
+
+    await user.type(passwordInput, "abc");
+    expect(screen.getByText("Weak")).toBeInTheDocument();
+
+    await user.clear(passwordInput);
+    await user.type(passwordInput, "Abcdefghij12");
+    expect(screen.getByText("Fair")).toBeInTheDocument();
+
+    await user.clear(passwordInput);
+    await user.type(passwordInput, "Abcdefghij12345!");
+    expect(screen.getByText("Strong")).toBeInTheDocument();
+
+    await user.clear(passwordInput);
+    expect(screen.queryByText("Strong")).not.toBeInTheDocument();
+  });
+
   it("generates a password using the shared generator policy and reveals it", async () => {
     const user = userEvent.setup();
 
