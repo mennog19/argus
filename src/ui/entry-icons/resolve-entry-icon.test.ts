@@ -26,6 +26,20 @@ describe("resolveIcon", () => {
     expect(resolve("", Icon.AUTO, "Bank Card")).toEqual({ kind: "sigil", seed: "bank card" });
   });
 
+  it("shows a known brand's logo automatically when the title matches its name", () => {
+    const resolved = resolve("", Icon.AUTO, "Notion");
+    expect(resolved.kind === "brand" && resolved.icon.slug).toBe("notion");
+  });
+
+  it("prefers the URL's brand over the title's when both match, but differently", () => {
+    const resolved = resolve("https://github.com", Icon.AUTO, "Notion");
+    expect(resolved.kind === "brand" && resolved.icon.slug).toBe("github");
+  });
+
+  it("doesn't match a title that merely contains a brand's name", () => {
+    expect(resolve("", Icon.AUTO, "My Notion Workspace").kind).toBe("sigil");
+  });
+
   it("honours an explicitly chosen library icon, keeping the site's seed for its colour", () => {
     const resolved = resolve("https://github.com", Icon.library("star"));
     expect(resolved.kind).toBe("library");

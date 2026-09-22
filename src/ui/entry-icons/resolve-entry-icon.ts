@@ -16,8 +16,9 @@ export type ResolvedIcon =
 
 /**
  * What an entry actually shows. An explicit choice wins; otherwise a known
- * site gets its logo and anything else its generated sigil. A key the
- * catalogs don't know (e.g. written by a newer Argus) falls back to automatic.
+ * site gets its logo, a title matching a brand's name gets that brand's
+ * logo, and anything else its generated sigil. A key the catalogs don't
+ * know (e.g. written by a newer Argus) falls back to automatic.
  */
 export function resolveIcon(
   { title, url, icon }: IconSubject,
@@ -31,6 +32,6 @@ export function resolveIcon(
     }
   }
   const chosenBrand = icon.kind === "brand" ? brands.find(icon.key) : undefined;
-  const brand = chosenBrand ?? brands.matchHost(hostOf(url) ?? "");
+  const brand = chosenBrand ?? brands.matchHost(hostOf(url) ?? "") ?? brands.matchTitle(title);
   return brand ? { kind: "brand", icon: brand } : { kind: "sigil", seed };
 }

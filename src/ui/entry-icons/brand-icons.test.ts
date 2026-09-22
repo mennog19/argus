@@ -42,12 +42,25 @@ describe("createBrandCatalog", () => {
     expect(catalog.matchHost("com")).toBeUndefined();
     expect(catalog.matchHost("")).toBeUndefined();
   });
+
+  it("matches a title exactly, ignoring case and surrounding whitespace", () => {
+    expect(catalog.matchTitle("GitHub")?.slug).toBe("github");
+    expect(catalog.matchTitle("github")?.slug).toBe("github");
+    expect(catalog.matchTitle("  GitHub  ")?.slug).toBe("github");
+  });
+
+  it("returns undefined for a title that isn't an exact brand name", () => {
+    expect(catalog.matchTitle("My GitHub Account")).toBeUndefined();
+    expect(catalog.matchTitle("Git Hub")).toBeUndefined();
+    expect(catalog.matchTitle("")).toBeUndefined();
+  });
 });
 
 describe("BRAND_ICONS", () => {
   it("ships the generated catalog", () => {
     expect(BRAND_ICONS.all.length).toBeGreaterThanOrEqual(100);
     expect(BRAND_ICONS.matchHost("github.com")?.slug).toBe("github");
+    expect(BRAND_ICONS.matchTitle("american   express")?.slug).toBe("americanexpress");
   });
 
   it("has unique slugs and well-formed data", () => {

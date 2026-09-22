@@ -37,12 +37,19 @@ export interface BrandCatalog {
   find(slug: string): BrandIcon | undefined;
   /** The brand owning `host` or its nearest parent domain (`mail.google.com` → `google.com`). */
   matchHost(host: string): BrandIcon | undefined;
+  /** The brand whose name exactly matches `title` (case- and spacing-insensitive). */
+  matchTitle(title: string): BrandIcon | undefined;
+}
+
+function normalizeTitle(title: string): string {
+  return title.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export function createBrandCatalog(data: readonly BrandIconData[]): BrandCatalog {
   const all = data.map((brand) => ({ ...brand, glyphColor: brandGlyphColor(brand.hex) }));
   const bySlug = new Map(all.map((brand) => [brand.slug, brand]));
   const byDomain = new Map(all.flatMap((brand) => brand.domains.map((domain) => [domain, brand])));
+  const byTitle = new Map(all.map((brand) => [normalizeTitle(brand.title), brand]));
 
   return {
     all,
@@ -57,6 +64,7 @@ export function createBrandCatalog(data: readonly BrandIconData[]): BrandCatalog
       }
       return undefined;
     },
+    matchTitle: (title) => byTitle.get(normalizeTitle(title)),
   };
 }
 
