@@ -56,6 +56,8 @@ function renderShell(
   render(
     <VaultShell
       vault={vault}
+      filePath="C:/vaults/personal.kdbx"
+      fileInfo={undefined}
       urlOpener={fakeUrlOpener()}
       clipboardWriter={clipboardWriter}
       generatorPolicy={generatorPolicy}
@@ -249,6 +251,8 @@ describe("VaultShell", () => {
     render(
       <VaultShell
         vault={vault}
+        filePath="C:/vaults/personal.kdbx"
+        fileInfo={undefined}
         urlOpener={urlOpener}
         generatorPolicy={{}}
         onLock={vi.fn()}
@@ -728,6 +732,8 @@ describe("VaultShell", () => {
       const { rerender } = render(
         <VaultShell
           vault={vault}
+          filePath="C:/vaults/personal.kdbx"
+          fileInfo={undefined}
           urlOpener={fakeUrlOpener()}
           generatorPolicy={{}}
           onLock={vi.fn()}
@@ -753,6 +759,8 @@ describe("VaultShell", () => {
       rerender(
         <VaultShell
           vault={vaultWithoutWork}
+          filePath="C:/vaults/personal.kdbx"
+          fileInfo={undefined}
           urlOpener={fakeUrlOpener()}
           generatorPolicy={{}}
           onLock={vi.fn()}

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsScreen } from "./SettingsScreen";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
@@ -9,12 +10,16 @@ function renderSettings(
   clipboardClearSeconds = 20,
   autoLock: AutoLockSettings = DEFAULT_AUTO_LOCK,
   groupDeleteMode: GroupDeleteMode = "deleteContents",
+  filePath = "C:/vaults/personal.kdbx",
+  fileInfo: VaultFileInfo | undefined = undefined,
 ) {
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
   render(
     <SettingsScreen
+      filePath={filePath}
+      fileInfo={fileInfo}
       clipboardClearSeconds={clipboardClearSeconds}
       autoLock={autoLock}
       groupDeleteMode={groupDeleteMode}
@@ -27,6 +32,21 @@ function renderSettings(
 }
 
 describe("SettingsScreen", () => {
+  it("shows the vault file name and placeholders while file info hasn't loaded yet", () => {
+    renderSettings(20, DEFAULT_AUTO_LOCK, "deleteContents", "C:/vaults/personal.kdbx", undefined);
+
+    expect(screen.getByText("personal.kdbx")).toBeInTheDocument();
+    expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("shows the vault's size and last-saved time once file info loads", () => {
+    const fileInfo: VaultFileInfo = { sizeBytes: 49152, lastModifiedMs: Date.now() };
+    renderSettings(20, DEFAULT_AUTO_LOCK, "deleteContents", "C:/vaults/personal.kdbx", fileInfo);
+
+    expect(screen.getByText("48 KB")).toBeInTheDocument();
+    expect(screen.getByText("just now")).toBeInTheDocument();
+  });
+
   it("shows the current group delete mode", () => {
     renderSettings(20, DEFAULT_AUTO_LOCK, "keepContents");
 

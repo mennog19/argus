@@ -10,6 +10,8 @@ export interface FileStorage {
   exists(path: string): Promise<boolean>;
   /** Last-modified time of the file at `path`, in epoch milliseconds. */
   lastModified(path: string): Promise<number>;
+  /** Size of the file at `path`, in bytes. */
+  size(path: string): Promise<number>;
   copyFile(source: string, destination: string): Promise<void>;
   /**
    * Asks the OS layer for access to `path` before it is read or written.

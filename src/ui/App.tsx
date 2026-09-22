@@ -5,6 +5,7 @@ import { ClipboardWriter } from "../application/clipboard";
 import {
   OpenedVault,
   VaultAccessService,
+  VaultFileInfo,
   VaultSaveConflictError,
 } from "../application/vault-access-service";
 import { WindowEvents } from "../application/window-events";
@@ -63,6 +64,7 @@ function App({
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
+  const [fileInfo, setFileInfo] = useState<VaultFileInfo | undefined>(undefined);
 
   useEffect(() => {
     if (screen.kind !== "unlocked") {
@@ -134,6 +136,14 @@ function App({
       });
   }, [settingsStore]);
 
+  async function refreshFileInfo(filePath: string) {
+    try {
+      setFileInfo(await vaultAccessService.getFileInfo(filePath));
+    } catch {
+      // Best-effort; the vault info panel just stays blank on failure.
+    }
+  }
+
   async function rememberAndUnlock(vault: Vault, filePath: string) {
     const updated = recordVaultOpened(settings, filePath);
     setSettings(updated);
@@ -143,6 +153,7 @@ function App({
       // Recency tracking is best-effort; don't block unlocking on it.
     }
     setScreen({ kind: "unlocked", vault, filePath });
+    void refreshFileInfo(filePath);
   }
 
   function handleOpened(opened: OpenedVault) {
@@ -174,6 +185,7 @@ function App({
       try {
         await vaultAccessService.saveVault(nextVault, filePath);
         setScreen({ kind: "unlocked", vault: nextVault, filePath });
+        void refreshFileInfo(filePath);
       } catch (cause) {
         if (cause instanceof VaultSaveConflictError) {
           setConflict({ nextVault, filePath });
@@ -191,6 +203,7 @@ function App({
     await vaultAccessService.saveVault(nextVault, filePath, { force: true });
     setScreen({ kind: "unlocked", vault: nextVault, filePath });
     setConflict(undefined);
+    void refreshFileInfo(filePath);
   }
 
   function handleDiscardConflict() {
@@ -265,6 +278,8 @@ function App({
     <>
       <VaultShell
         vault={screen.vault}
+        filePath={screen.filePath}
+        fileInfo={fileInfo}
         urlOpener={urlOpener}
         clipboardWriter={clipboardWriter}
         generatorPolicy={settings.generatorPolicy ?? {}}

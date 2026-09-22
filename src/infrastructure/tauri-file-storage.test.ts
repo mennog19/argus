@@ -78,6 +78,16 @@ describe("TauriFileStorage", () => {
     expect(result).toBe(0);
   });
 
+  it("returns a file's size in bytes", async () => {
+    vi.mocked(stat).mockResolvedValue({ size: 49152 } as Awaited<ReturnType<typeof stat>>);
+    const storage = new TauriFileStorage();
+
+    const result = await storage.size("C:/vaults/mine.kdbx");
+
+    expect(stat).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
+    expect(result).toBe(49152);
+  });
+
   it("copies a file to a new path", async () => {
     const storage = new TauriFileStorage();
 

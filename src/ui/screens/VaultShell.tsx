@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Entry, EntryId, Group, GroupId, Icon, PasswordPolicyOptions, Vault } from "../../domain";
 import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { VaultFileInfo } from "../../application/vault-access-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import {
@@ -38,6 +39,8 @@ import { ArgusMark } from "../ArgusMark";
 
 interface VaultShellProps {
   vault: Vault;
+  filePath: string;
+  fileInfo: VaultFileInfo | undefined;
   urlOpener: UrlOpener;
   clipboardWriter: ClipboardWriter;
   generatorPolicy: PasswordPolicyOptions;
@@ -59,6 +62,8 @@ type View = "vault" | "generator" | "health" | "settings";
 
 export function VaultShell({
   vault,
+  filePath,
+  fileInfo,
   urlOpener,
   clipboardWriter,
   generatorPolicy,
@@ -267,6 +272,8 @@ export function VaultShell({
         />
       ) : view === "settings" ? (
         <SettingsScreen
+          filePath={filePath}
+          fileInfo={fileInfo}
           clipboardClearSeconds={clipboardClearSeconds}
           autoLock={autoLock}
           groupDeleteMode={groupDeleteMode}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, formatRelativeTime } from "./format";
+import { basename, formatFileSize, formatRelativeTime } from "./format";
 
 describe("basename", () => {
   it("returns the last segment of a forward-slash path", () => {
@@ -20,6 +20,20 @@ describe("basename", () => {
 
   it("returns the original string when nothing but separators remain", () => {
     expect(basename("///")).toBe("///");
+  });
+});
+
+describe("formatFileSize", () => {
+  it("formats sub-kilobyte sizes in bytes", () => {
+    expect(formatFileSize(512)).toBe("512 B");
+  });
+
+  it("formats kilobyte-range sizes rounded to the nearest KB", () => {
+    expect(formatFileSize(49152)).toBe("48 KB");
+  });
+
+  it("formats megabyte-range sizes to one decimal place", () => {
+    expect(formatFileSize(1024 * 1024 * 2.5)).toBe("2.5 MB");
   });
 });
 

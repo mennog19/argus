@@ -19,6 +19,7 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
     saveVault: vi.fn().mockResolvedValue(undefined),
+    getFileInfo: vi.fn().mockResolvedValue({ sizeBytes: 0, lastModifiedMs: 0 }),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -144,6 +145,32 @@ describe("App", () => {
       <App
         vaultAccessService={fakeVaultAccessService({
           openVaultAtPath: vi.fn().mockResolvedValue(vault),
+        })}
+        settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+      />,
+    );
+
+    await user.type(await screen.findByLabelText("Master password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: "Unlock" }));
+
+    expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+  });
+
+  it("keeps working when the vault's file info can't be loaded after unlocking", async () => {
+    const user = userEvent.setup();
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+    const vault = Vault.create("A");
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          openVaultAtPath: vi.fn().mockResolvedValue(vault),
+          getFileInfo: vi.fn().mockRejectedValue(new Error("stat failed")),
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}

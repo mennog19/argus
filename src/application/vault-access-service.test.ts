@@ -28,6 +28,7 @@ function fakeFileStorage(overrides: Partial<FileStorage> = {}): FileStorage {
     writeFile: vi.fn(),
     exists: vi.fn().mockResolvedValue(false),
     lastModified: vi.fn().mockResolvedValue(0),
+    size: vi.fn().mockResolvedValue(0),
     copyFile: vi.fn(),
     grantAccess: vi.fn(),
     ...overrides,
@@ -133,6 +134,24 @@ describe("VaultAccessService", () => {
       await expect(service.openVaultAtPath("C:/vaults/mine.kdbx", "wrong")).rejects.toThrow(
         "Invalid credentials",
       );
+    });
+  });
+
+  describe("getFileInfo", () => {
+    it("reports the file's size and last-modified time", async () => {
+      const repository = fakeRepository();
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage({
+        size: vi.fn().mockResolvedValue(49152),
+        lastModified: vi.fn().mockResolvedValue(1_700_000_000_000),
+      });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      const result = await service.getFileInfo("C:/vaults/mine.kdbx");
+
+      expect(fileStorage.size).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
+      expect(fileStorage.lastModified).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
+      expect(result).toEqual({ sizeBytes: 49152, lastModifiedMs: 1_700_000_000_000 });
     });
   });
 

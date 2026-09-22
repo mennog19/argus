@@ -22,6 +22,11 @@ export class TauriFileStorage implements FileStorage {
     return info.mtime?.getTime() ?? 0;
   }
 
+  async size(path: string): Promise<number> {
+    const info = await stat(path);
+    return info.size;
+  }
+
   async copyFile(source: string, destination: string): Promise<void> {
     await copyFile(source, destination);
   }

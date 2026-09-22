@@ -8,6 +8,11 @@ export interface OpenedVault {
   filePath: string;
 }
 
+export interface VaultFileInfo {
+  sizeBytes: number;
+  lastModifiedMs: number;
+}
+
 export interface SaveVaultOptions {
   /** Bypasses the on-disk modification check, overwriting unconditionally. */
   force?: boolean;
@@ -109,6 +114,15 @@ export class VaultAccessService {
     const fileBytes = await this.repository.saveVault(vault);
     await this.fileStorage.writeFile(filePath, fileBytes);
     await this.rememberMtime(filePath);
+  }
+
+  /** Current on-disk size and last-modified time of the vault at `filePath`. */
+  async getFileInfo(filePath: string): Promise<VaultFileInfo> {
+    const [sizeBytes, lastModifiedMs] = await Promise.all([
+      this.fileStorage.size(filePath),
+      this.fileStorage.lastModified(filePath),
+    ]);
+    return { sizeBytes, lastModifiedMs };
   }
 
   private async rotateBackups(filePath: string): Promise<void> {

@@ -5,6 +5,19 @@ export function basename(path: string): string {
   return parts.length > 0 ? parts[parts.length - 1] : path;
 }
 
+/** Coarse human-readable file size, e.g. "48 KB". */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const kb = bytes / 1024;
+  if (kb < 1024) {
+    return `${Math.round(kb)} KB`;
+  }
+  const mb = kb / 1024;
+  return `${mb.toFixed(1)} MB`;
+}
+
 /** Coarse "N units ago" rendering of an ISO timestamp, relative to `now`. */
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
   const diffMs = now.getTime() - new Date(iso).getTime();
