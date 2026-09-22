@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
+import {
+  AccentColor,
+  AutoLockSettings,
+  DEFAULT_ENTRY_FIELD_VISIBILITY,
+  EntryFieldVisibility,
+  GroupDeleteMode,
+  Theme,
+} from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsScreen } from "./SettingsScreen";
 
@@ -17,6 +24,7 @@ function renderSettings(
     groupDeleteMode?: GroupDeleteMode;
     accentColor?: AccentColor;
     theme?: Theme;
+    entryFieldVisibility?: EntryFieldVisibility;
   } = {},
 ) {
   const onClipboardClearSecondsChange = vi.fn();
@@ -24,6 +32,7 @@ function renderSettings(
   const onGroupDeleteModeChange = vi.fn();
   const onAccentColorChange = vi.fn();
   const onThemeChange = vi.fn();
+  const onEntryFieldVisibilityChange = vi.fn();
   render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
@@ -34,11 +43,13 @@ function renderSettings(
       groupDeleteMode={overrides.groupDeleteMode ?? "deleteContents"}
       accentColor={overrides.accentColor ?? DEFAULT_ACCENT_COLOR}
       theme={overrides.theme ?? "dark"}
+      entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
       onAccentColorChange={onAccentColorChange}
       onThemeChange={onThemeChange}
+      onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
     />,
   );
   return {
@@ -47,6 +58,7 @@ function renderSettings(
     onGroupDeleteModeChange,
     onAccentColorChange,
     onThemeChange,
+    onEntryFieldVisibilityChange,
   };
 }
 
@@ -316,6 +328,49 @@ describe("SettingsScreen", () => {
       fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
 
       expect(onThemeChange).toHaveBeenCalledWith("dark");
+    });
+  });
+
+  describe("entry creation field visibility", () => {
+    it("shows every toggleable field as checked by default", () => {
+      renderSettings();
+
+      expect(screen.getByRole("checkbox", { name: "Username" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Password" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Authenticator (TOTP)" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "URL" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Notes" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Group" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Tags" })).toBeChecked();
+    });
+
+    it("reflects a field that's been turned off", () => {
+      renderSettings({
+        entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, password: false },
+      });
+
+      expect(screen.getByRole("checkbox", { name: "Password" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Username" })).toBeChecked();
+    });
+
+    it("reports turning a field off and on again", () => {
+      const { onEntryFieldVisibilityChange } = renderSettings();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
+
+      expect(onEntryFieldVisibilityChange).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: false }),
+      );
+
+      cleanup();
+      const second = renderSettings({
+        entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
+      });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
+
+      expect(second.onEntryFieldVisibilityChange).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: true }),
+      );
     });
   });
 });

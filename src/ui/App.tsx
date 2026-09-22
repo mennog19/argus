@@ -16,9 +16,11 @@ import {
   DEFAULT_ACCENT_COLOR,
   DEFAULT_AUTO_LOCK,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+  DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
   DEFAULT_THEME,
+  EntryFieldVisibility,
   GroupDeleteMode,
   recordVaultOpened,
   SettingsStore,
@@ -26,6 +28,7 @@ import {
   withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
+  withEntryFieldVisibility,
   withGeneratorPolicy,
   withGroupDeleteMode,
   withTheme,
@@ -290,6 +293,16 @@ function App({
     }
   }
 
+  async function handleEntryFieldVisibilityChange(visibility: EntryFieldVisibility) {
+    const updated = withEntryFieldVisibility(settings, visibility);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -326,6 +339,7 @@ function App({
         groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
         accentColor={settings.accentColor ?? DEFAULT_ACCENT_COLOR}
         theme={settings.theme ?? DEFAULT_THEME}
+        entryFieldVisibility={settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
@@ -334,6 +348,9 @@ function App({
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
         onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
         onThemeChange={(theme) => void handleThemeChange(theme)}
+        onEntryFieldVisibilityChange={(visibility) =>
+          void handleEntryFieldVisibilityChange(visibility)
+        }
       />
       {conflict && (
         <div className="modal-overlay">

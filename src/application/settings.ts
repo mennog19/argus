@@ -43,6 +43,25 @@ export type Theme = "dark" | "light";
 
 export const DEFAULT_THEME: Theme = "dark";
 
+/**
+ * Entry fields that can be individually hidden from the entry creation form.
+ * Title is always shown (it's the only required field); Group falls back to
+ * whichever group the entry is being created in when hidden.
+ */
+export type EntryFieldKey = "username" | "password" | "totp" | "url" | "notes" | "tags" | "group";
+
+export type EntryFieldVisibility = Readonly<Record<EntryFieldKey, boolean>>;
+
+export const DEFAULT_ENTRY_FIELD_VISIBILITY: EntryFieldVisibility = {
+  username: true,
+  password: true,
+  totp: true,
+  url: true,
+  notes: true,
+  tags: true,
+  group: true,
+};
+
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
   /** Shared password generator settings, used by both the dedicated generator
@@ -61,6 +80,11 @@ export interface AppSettings {
   readonly accentColor?: AccentColor;
   /** Undefined until the user changes it, at which point `DEFAULT_THEME` applies. */
   readonly theme?: Theme;
+  /** Which fields are shown on the entry creation form. Undefined until the
+   * user changes it, at which point `DEFAULT_ENTRY_FIELD_VISIBILITY` applies.
+   * Only applies to creating new entries; editing an existing entry always
+   * shows all of its fields. */
+  readonly entryFieldVisibility?: EntryFieldVisibility;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -127,4 +151,12 @@ export function withAccentColor(settings: AppSettings, accentColor: AccentColor)
 /** Returns settings with `theme` recorded as the app's color scheme. */
 export function withTheme(settings: AppSettings, theme: Theme): AppSettings {
   return { ...settings, theme };
+}
+
+/** Returns settings with `visibility` recorded as the entry creation form's field visibility. */
+export function withEntryFieldVisibility(
+  settings: AppSettings,
+  visibility: EntryFieldVisibility,
+): AppSettings {
+  return { ...settings, entryFieldVisibility: visibility };
 }

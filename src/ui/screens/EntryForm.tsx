@@ -14,6 +14,7 @@ import {
   TOTP_FIELD_KEYS,
   totpConfigFromCustomFields,
 } from "../../domain";
+import { EntryFieldVisibility } from "../../application/settings";
 import { IconPicker } from "../entry-icons/IconPicker";
 import { EyeIcon, EyeOffIcon } from "../icons";
 import { errorMessage } from "../error-message";
@@ -25,6 +26,7 @@ interface EntryFormProps {
   initialGroupId: string;
   groupOptions: readonly GroupOption[];
   generatorPolicy: PasswordPolicyOptions;
+  fieldVisibility: EntryFieldVisibility;
   onSubmit: (entry: Entry, groupId: GroupId) => Promise<void>;
   onCancel: () => void;
 }
@@ -34,6 +36,7 @@ export function EntryForm({
   initialGroupId,
   groupOptions,
   generatorPolicy,
+  fieldVisibility,
   onSubmit,
   onCancel,
 }: EntryFormProps) {
@@ -140,119 +143,133 @@ export function EntryForm({
         />
       </div>
 
-      <div className="field-group">
-        <label className="field-label" htmlFor="entry-username">
-          Username
-        </label>
-        <input
-          id="entry-username"
-          type="text"
-          className="field-input"
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-        />
-      </div>
-
-      <div className="field-group">
-        <label className="field-label" htmlFor="entry-password">
-          Password
-        </label>
-        <div className="field-input-with-action">
+      {fieldVisibility.username && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-username">
+            Username
+          </label>
           <input
-            id="entry-password"
-            type={revealed ? "text" : "password"}
+            id="entry-username"
+            type="text"
             className="field-input"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
           />
-          <button type="button" onClick={handleGenerate}>
-            Generate
-          </button>
-          <button
-            type="button"
-            className="field-reveal-button"
-            aria-label={revealed ? "Hide password" : "Show password"}
-            title={revealed ? "Hide password" : "Show password"}
-            onClick={() => setRevealed((value) => !value)}
-          >
-            {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-          </button>
         </div>
-      </div>
+      )}
 
-      <div className="field-group">
-        <label className="field-label" htmlFor="entry-totp">
-          Authenticator (TOTP)
-        </label>
-        <div className="field-input-with-action">
+      {fieldVisibility.password && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-password">
+            Password
+          </label>
+          <div className="field-input-with-action">
+            <input
+              id="entry-password"
+              type={revealed ? "text" : "password"}
+              className="field-input"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <button type="button" onClick={handleGenerate}>
+              Generate
+            </button>
+            <button
+              type="button"
+              className="field-reveal-button"
+              aria-label={revealed ? "Hide password" : "Show password"}
+              title={revealed ? "Hide password" : "Show password"}
+              onClick={() => setRevealed((value) => !value)}
+            >
+              {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fieldVisibility.totp && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-totp">
+            Authenticator (TOTP)
+          </label>
+          <div className="field-input-with-action">
+            <input
+              id="entry-totp"
+              type={totpRevealed ? "text" : "password"}
+              className="field-input"
+              placeholder="Secret key or otpauth:// URI"
+              value={totpInput}
+              onChange={(event) => setTotpInput(event.target.value)}
+            />
+            <button
+              type="button"
+              className="field-reveal-button"
+              aria-label={totpRevealed ? "Hide authenticator secret" : "Show authenticator secret"}
+              title={totpRevealed ? "Hide authenticator secret" : "Show authenticator secret"}
+              onClick={() => setTotpRevealed((value) => !value)}
+            >
+              {totpRevealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fieldVisibility.url && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-url">
+            URL
+          </label>
           <input
-            id="entry-totp"
-            type={totpRevealed ? "text" : "password"}
+            id="entry-url"
+            type="text"
             className="field-input"
-            placeholder="Secret key or otpauth:// URI"
-            value={totpInput}
-            onChange={(event) => setTotpInput(event.target.value)}
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
           />
-          <button
-            type="button"
-            className="field-reveal-button"
-            aria-label={totpRevealed ? "Hide authenticator secret" : "Show authenticator secret"}
-            title={totpRevealed ? "Hide authenticator secret" : "Show authenticator secret"}
-            onClick={() => setTotpRevealed((value) => !value)}
-          >
-            {totpRevealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-          </button>
         </div>
-      </div>
+      )}
 
-      <div className="field-group">
-        <label className="field-label" htmlFor="entry-url">
-          URL
-        </label>
-        <input
-          id="entry-url"
-          type="text"
-          className="field-input"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-        />
-      </div>
+      {fieldVisibility.notes && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-notes">
+            Notes
+          </label>
+          <textarea
+            id="entry-notes"
+            className="field-textarea"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={4}
+          />
+        </div>
+      )}
 
-      <div className="field-group">
-        <label className="field-label" htmlFor="entry-notes">
-          Notes
-        </label>
-        <textarea
-          id="entry-notes"
-          className="field-textarea"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          rows={4}
-        />
-      </div>
+      {fieldVisibility.group && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-group">
+            Group
+          </label>
+          <select
+            id="entry-group"
+            className="field-select"
+            value={groupId}
+            onChange={(event) => setGroupId(event.target.value)}
+          >
+            {groupOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-      <div className="field-group">
-        <label className="field-label" htmlFor="entry-group">
-          Group
-        </label>
-        <select
-          id="entry-group"
-          className="field-select"
-          value={groupId}
-          onChange={(event) => setGroupId(event.target.value)}
-        >
-          {groupOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="field-group">
-        <span className="field-label">Tags</span>
-        <TagsEditor tags={tags} onChange={setTags} />
-      </div>
+      {fieldVisibility.tags && (
+        <div className="field-group">
+          <span className="field-label">Tags</span>
+          <TagsEditor tags={tags} onChange={setTags} />
+        </div>
+      )}
 
       {error && <div className="field-error">{error}</div>}
 

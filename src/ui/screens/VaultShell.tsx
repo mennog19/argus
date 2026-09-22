@@ -10,7 +10,14 @@ import {
   totpConfigFromCustomFields,
   Vault,
 } from "../../domain";
-import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
+import {
+  AccentColor,
+  AutoLockSettings,
+  DEFAULT_ENTRY_FIELD_VISIBILITY,
+  EntryFieldVisibility,
+  GroupDeleteMode,
+  Theme,
+} from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
@@ -61,6 +68,7 @@ interface VaultShellProps {
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
+  entryFieldVisibility: EntryFieldVisibility;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
@@ -69,6 +77,7 @@ interface VaultShellProps {
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
+  onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
 }
 
 const ALL_ITEMS = "__all__";
@@ -88,6 +97,7 @@ export function VaultShell({
   groupDeleteMode,
   accentColor,
   theme,
+  entryFieldVisibility,
   onLock,
   onSave,
   onGeneratorPolicyChange,
@@ -96,6 +106,7 @@ export function VaultShell({
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
+  onEntryFieldVisibilityChange,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -302,11 +313,13 @@ export function VaultShell({
           groupDeleteMode={groupDeleteMode}
           accentColor={accentColor}
           theme={theme}
+          entryFieldVisibility={entryFieldVisibility}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
           onAutoLockChange={onAutoLockChange}
           onGroupDeleteModeChange={onGroupDeleteModeChange}
           onAccentColorChange={onAccentColorChange}
           onThemeChange={onThemeChange}
+          onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
         />
       ) : (
         <>
@@ -405,6 +418,7 @@ export function VaultShell({
                     initialGroupId={newEntryGroupId}
                     groupOptions={groupOptions}
                     generatorPolicy={generatorPolicy}
+                    fieldVisibility={entryFieldVisibility}
                     onSubmit={handleCreateEntry}
                     onCancel={() => setFormMode({ kind: "none" })}
                   />
@@ -415,6 +429,7 @@ export function VaultShell({
                     initialGroupId={selected.group.id.toString()}
                     groupOptions={groupOptions}
                     generatorPolicy={generatorPolicy}
+                    fieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
                     onSubmit={(entry, groupId) =>
                       handleUpdateEntry(entry, groupId, selected.group.id)
                     }
