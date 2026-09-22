@@ -118,7 +118,9 @@ export function VaultShell({
         : entriesOf(selectedGroup!);
 
   const selected = visibleEntries.find((item) => item.entry.id.toString() === selectedEntryId);
-  const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing);
+  const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing).map((option) =>
+    option.id === rootGroup.id.toString() ? { ...option, label: "No Group" } : option,
+  );
 
   function selectGroup(groupId: string) {
     setSelectedGroupId(groupId);
@@ -518,19 +520,19 @@ function EntryDetail({
           <span>Delete this entry?</span>
           <button
             type="button"
-            className="link-muted"
-            onClick={() => void handleConfirmDelete()}
-            disabled={busy}
-          >
-            Delete
-          </button>
-          <button
-            type="button"
-            className="link-muted"
+            className="btn-ghost-sm"
             onClick={() => setConfirmingDelete(false)}
             disabled={busy}
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-danger-sm"
+            onClick={() => void handleConfirmDelete()}
+            disabled={busy}
+          >
+            Delete
           </button>
         </div>
       )}

@@ -67,19 +67,19 @@ export function RecycleBinPanel({
             <span>Permanently delete everything in the recycle bin?</span>
             <button
               type="button"
-              className="link-muted"
-              disabled={busy}
-              onClick={() => void run(onEmptyRecycleBin)}
-            >
-              Empty
-            </button>
-            <button
-              type="button"
-              className="link-muted"
+              className="btn-ghost-sm"
               disabled={busy}
               onClick={() => setPending(undefined)}
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-danger-sm"
+              disabled={busy}
+              onClick={() => void run(onEmptyRecycleBin)}
+            >
+              Empty
             </button>
           </div>
         )}
@@ -97,19 +97,19 @@ export function RecycleBinPanel({
                     <span>Permanently delete &quot;{group.name}&quot;?</span>
                     <button
                       type="button"
-                      className="link-muted"
-                      disabled={busy}
-                      onClick={() => void run(() => onDeleteGroupForever(group.id))}
-                    >
-                      Delete Forever
-                    </button>
-                    <button
-                      type="button"
-                      className="link-muted"
+                      className="btn-ghost-sm"
                       disabled={busy}
                       onClick={() => setPending(undefined)}
                     >
                       Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-danger-sm"
+                      disabled={busy}
+                      onClick={() => void run(() => onDeleteGroupForever(group.id))}
+                    >
+                      Delete Forever
                     </button>
                   </div>
                 ) : (
@@ -118,14 +118,14 @@ export function RecycleBinPanel({
                     <span className="recycle-row-actions">
                       <button
                         type="button"
-                        className="link-muted"
+                        className="btn-ghost-sm"
                         onClick={() => void run(() => onRestoreGroup(group.id))}
                       >
                         Restore
                       </button>
                       <button
                         type="button"
-                        className="link-muted"
+                        className="btn-ghost-sm-danger"
                         onClick={() =>
                           setPending({ kind: "deleteGroupForever", groupId: group.id })
                         }
@@ -150,19 +150,19 @@ export function RecycleBinPanel({
                     <span>Permanently delete &quot;{entry.title || "(untitled)"}&quot;?</span>
                     <button
                       type="button"
-                      className="link-muted"
-                      disabled={busy}
-                      onClick={() => void run(() => onDeleteEntryForever(entry.id))}
-                    >
-                      Delete Forever
-                    </button>
-                    <button
-                      type="button"
-                      className="link-muted"
+                      className="btn-ghost-sm"
                       disabled={busy}
                       onClick={() => setPending(undefined)}
                     >
                       Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-danger-sm"
+                      disabled={busy}
+                      onClick={() => void run(() => onDeleteEntryForever(entry.id))}
+                    >
+                      Delete Forever
                     </button>
                   </div>
                 ) : (
@@ -175,14 +175,14 @@ export function RecycleBinPanel({
                     <span className="recycle-row-actions">
                       <button
                         type="button"
-                        className="link-muted"
+                        className="btn-ghost-sm"
                         onClick={() => void run(() => onRestoreEntry(entry.id))}
                       >
                         Restore
                       </button>
                       <button
                         type="button"
-                        className="link-muted"
+                        className="btn-ghost-sm-danger"
                         onClick={() =>
                           setPending({ kind: "deleteEntryForever", entryId: entry.id })
                         }

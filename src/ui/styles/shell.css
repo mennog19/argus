@@ -852,7 +852,10 @@ input[type="password"]::-ms-clear {
 
 .group-composer-cancel,
 .group-composer-save,
-.group-composer-delete {
+.group-composer-delete,
+.btn-ghost-sm,
+.btn-ghost-sm-danger,
+.btn-danger-sm {
   padding: 5px 11px;
   border-radius: 6px;
   font: inherit;
@@ -864,15 +867,27 @@ input[type="password"]::-ms-clear {
     color 120ms ease;
 }
 
-.group-composer-cancel {
+.group-composer-cancel,
+.btn-ghost-sm,
+.btn-ghost-sm-danger {
   border: none;
   background: transparent;
   color: var(--color-text-dim);
 }
 
-.group-composer-cancel:hover {
+.group-composer-cancel:hover,
+.btn-ghost-sm:hover {
   background: rgba(255, 255, 255, 0.06);
   color: var(--color-text);
+}
+
+.btn-ghost-sm-danger {
+  color: var(--color-danger);
+}
+
+.btn-ghost-sm-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger-strong);
 }
 
 .group-composer-save {
@@ -889,17 +904,22 @@ input[type="password"]::-ms-clear {
   border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
 }
 
-.group-composer-delete {
+.group-composer-delete,
+.btn-danger-sm {
   border: none;
   background: var(--color-danger);
   color: var(--color-accent-on);
 }
 
-.group-composer-delete:hover {
+.group-composer-delete:hover,
+.btn-danger-sm:hover {
   background: var(--color-danger-strong);
 }
 
-.group-composer button:disabled {
+.group-composer button:disabled,
+.btn-ghost-sm:disabled,
+.btn-ghost-sm-danger:disabled,
+.btn-danger-sm:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1418,7 +1438,7 @@ input[type="password"]::-ms-clear {
 
 .recycle-row-actions {
   display: flex;
-  gap: 14px;
+  gap: 4px;
   flex: none;
 }
 
