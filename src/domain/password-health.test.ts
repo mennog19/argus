@@ -5,12 +5,16 @@ import { PasswordHealthPolicy } from "./password-health-policy";
 import {
   checkPasswordHealth,
   findDuplicatePasswords,
-  findStalePasswords,
-  findWeakPasswords,
   isPasswordWeak,
+  passwordStrength,
 } from "./password-health";
 
-const policy = new PasswordHealthPolicy({ minLength: 10, minCharacterClasses: 3, maxAgeDays: 90 });
+const policy = new PasswordHealthPolicy({
+  minLength: 10,
+  minCharacterClasses: 3,
+  strongLength: 16,
+  strongCharacterClasses: 4,
+});
 
 function entryWithPassword(value: string): Entry {
   return Entry.create({ password: new Password(value) });
@@ -29,8 +33,22 @@ describe("isPasswordWeak", () => {
     expect(isPasswordWeak(new Password("aaaaaaaaaaaaaa"), policy)).toBe(true);
   });
 
-  it("treats a long password with enough character variety as strong", () => {
+  it("treats a long password with enough character variety as not weak", () => {
     expect(isPasswordWeak(new Password("Correct-Horse7"), policy)).toBe(false);
+  });
+});
+
+describe("passwordStrength", () => {
+  it("returns weak for a password below the weak bar", () => {
+    expect(passwordStrength(new Password("short"), policy)).toBe("weak");
+  });
+
+  it("returns fair for a password that clears the weak bar but not the strong one", () => {
+    expect(passwordStrength(new Password("Correct-Horse7"), policy)).toBe("fair");
+  });
+
+  it("returns strong for a password that clears the strong bar", () => {
+    expect(passwordStrength(new Password("Correct-Horse-Battery9!"), policy)).toBe("strong");
   });
 });
 
@@ -63,69 +81,36 @@ describe("findDuplicatePasswords", () => {
   });
 });
 
-describe("findWeakPasswords", () => {
-  it("returns only the entries flagged as weak", () => {
-    const weak = entryWithPassword("short");
-    const strong = entryWithPassword("Correct-Horse7");
-
-    expect(findWeakPasswords([weak, strong], policy)).toEqual([weak]);
-  });
-});
-
-describe("findStalePasswords", () => {
-  const now = new Date("2026-01-01T00:00:00Z");
-
-  it("flags entries changed more than maxAgeDays before now", () => {
-    const stale = entryWithPassword("old");
-    const changedAt = new Date("2025-01-01T00:00:00Z");
-
-    expect(findStalePasswords([{ entry: stale, changedAt }], policy, now)).toEqual([stale]);
-  });
-
-  it("does not flag entries changed within maxAgeDays", () => {
-    const fresh = entryWithPassword("new");
-    const changedAt = new Date("2025-12-15T00:00:00Z");
-
-    expect(findStalePasswords([{ entry: fresh, changedAt }], policy, now)).toEqual([]);
-  });
-
-  it("does not flag an entry changed exactly maxAgeDays ago", () => {
-    const entry = entryWithPassword("boundary");
-    const changedAt = new Date(now.getTime() - policy.maxAgeDays * 24 * 60 * 60 * 1000);
-
-    expect(findStalePasswords([{ entry, changedAt }], policy, now)).toEqual([]);
-  });
-
-  it("defaults now to the current time when not provided", () => {
-    const entry = entryWithPassword("old");
-    const changedAt = new Date("2000-01-01T00:00:00Z");
-
-    expect(findStalePasswords([{ entry, changedAt }], policy)).toEqual([entry]);
-  });
-});
-
 describe("checkPasswordHealth", () => {
-  it("combines duplicate, weak, and stale checks into one report", () => {
-    const now = new Date("2026-01-01T00:00:00Z");
+  it("sorts each entry into exactly one category", () => {
     const shared = "Correct-Horse7";
     const dup1 = entryWithPassword(shared);
     const dup2 = entryWithPassword(shared);
     const weak = entryWithPassword("short");
-    const stale = entryWithPassword("Another-Strong9");
+    const fair = entryWithPassword("Another-Fair9");
+    const strong = entryWithPassword("Correct-Horse-Battery9!");
 
-    const report = checkPasswordHealth(
-      [
-        { entry: dup1, changedAt: now },
-        { entry: dup2, changedAt: now },
-        { entry: weak, changedAt: now },
-        { entry: stale, changedAt: new Date("2000-01-01T00:00:00Z") },
-      ],
-      policy,
-      now,
-    );
+    const report = checkPasswordHealth([dup1, dup2, weak, fair, strong], policy);
 
     expect(report.duplicates).toHaveLength(1);
+    expect(report.duplicates[0].map((e) => e.id.toString()).sort()).toEqual(
+      [dup1.id.toString(), dup2.id.toString()].sort(),
+    );
     expect(report.weak).toEqual([weak]);
-    expect(report.stale).toEqual([stale]);
+    expect(report.fair).toEqual([fair]);
+    expect(report.strong).toEqual([strong]);
+  });
+
+  it("gives reuse priority over strength, excluding a weak-and-reused entry from `weak`", () => {
+    const shared = "short";
+    const dup1 = entryWithPassword(shared);
+    const dup2 = entryWithPassword(shared);
+
+    const report = checkPasswordHealth([dup1, dup2], policy);
+
+    expect(report.duplicates).toHaveLength(1);
+    expect(report.weak).toEqual([]);
+    expect(report.fair).toEqual([]);
+    expect(report.strong).toEqual([]);
   });
 });

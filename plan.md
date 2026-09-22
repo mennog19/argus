@@ -10,7 +10,7 @@ This plan is the checklist from empty repo to v1.0.0. It assumes the decisions b
 - **Fully local**: no accounts, sync, or telemetry, ever. The only network call in the whole app is an explicit, user-triggered "check for updates" that opens the GitHub Releases page — no background checks, no auto-download.
 - **KDBX fidelity**: full KDBX3/KDBX4 round-trip, including custom fields, attachments, custom icons, entry history storage, and KeePassXC's TOTP/protected-field conventions — even before those features have UI.
 - **Auth**: master password only for v1. No keyfile, no biometric unlock.
-- **v1 feature scope**: vault open/create/edit/save, groups, tags, custom fields, recycle bin, password generator (shared settings + quick-generate), full-text search (title/username/URL/notes/tags/custom fields), local-only password health check (duplicates/weak/stale).
+- **v1 feature scope**: vault open/create/edit/save, groups, tags, custom fields, recycle bin, password generator (shared settings + quick-generate), full-text search (title/username/URL/notes/tags/custom fields), local-only password health check (reused/weak/fair/strong, no age tracking).
 - **Explicitly deferred** (own feature branches, post-v1): TOTP, attachments UI, entry history UI, keyfile/biometric unlock, opt-in online breach-check.
 - **Explicitly out of scope, period**: browser extension/autofill, auto-type/global input simulation, import from non-KDBX sources, export to non-KDBX formats.
 - **Testing**: TDD in spirit; **100% code coverage is the hard, CI-enforced gate**. Vitest for unit + component tests (mandatory), Playwright E2E + `cargo test` at a lighter smoke level.

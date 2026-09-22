@@ -11,11 +11,4 @@ export interface VaultRepository {
   openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<Vault>;
   createVault(name: string, masterPassword: string): Promise<Vault>;
   saveVault(vault: Vault): Promise<ArrayBuffer>;
-  /**
-   * When a password was last changed for every entry in the currently open
-   * vault, keyed by `EntryId.toString()`. The domain `Entry` doesn't carry
-   * this timestamp itself (see `EntryPasswordAge`), so callers that need it
-   * (the password health check) ask the repository directly.
-   */
-  getPasswordChangedTimes(): Map<string, Date>;
 }

@@ -2,24 +2,27 @@ import { describe, expect, it } from "vitest";
 import { PasswordHealthPolicy } from "./password-health-policy";
 
 describe("PasswordHealthPolicy", () => {
-  it("defaults to a 12-character minimum, 3 character classes, and 90-day max age", () => {
+  it("defaults to a 12-char/3-class weak bar and a 16-char/4-class strong bar", () => {
     const policy = new PasswordHealthPolicy();
 
     expect(policy.minLength).toBe(12);
     expect(policy.minCharacterClasses).toBe(3);
-    expect(policy.maxAgeDays).toBe(90);
+    expect(policy.strongLength).toBe(16);
+    expect(policy.strongCharacterClasses).toBe(4);
   });
 
   it("accepts explicit overrides", () => {
     const policy = new PasswordHealthPolicy({
-      minLength: 16,
+      minLength: 8,
       minCharacterClasses: 2,
-      maxAgeDays: 30,
+      strongLength: 20,
+      strongCharacterClasses: 3,
     });
 
-    expect(policy.minLength).toBe(16);
+    expect(policy.minLength).toBe(8);
     expect(policy.minCharacterClasses).toBe(2);
-    expect(policy.maxAgeDays).toBe(30);
+    expect(policy.strongLength).toBe(20);
+    expect(policy.strongCharacterClasses).toBe(3);
   });
 
   it("rejects a non-positive minLength", () => {
@@ -49,15 +52,30 @@ describe("PasswordHealthPolicy", () => {
     );
   });
 
-  it("rejects a non-positive maxAgeDays", () => {
-    expect(() => new PasswordHealthPolicy({ maxAgeDays: 0 })).toThrow(
-      "maxAgeDays must be a positive integer",
+  it("rejects a strongLength shorter than minLength", () => {
+    expect(() => new PasswordHealthPolicy({ minLength: 12, strongLength: 10 })).toThrow(
+      "strongLength must be an integer at least minLength",
     );
   });
 
-  it("rejects a fractional maxAgeDays", () => {
-    expect(() => new PasswordHealthPolicy({ maxAgeDays: 10.5 })).toThrow(
-      "maxAgeDays must be a positive integer",
+  it("rejects a fractional strongLength", () => {
+    expect(() => new PasswordHealthPolicy({ strongLength: 16.5 })).toThrow(
+      "strongLength must be an integer at least minLength",
+    );
+  });
+
+  it("rejects a strongCharacterClasses below minCharacterClasses or above 4", () => {
+    expect(
+      () => new PasswordHealthPolicy({ minCharacterClasses: 3, strongCharacterClasses: 2 }),
+    ).toThrow("strongCharacterClasses must be an integer between minCharacterClasses and 4");
+    expect(() => new PasswordHealthPolicy({ strongCharacterClasses: 5 })).toThrow(
+      "strongCharacterClasses must be an integer between minCharacterClasses and 4",
+    );
+  });
+
+  it("rejects a fractional strongCharacterClasses", () => {
+    expect(() => new PasswordHealthPolicy({ strongCharacterClasses: 3.5 })).toThrow(
+      "strongCharacterClasses must be an integer between minCharacterClasses and 4",
     );
   });
 });

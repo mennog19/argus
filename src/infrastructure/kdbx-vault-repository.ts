@@ -2,7 +2,7 @@ import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
 import { VaultRepository } from "../application/vault-repository";
 import { Vault } from "../domain";
 import { configureKdbxCrypto } from "./kdbx-crypto";
-import { applyVaultToKdbx, passwordChangedTimesFromKdbx, vaultFromKdbx } from "./kdbx-mapper";
+import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
 
 /**
  * `kdbxweb`-backed `VaultRepository`. Keeps the parsed `Kdbx` document alive
@@ -34,12 +34,5 @@ export class KdbxVaultRepository implements VaultRepository {
     }
     applyVaultToKdbx(this.db, vault);
     return this.db.save();
-  }
-
-  getPasswordChangedTimes(): Map<string, Date> {
-    if (!this.db) {
-      throw new Error("No vault is open; call openVault before getPasswordChangedTimes");
-    }
-    return passwordChangedTimesFromKdbx(this.db);
   }
 }

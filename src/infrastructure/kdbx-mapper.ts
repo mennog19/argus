@@ -54,37 +54,6 @@ function groupFromKdbx(kdbxGroup: KdbxGroup): Group {
   );
 }
 
-/**
- * The time an entry's password was last changed, derived from KDBX's own
- * history (which the repository already round-trips byte-for-byte) rather
- * than a field the domain model carries. Walks history oldest-to-current,
- * treating a snapshot's `lastModTime` as a password change only when its
- * password differs from the snapshot before it; falls back to the entry's
- * creation time if the password has never changed.
- */
-function passwordChangedAtFromKdbx(kdbxEntry: KdbxEntry): Date {
-  const snapshots = [...kdbxEntry.history, kdbxEntry];
-  let changedAt = kdbxEntry.times.creationTime ?? new Date(0);
-  let previousPassword: string | undefined;
-  for (const snapshot of snapshots) {
-    const password = fieldToString(snapshot.fields.get("Password"));
-    if (previousPassword !== undefined && password !== previousPassword) {
-      changedAt = snapshot.times.lastModTime ?? changedAt;
-    }
-    previousPassword = password;
-  }
-  return changedAt;
-}
-
-/** Maps every entry's id (domain form) to when its current password was last changed. */
-export function passwordChangedTimesFromKdbx(db: Kdbx): Map<string, Date> {
-  const times = new Map<string, Date>();
-  for (const kdbxEntry of db.getDefaultGroup().allEntries()) {
-    times.set(kdbxUuidToDomainId(kdbxEntry.uuid), passwordChangedAtFromKdbx(kdbxEntry));
-  }
-  return times;
-}
-
 function recycleBinIdFromKdbx(db: Kdbx): GroupId | undefined {
   if (
     !db.meta.recycleBinEnabled ||

@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { PasswordPolicyOptions, Vault } from "../domain";
 import { hasClockJumped, hasIdleTimedOut } from "./auto-lock";
 import { ClipboardWriter } from "../application/clipboard";
-import { OpenedVault, VaultAccessService, VaultSaveConflictError } from "../application/vault-access-service";
+import {
+  OpenedVault,
+  VaultAccessService,
+  VaultSaveConflictError,
+} from "../application/vault-access-service";
 import { WindowEvents } from "../application/window-events";
 import {
   AppSettings,
@@ -49,7 +53,13 @@ interface SaveConflict {
   filePath: string;
 }
 
-function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter, windowEvents }: AppProps) {
+function App({
+  vaultAccessService,
+  settingsStore,
+  urlOpener,
+  clipboardWriter,
+  windowEvents,
+}: AppProps) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
@@ -88,7 +98,9 @@ function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter, wi
       let lastTickAt = Date.now();
       const intervalId = setInterval(() => {
         const now = Date.now();
-        if (hasClockJumped(lastTickAt, now, SLEEP_CHECK_INTERVAL_MS, SLEEP_CLOCK_JUMP_TOLERANCE_MS)) {
+        if (
+          hasClockJumped(lastTickAt, now, SLEEP_CHECK_INTERVAL_MS, SLEEP_CLOCK_JUMP_TOLERANCE_MS)
+        ) {
           lock();
         }
         lastTickAt = now;
@@ -265,7 +277,6 @@ function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter, wi
         onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
         onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
-        getPasswordChangedTimes={() => vaultAccessService.getPasswordChangedTimes()}
       />
       {conflict && (
         <div className="modal-overlay">
@@ -279,7 +290,11 @@ function App({ vaultAccessService, settingsStore, urlOpener, clipboardWriter, wi
               <button type="button" className="btn-secondary" onClick={handleDiscardConflict}>
                 Discard my changes &amp; lock
               </button>
-              <button type="button" className="btn-primary" onClick={() => void handleOverwriteConflict()}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => void handleOverwriteConflict()}
+              >
                 Overwrite anyway
               </button>
             </div>

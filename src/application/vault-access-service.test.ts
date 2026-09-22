@@ -10,7 +10,6 @@ function fakeRepository(overrides: Partial<VaultRepository> = {}): VaultReposito
     openVault: vi.fn(),
     createVault: vi.fn(),
     saveVault: vi.fn(),
-    getPasswordChangedTimes: vi.fn(),
     ...overrides,
   };
 }
@@ -54,7 +53,9 @@ describe("VaultAccessService", () => {
       const vault = Vault.create("My Vault");
       const fileBytes = new ArrayBuffer(4);
       const repository = fakeRepository({ openVault: vi.fn().mockResolvedValue(vault) });
-      const dialog = fakeDialog({ pickVaultToOpen: vi.fn().mockResolvedValue("C:/vaults/mine.kdbx") });
+      const dialog = fakeDialog({
+        pickVaultToOpen: vi.fn().mockResolvedValue("C:/vaults/mine.kdbx"),
+      });
       const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(fileBytes) });
       const service = new VaultAccessService(repository, dialog, fileStorage);
 
@@ -87,7 +88,9 @@ describe("VaultAccessService", () => {
         createVault: vi.fn().mockResolvedValue(vault),
         saveVault: vi.fn().mockResolvedValue(fileBytes),
       });
-      const dialog = fakeDialog({ pickPathForNewVault: vi.fn().mockResolvedValue("C:/vaults/new.kdbx") });
+      const dialog = fakeDialog({
+        pickPathForNewVault: vi.fn().mockResolvedValue("C:/vaults/new.kdbx"),
+      });
       const fileStorage = fakeFileStorage();
       const service = new VaultAccessService(repository, dialog, fileStorage);
 
@@ -122,7 +125,9 @@ describe("VaultAccessService", () => {
         openVault: vi.fn().mockRejectedValue(new Error("Invalid credentials")),
       });
       const dialog = fakeDialog();
-      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
       const service = new VaultAccessService(repository, dialog, fileStorage);
 
       await expect(service.openVaultAtPath("C:/vaults/mine.kdbx", "wrong")).rejects.toThrow(
@@ -200,7 +205,10 @@ describe("VaultAccessService", () => {
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
       expect(repository.saveVault).toHaveBeenCalledWith(vault);
-      expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx", expect.any(ArrayBuffer));
+      expect(fileStorage.writeFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        expect.any(ArrayBuffer),
+      );
     });
 
     it("bypasses the conflict check when forced", async () => {
@@ -226,7 +234,9 @@ describe("VaultAccessService", () => {
 
     it("does not check for a conflict when saving a path that was never opened/saved here", async () => {
       const vault = Vault.create("My Vault");
-      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
       const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
       const service = new VaultAccessService(repository, dialog, fileStorage);
@@ -239,10 +249,14 @@ describe("VaultAccessService", () => {
 
     it("rotates up to 3 rolling backups when the file already exists", async () => {
       const vault = Vault.create("My Vault");
-      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
       const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({
-        exists: vi.fn().mockImplementation((path: string) => Promise.resolve(!path.endsWith(".bak3"))),
+        exists: vi
+          .fn()
+          .mockImplementation((path: string) => Promise.resolve(!path.endsWith(".bak3"))),
       });
       const service = new VaultAccessService(repository, dialog, fileStorage);
 
@@ -267,10 +281,14 @@ describe("VaultAccessService", () => {
 
     it("skips shifting older backups that don't exist yet, still backing up the current file", async () => {
       const vault = Vault.create("My Vault");
-      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
       const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({
-        exists: vi.fn().mockImplementation((path: string) => Promise.resolve(!path.includes(".bak"))),
+        exists: vi
+          .fn()
+          .mockImplementation((path: string) => Promise.resolve(!path.includes(".bak"))),
       });
       const service = new VaultAccessService(repository, dialog, fileStorage);
 
@@ -285,7 +303,9 @@ describe("VaultAccessService", () => {
 
     it("asks for filesystem access to the backup paths before touching them", async () => {
       const vault = Vault.create("My Vault");
-      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
       const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
       const service = new VaultAccessService(repository, dialog, fileStorage);
@@ -302,7 +322,9 @@ describe("VaultAccessService", () => {
 
     it("does not rotate backups when the file does not already exist", async () => {
       const vault = Vault.create("My Vault");
-      const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)) });
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
       const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(false) });
       const service = new VaultAccessService(repository, dialog, fileStorage);
@@ -311,20 +333,6 @@ describe("VaultAccessService", () => {
 
       expect(fileStorage.copyFile).not.toHaveBeenCalled();
       expect(fileStorage.grantAccess).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("getPasswordChangedTimes", () => {
-    it("delegates to the repository", () => {
-      const times = new Map([["entry-1", new Date("2026-01-01T00:00:00.000Z")]]);
-      const repository = fakeRepository({ getPasswordChangedTimes: vi.fn().mockReturnValue(times) });
-      const dialog = fakeDialog();
-      const fileStorage = fakeFileStorage();
-      const service = new VaultAccessService(repository, dialog, fileStorage);
-
-      const result = service.getPasswordChangedTimes();
-
-      expect(result).toBe(times);
     });
   });
 });

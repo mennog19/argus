@@ -337,7 +337,7 @@ input[type="password"]::-ms-clear {
   border: none;
   cursor: pointer;
   background: transparent;
-  color: var(--color-text-dimmer);
+  color: var(--color-text-dim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,20 +420,24 @@ input[type="password"]::-ms-clear {
 }
 
 .icon-button-small {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border: none;
   cursor: pointer;
   background: transparent;
-  color: var(--color-text-dimmer);
+  color: var(--color-text-dim);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: none;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .icon-button-small:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--color-text);
 }
 
@@ -1381,14 +1385,13 @@ input[type="password"]::-ms-clear {
 }
 
 .icon-picker-color-auto {
-  background:
-    conic-gradient(
-      from 0deg,
-      oklch(65% 0.12 25),
-      oklch(65% 0.12 145),
-      oklch(65% 0.12 265),
-      oklch(65% 0.12 25)
-    );
+  background: conic-gradient(
+    from 0deg,
+    oklch(65% 0.12 25),
+    oklch(65% 0.12 145),
+    oklch(65% 0.12 265),
+    oklch(65% 0.12 25)
+  );
 }
 
 .icon-picker-color[aria-pressed="true"] {
@@ -1623,19 +1626,159 @@ input[type="password"]::-ms-clear {
   gap: 10px;
 }
 
+.health-summary {
+  margin: 0 0 24px;
+  font-size: 13.5px;
+  color: var(--color-text-dim);
+}
+
+.health-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.health-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.health-stat-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.health-stat-card.selected {
+  background: color-mix(in srgb, var(--color-surface) 82%, white 4%);
+}
+
+.health-stat-card.selected.warning {
+  box-shadow: inset 0 0 0 1.5px var(--color-warning);
+}
+
+.health-stat-card.selected.danger {
+  box-shadow: inset 0 0 0 1.5px var(--color-danger);
+}
+
+.health-stat-card.selected.neutral {
+  box-shadow: inset 0 0 0 1.5px var(--color-border-strong);
+}
+
+.health-stat-card.selected.success {
+  box-shadow: inset 0 0 0 1.5px var(--color-success);
+}
+
+.health-stat-number {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.health-stat-number.warning {
+  color: var(--color-warning);
+}
+
+.health-stat-number.danger {
+  color: var(--color-danger);
+}
+
+.health-stat-number.neutral {
+  color: var(--color-text-dim);
+}
+
+.health-stat-number.success {
+  color: var(--color-success);
+}
+
+.health-stat-label {
+  font-size: 12.5px;
+  color: var(--color-text-dimmer);
+}
+
+.health-section {
+  margin-bottom: 26px;
+}
+
+.health-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.health-section-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.health-section-dot.warning {
+  background: var(--color-warning);
+}
+
+.health-section-dot.danger {
+  background: var(--color-danger);
+}
+
+.health-section-dot.neutral {
+  background: var(--color-text-dimmer);
+}
+
+.health-section-dot.success {
+  background: var(--color-success);
+}
+
+.health-section-empty {
+  padding: 20px 4px;
+  font-size: 13px;
+  color: var(--color-text-dimmer);
+}
+
+.health-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .health-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border);
+  gap: 8px;
 }
 
-.health-group:first-of-type {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
+.health-entry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.health-entry-row:hover {
+  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface) 85%, white 4%);
+}
+
+.health-entry-action {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--color-text-dimmer);
 }
 
 .detail-field-actions {

@@ -1,6 +1,7 @@
 interface IconProps {
   size?: number;
   color?: string;
+  strokeWidth?: number;
 }
 
 export function LockIcon({ size = 20, color = "currentColor" }: IconProps) {
@@ -12,11 +13,7 @@ export function LockIcon({ size = 20, color = "currentColor" }: IconProps) {
   );
 }
 
-export function PlusIcon({
-  size = 16,
-  color = "currentColor",
-  strokeWidth = 2,
-}: IconProps & { strokeWidth?: number }) {
+export function PlusIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path
@@ -30,28 +27,28 @@ export function PlusIcon({
   );
 }
 
-export function EditIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function EditIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path
         d="M4 20h4L18.5 9.5a2.5 2.5 0 0 0-4-4L4 16v4Z"
         fill="none"
         stroke={color}
-        strokeWidth="2"
+        strokeWidth={strokeWidth}
         strokeLinejoin="round"
       />
     </svg>
   );
 }
 
-export function TrashIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function TrashIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path
         d="M5 7h14M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"
         fill="none"
         stroke={color}
-        strokeWidth="2"
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -82,33 +79,39 @@ export function SearchIcon({ size = 16, color = "currentColor" }: IconProps) {
   );
 }
 
-export function EyeIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function EyeIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path
         d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"
         fill="none"
         stroke={color}
-        strokeWidth="2"
+        strokeWidth={strokeWidth}
         strokeLinejoin="round"
       />
-      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth="2" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke={color} strokeWidth={strokeWidth} />
     </svg>
   );
 }
 
-export function EyeOffIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function EyeOffIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path
         d="M10.6 5.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.5M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7c1.9 0 3.6-.6 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2"
         fill="none"
         stroke={color}
-        strokeWidth="2"
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M3 3l18 18" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M3 3l18 18"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -140,15 +143,24 @@ export function MoreIcon({ size = 16, color = "currentColor" }: IconProps) {
   );
 }
 
-export function CopyIcon({ size = 16, color = "currentColor" }: IconProps) {
+export function CopyIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="9" y="9" width="12" height="12" rx="2" fill="none" stroke={color} strokeWidth="2" />
+      <rect
+        x="9"
+        y="9"
+        width="12"
+        height="12"
+        rx="2"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
       <path
         d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4"
         fill="none"
         stroke={color}
-        strokeWidth="2"
+        strokeWidth={strokeWidth}
       />
     </svg>
   );

@@ -30,6 +30,8 @@
   --color-accent-on: #0b0c0f;
   --color-danger: oklch(64% 0.17 25);
   --color-danger-strong: oklch(70% 0.17 25);
+  --color-warning: oklch(75% 0.15 70);
+  --color-success: oklch(72% 0.15 150);
   --font-ui: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }

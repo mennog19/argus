@@ -9,7 +9,10 @@ const MASTER_PASSWORD = "correct horse battery staple";
 
 async function createFixtureBytes(): Promise<ArrayBuffer> {
   configureKdbxCrypto();
-  const db = Kdbx.create(new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)), "Fixture Vault");
+  const db = Kdbx.create(
+    new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)),
+    "Fixture Vault",
+  );
   const root = db.getDefaultGroup();
 
   const untouched = db.createEntry(root);
@@ -38,7 +41,10 @@ describe("KdbxVaultRepository", () => {
     const vault = await repository.openVault(bytes, MASTER_PASSWORD);
 
     expect(vault.name).toBe("Fixture Vault");
-    expect(vault.rootGroup.entries.map((e) => e.title).sort()).toEqual(["Untouched Site", "Will Change"]);
+    expect(vault.rootGroup.entries.map((e) => e.title).sort()).toEqual([
+      "Untouched Site",
+      "Will Change",
+    ]);
     const subGroup = vault.rootGroup.groups.find((g) => g.name === "Sub Group");
     expect(subGroup?.entries[0].title).toBe("Nested Entry");
   });
@@ -86,8 +92,13 @@ describe("KdbxVaultRepository", () => {
 
     // Confirm the untouched KdbxEntry object's icon (a field the domain model
     // doesn't expose at all) survived the round trip byte-for-byte.
-    const rawReloaded = await Kdbx.load(savedBytes, new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)));
-    const rawUntouched = rawReloaded.getDefaultGroup().entries.find((e) => e.fields.get("Title") === "Untouched Site");
+    const rawReloaded = await Kdbx.load(
+      savedBytes,
+      new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)),
+    );
+    const rawUntouched = rawReloaded
+      .getDefaultGroup()
+      .entries.find((e) => e.fields.get("Title") === "Untouched Site");
     expect(rawUntouched?.icon).toBe(12);
   });
 
@@ -102,26 +113,5 @@ describe("KdbxVaultRepository", () => {
     const savedBytes = await repository.saveVault(vault);
     const reopened = await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD);
     expect(reopened.name).toBe("Brand New Vault");
-  });
-
-  describe("getPasswordChangedTimes", () => {
-    it("throws when called before openVault", () => {
-      const repository = new KdbxVaultRepository();
-
-      expect(() => repository.getPasswordChangedTimes()).toThrow(
-        "No vault is open; call openVault before getPasswordChangedTimes",
-      );
-    });
-
-    it("returns a password-changed time for every entry in the opened vault", async () => {
-      const bytes = await createFixtureBytes();
-      const repository = new KdbxVaultRepository();
-      const vault = await repository.openVault(bytes, MASTER_PASSWORD);
-
-      const times = repository.getPasswordChangedTimes();
-
-      const untouched = vault.rootGroup.entries.find((e) => e.title === "Untouched Site")!;
-      expect(times.has(untouched.id.toString())).toBe(true);
-    });
   });
 });

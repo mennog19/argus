@@ -3,7 +3,11 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Vault } from "../domain";
 import { ClipboardWriter } from "../application/clipboard";
-import { OpenedVault, VaultAccessService, VaultSaveConflictError } from "../application/vault-access-service";
+import {
+  OpenedVault,
+  VaultAccessService,
+  VaultSaveConflictError,
+} from "../application/vault-access-service";
 import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
 import { WindowEvents } from "../application/window-events";
@@ -15,7 +19,6 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
     saveVault: vi.fn().mockResolvedValue(undefined),
-    getPasswordChangedTimes: vi.fn().mockReturnValue(new Map()),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -59,7 +62,9 @@ describe("App", () => {
     render(
       <App
         vaultAccessService={fakeVaultAccessService()}
-        settingsStore={fakeSettingsStore({ load: vi.fn().mockRejectedValue(new Error("no backend")) })}
+        settingsStore={fakeSettingsStore({
+          load: vi.fn().mockRejectedValue(new Error("no backend")),
+        })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -92,12 +97,17 @@ describe("App", () => {
 
   it("unlocks from the welcome screen (create flow), then locking returns to the locked screen for that vault", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settingsStore = fakeSettingsStore();
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -113,7 +123,9 @@ describe("App", () => {
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
     expect(settingsStore.save).toHaveBeenCalledWith(
-      expect.objectContaining({ recentVaults: [expect.objectContaining({ path: "C:/vaults/personal.kdbx" })] }),
+      expect.objectContaining({
+        recentVaults: [expect.objectContaining({ path: "C:/vaults/personal.kdbx" })],
+      }),
     );
 
     await user.click(screen.getByRole("button", { name: "Lock vault" }));
@@ -130,7 +142,9 @@ describe("App", () => {
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ openVaultAtPath: vi.fn().mockResolvedValue(vault) })}
+        vaultAccessService={fakeVaultAccessService({
+          openVaultAtPath: vi.fn().mockResolvedValue(vault),
+        })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -174,12 +188,19 @@ describe("App", () => {
 
   it("keeps the vault unlocked even if persisting recent-vault settings fails", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
-    const settingsStore = fakeSettingsStore({ save: vi.fn().mockRejectedValue(new Error("disk full")) });
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const settingsStore = fakeSettingsStore({
+      save: vi.fn().mockRejectedValue(new Error("disk full")),
+    });
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -198,7 +219,10 @@ describe("App", () => {
 
   it("persists an entry created in the vault shell via saveVault, keeping the vault unlocked", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const saveVault = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -230,12 +254,17 @@ describe("App", () => {
 
   it("persists a generator policy change made in the vault shell's generator screen", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settingsStore = fakeSettingsStore();
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -259,12 +288,17 @@ describe("App", () => {
 
   it("persists a clipboard clear-delay change made in the vault shell's settings screen", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settingsStore = fakeSettingsStore();
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -288,12 +322,19 @@ describe("App", () => {
 
   it("keeps the generator policy change even if persisting it fails", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
-    const settingsStore = fakeSettingsStore({ save: vi.fn().mockRejectedValue(new Error("disk full")) });
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const settingsStore = fakeSettingsStore({
+      save: vi.fn().mockRejectedValue(new Error("disk full")),
+    });
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -315,7 +356,10 @@ describe("App", () => {
 
   it("propagates a non-conflict save error so the entry form can show it, without opening the conflict overlay", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const saveVault = vi.fn().mockRejectedValueOnce(new Error("disk full"));
 
     render(
@@ -342,41 +386,17 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("disk full")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /vault changed on disk/i })).not.toBeInTheDocument();
-  });
-
-  it("wires the vault access service's password-changed times through to the health screen", async () => {
-    const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
-    const getPasswordChangedTimes = vi.fn().mockReturnValue(new Map());
-
-    render(
-      <App
-        vaultAccessService={fakeVaultAccessService({
-          createNewVault: vi.fn().mockResolvedValue(opened),
-          getPasswordChangedTimes,
-        })}
-        settingsStore={fakeSettingsStore()}
-        urlOpener={fakeUrlOpener()}
-        clipboardWriter={fakeClipboardWriter()}
-        windowEvents={fakeWindowEvents()}
-      />,
-    );
-
-    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
-    await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
-    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
-
-    await user.click(await screen.findByRole("button", { name: "Password health" }));
-
-    expect(getPasswordChangedTimes).toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: /vault changed on disk/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a conflict overlay instead of losing the edit when the file changed on disk", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const saveVault = vi.fn().mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath));
 
     render(
@@ -402,12 +422,17 @@ describe("App", () => {
     await user.type(screen.getByLabelText("Title"), "GitHub");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByRole("heading", { name: /vault changed on disk/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /vault changed on disk/i }),
+    ).toBeInTheDocument();
   });
 
   it("retries the save with force when the user chooses to overwrite the conflict", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const saveVault = vi
       .fn()
       .mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath))
@@ -444,7 +469,10 @@ describe("App", () => {
 
   it("locks the vault, discarding the pending edit, when the user chooses to discard the conflict", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const saveVault = vi.fn().mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath));
 
     render(
@@ -473,17 +501,24 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: /discard my changes/i }));
 
     expect(await screen.findByLabelText("Master password")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /vault changed on disk/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /vault changed on disk/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("persists an auto-lock change made in the vault shell's settings screen", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settingsStore = fakeSettingsStore();
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -507,12 +542,17 @@ describe("App", () => {
 
   it("persists a group delete mode change made in the vault shell's settings screen", async () => {
     const user = userEvent.setup();
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settingsStore = fakeSettingsStore();
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={settingsStore}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -536,7 +576,10 @@ describe("App", () => {
   });
 
   it("locks the vault after the configured idle timeout with no activity", async () => {
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settings: AppSettings = {
       recentVaults: [],
       autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
@@ -546,7 +589,9 @@ describe("App", () => {
     try {
       render(
         <App
-          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+          })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
@@ -573,7 +618,10 @@ describe("App", () => {
   });
 
   it("does not lock from idle timeout while activity keeps resetting the idle clock", async () => {
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settings: AppSettings = {
       recentVaults: [],
       autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
@@ -583,7 +631,9 @@ describe("App", () => {
     try {
       render(
         <App
-          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+          })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
@@ -614,7 +664,10 @@ describe("App", () => {
   });
 
   it("locks the vault when the system clock jumps far beyond the sleep-check interval", async () => {
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settings: AppSettings = {
       recentVaults: [],
       autoLock: { lockOnMinimize: false, lockOnSleep: true },
@@ -624,7 +677,9 @@ describe("App", () => {
     try {
       render(
         <App
-          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+          })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
@@ -656,7 +711,10 @@ describe("App", () => {
   });
 
   it("does not lock from a sleep-check heartbeat that isn't a real clock jump", async () => {
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settings: AppSettings = {
       recentVaults: [],
       autoLock: { lockOnMinimize: false, lockOnSleep: true },
@@ -666,7 +724,9 @@ describe("App", () => {
     try {
       render(
         <App
-          vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+          })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
@@ -693,7 +753,10 @@ describe("App", () => {
   });
 
   it("locks the vault when the window is minimized, only if lock-on-minimize is enabled", async () => {
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const settings: AppSettings = {
       recentVaults: [],
       autoLock: { lockOnMinimize: true, lockOnSleep: false },
@@ -709,7 +772,9 @@ describe("App", () => {
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
@@ -734,7 +799,10 @@ describe("App", () => {
   });
 
   it("does not lock on minimize when lock-on-minimize is disabled", async () => {
-    const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
     const user = userEvent.setup();
     let minimizeRegistered = false;
     const windowEvents = fakeWindowEvents({
@@ -746,7 +814,9 @@ describe("App", () => {
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({ createNewVault: vi.fn().mockResolvedValue(opened) })}
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
         settingsStore={fakeSettingsStore()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}

@@ -35,7 +35,6 @@ function renderShell(
     onLock?: () => void;
     generatorPolicy?: PasswordPolicyOptions;
     onGeneratorPolicyChange?: (policy: PasswordPolicyOptions) => void;
-    getPasswordChangedTimes?: () => Map<string, Date>;
     clipboardWriter?: ClipboardWriter;
     clipboardClearSeconds?: number;
     onClipboardClearSecondsChange?: (seconds: number) => void;
@@ -48,7 +47,6 @@ function renderShell(
   const onLock = overrides.onLock ?? vi.fn();
   const generatorPolicy = overrides.generatorPolicy ?? {};
   const onGeneratorPolicyChange = overrides.onGeneratorPolicyChange ?? vi.fn();
-  const getPasswordChangedTimes = overrides.getPasswordChangedTimes ?? (() => new Map());
   const clipboardWriter = overrides.clipboardWriter ?? fakeClipboardWriter();
   const clipboardClearSeconds = overrides.clipboardClearSeconds ?? 20;
   const onClipboardClearSecondsChange = overrides.onClipboardClearSecondsChange ?? vi.fn();
@@ -70,7 +68,6 @@ function renderShell(
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={vi.fn()}
-      getPasswordChangedTimes={getPasswordChangedTimes}
     />,
   );
   return {
@@ -259,7 +256,6 @@ describe("VaultShell", () => {
         onGeneratorPolicyChange={vi.fn()}
         onClipboardClearSecondsChange={vi.fn()}
         onAutoLockChange={vi.fn()}
-        getPasswordChangedTimes={() => new Map()}
         clipboardWriter={fakeClipboardWriter()}
         clipboardClearSeconds={20}
         autoLock={DEFAULT_AUTO_LOCK}
@@ -739,12 +735,11 @@ describe("VaultShell", () => {
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
           onAutoLockChange={vi.fn()}
-          getPasswordChangedTimes={() => new Map()}
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
           autoLock={DEFAULT_AUTO_LOCK}
-        groupDeleteMode="deleteContents"
-        onGroupDeleteModeChange={vi.fn()}
+          groupDeleteMode="deleteContents"
+          onGroupDeleteModeChange={vi.fn()}
         />,
       );
 
@@ -765,12 +760,11 @@ describe("VaultShell", () => {
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
           onAutoLockChange={vi.fn()}
-          getPasswordChangedTimes={() => new Map()}
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
           autoLock={DEFAULT_AUTO_LOCK}
-        groupDeleteMode="deleteContents"
-        onGroupDeleteModeChange={vi.fn()}
+          groupDeleteMode="deleteContents"
+          onGroupDeleteModeChange={vi.fn()}
         />,
       );
 
@@ -1007,28 +1001,10 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Password health" }));
 
       expect(screen.getByRole("heading", { name: "Password Health" })).toBeInTheDocument();
-      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "Vault" }));
 
       expect(screen.getByText("GitHub")).toBeInTheDocument();
-    });
-
-    it("passes password-changed times from the injected getter through to the health screen", async () => {
-      const user = userEvent.setup();
-      const entry = Entry.create({ title: "Old Site" });
-      let vault = Vault.create("Mine");
-      vault = vault.addEntry(vault.rootGroup.id, entry);
-      const getPasswordChangedTimes = vi
-        .fn()
-        .mockReturnValue(new Map([[entry.id.toString(), new Date("2000-01-01T00:00:00.000Z")]]));
-
-      renderShell(vault, { getPasswordChangedTimes });
-
-      await user.click(screen.getByRole("button", { name: "Password health" }));
-
-      expect(getPasswordChangedTimes).toHaveBeenCalled();
-      expect(screen.getByText(/stale passwords/i)).toBeInTheDocument();
     });
 
     it("selecting a flagged entry on the health screen jumps back to it in the vault view", async () => {

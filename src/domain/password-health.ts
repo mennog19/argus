@@ -2,25 +2,17 @@ import { Entry } from "./entry";
 import { Password } from "./password";
 import { PasswordHealthPolicy } from "./password-health-policy";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 const CHARACTER_CLASS_PATTERNS = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/];
 
-/**
- * An entry paired with when its password was last changed. The domain
- * `Entry` doesn't carry this timestamp itself (it comes from KDBX times via
- * the repository layer), so health checks that need it take it alongside
- * the entry rather than assuming it's on the model.
- */
-export interface EntryPasswordAge {
-  readonly entry: Entry;
-  readonly changedAt: Date;
-}
+export type PasswordStrength = "weak" | "fair" | "strong";
 
 export interface PasswordHealthReport {
+  /** Groups of two or more entries that share the same non-empty password. */
   readonly duplicates: readonly (readonly Entry[])[];
+  /** Entries not already counted under `duplicates`, by strength tier. */
   readonly weak: readonly Entry[];
-  readonly stale: readonly Entry[];
+  readonly fair: readonly Entry[];
+  readonly strong: readonly Entry[];
 }
 
 function characterClassCount(value: string): number {
@@ -34,6 +26,21 @@ export function isPasswordWeak(password: Password, policy: PasswordHealthPolicy)
     return true;
   }
   return value.length < policy.minLength || characterClassCount(value) < policy.minCharacterClasses;
+}
+
+/** Weak/fair/strong tier for a password, independent of whether it's reused elsewhere. */
+export function passwordStrength(
+  password: Password,
+  policy: PasswordHealthPolicy,
+): PasswordStrength {
+  if (isPasswordWeak(password, policy)) {
+    return "weak";
+  }
+  const value = password.reveal();
+  const isStrong =
+    value.length >= policy.strongLength &&
+    characterClassCount(value) >= policy.strongCharacterClasses;
+  return isStrong ? "strong" : "fair";
 }
 
 /** Groups of two or more entries that share the same non-empty password. */
@@ -54,35 +61,36 @@ export function findDuplicatePasswords(entries: readonly Entry[]): Entry[][] {
   return Array.from(byPassword.values()).filter((group) => group.length > 1);
 }
 
-export function findWeakPasswords(
+/**
+ * Runs every local health check against a vault's entries and returns a
+ * combined report. Reuse takes priority over strength: an entry whose
+ * password is reused elsewhere is only counted under `duplicates`, even if
+ * that password would otherwise also be weak, so every entry lands in
+ * exactly one category.
+ */
+export function checkPasswordHealth(
   entries: readonly Entry[],
   policy: PasswordHealthPolicy,
-): Entry[] {
-  return entries.filter((entry) => isPasswordWeak(entry.password, policy));
-}
-
-/** Entries whose password hasn't been changed within the policy's max age, as of `now`. */
-export function findStalePasswords(
-  entries: readonly EntryPasswordAge[],
-  policy: PasswordHealthPolicy,
-  now: Date = new Date(),
-): Entry[] {
-  const maxAgeMs = policy.maxAgeDays * MS_PER_DAY;
-  return entries
-    .filter(({ changedAt }) => now.getTime() - changedAt.getTime() > maxAgeMs)
-    .map(({ entry }) => entry);
-}
-
-/** Runs every local health check against a vault's entries and returns a combined report. */
-export function checkPasswordHealth(
-  entries: readonly EntryPasswordAge[],
-  policy: PasswordHealthPolicy,
-  now: Date = new Date(),
 ): PasswordHealthReport {
-  const allEntries = entries.map(({ entry }) => entry);
-  return {
-    duplicates: findDuplicatePasswords(allEntries),
-    weak: findWeakPasswords(allEntries, policy),
-    stale: findStalePasswords(entries, policy, now),
-  };
+  const duplicates = findDuplicatePasswords(entries);
+  const reusedIds = new Set(duplicates.flat().map((entry) => entry.id.toString()));
+
+  const weak: Entry[] = [];
+  const fair: Entry[] = [];
+  const strong: Entry[] = [];
+  for (const entry of entries) {
+    if (reusedIds.has(entry.id.toString())) {
+      continue;
+    }
+    const tier = passwordStrength(entry.password, policy);
+    if (tier === "weak") {
+      weak.push(entry);
+    } else if (tier === "fair") {
+      fair.push(entry);
+    } else {
+      strong.push(entry);
+    }
+  }
+
+  return { duplicates, weak, fair, strong };
 }

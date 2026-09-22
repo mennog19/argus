@@ -131,9 +131,4 @@ export class VaultAccessService {
     const mtime = await this.fileStorage.lastModified(filePath);
     this.lastKnownMtime.set(filePath, mtime);
   }
-
-  /** When each entry's password was last changed, for the password health check. */
-  getPasswordChangedTimes(): Map<string, Date> {
-    return this.repository.getPasswordChangedTimes();
-  }
 }

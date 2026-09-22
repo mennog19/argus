@@ -12,11 +12,10 @@ export { generatePassword, type RandomInt } from "./password-generator";
 export {
   checkPasswordHealth,
   findDuplicatePasswords,
-  findStalePasswords,
-  findWeakPasswords,
   isPasswordWeak,
-  type EntryPasswordAge,
+  passwordStrength,
   type PasswordHealthReport,
+  type PasswordStrength,
 } from "./password-health";
 export { PasswordHealthPolicy, type PasswordHealthPolicyOptions } from "./password-health-policy";
 export {

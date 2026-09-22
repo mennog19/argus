@@ -50,7 +50,6 @@ interface VaultShellProps {
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
-  getPasswordChangedTimes: () => Map<string, Date>;
 }
 
 const ALL_ITEMS = "__all__";
@@ -72,7 +71,6 @@ export function VaultShell({
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
-  getPasswordChangedTimes,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -265,7 +263,6 @@ export function VaultShell({
       ) : view === "health" ? (
         <HealthScreen
           entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
-          passwordChangedTimes={getPasswordChangedTimes()}
           onSelectEntry={handleSelectHealthEntry}
         />
       ) : view === "settings" ? (
@@ -489,7 +486,7 @@ function EntryDetail({
         </div>
         <div className="detail-header-actions">
           <button type="button" className="icon-button" aria-label="Edit entry" onClick={onEdit}>
-            <EditIcon size={16} />
+            <EditIcon size={18} strokeWidth={2.25} />
           </button>
           <button
             type="button"
@@ -497,7 +494,7 @@ function EntryDetail({
             aria-label="Delete entry"
             onClick={() => setConfirmingDelete(true)}
           >
-            <TrashIcon size={16} />
+            <TrashIcon size={18} strokeWidth={2.25} />
           </button>
         </div>
       </div>
@@ -540,7 +537,7 @@ function EntryDetail({
                 aria-label="Copy username"
                 onClick={() => void handleCopy(entry.username, "username")}
               >
-                <CopyIcon size={14} />
+                <CopyIcon size={17} strokeWidth={2.25} />
               </button>
             </div>
           </div>
@@ -559,7 +556,7 @@ function EntryDetail({
                 aria-label="Copy password"
                 onClick={() => void handleCopy(entry.password.reveal(), "password")}
               >
-                <CopyIcon size={14} />
+                <CopyIcon size={17} strokeWidth={2.25} />
               </button>
               <button
                 type="button"
@@ -568,7 +565,11 @@ function EntryDetail({
                 title={revealed ? "Hide password" : "Show password"}
                 onClick={onToggleReveal}
               >
-                {revealed ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
+                {revealed ? (
+                  <EyeOffIcon size={17} strokeWidth={2.25} />
+                ) : (
+                  <EyeIcon size={17} strokeWidth={2.25} />
+                )}
               </button>
             </div>
           </div>
