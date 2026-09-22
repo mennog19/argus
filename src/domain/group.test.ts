@@ -136,4 +136,81 @@ describe("Group", () => {
     expect(parent.groups).toHaveLength(1);
     expect(updated.groups).toEqual([]);
   });
+
+  it("moveGroupBefore moves a child to the front", () => {
+    const a = Group.create("A");
+    const b = Group.create("B");
+    const c = Group.create("C");
+    const parent = Group.create("Root").addGroup(a).addGroup(b).addGroup(c);
+
+    const updated = parent.moveGroupBefore(c.id, a.id);
+
+    expect(updated.groups.map((g) => g.name)).toEqual(["C", "A", "B"]);
+    expect(parent.groups.map((g) => g.name)).toEqual(["A", "B", "C"]);
+  });
+
+  it("moveGroupBefore moves a child to the end when beforeId is undefined", () => {
+    const a = Group.create("A");
+    const b = Group.create("B");
+    const c = Group.create("C");
+    const parent = Group.create("Root").addGroup(a).addGroup(b).addGroup(c);
+
+    const updated = parent.moveGroupBefore(a.id, undefined);
+
+    expect(updated.groups.map((g) => g.name)).toEqual(["B", "C", "A"]);
+  });
+
+  it("moveGroupBefore moves a child between two others", () => {
+    const a = Group.create("A");
+    const b = Group.create("B");
+    const c = Group.create("C");
+    const parent = Group.create("Root").addGroup(a).addGroup(b).addGroup(c);
+
+    const updated = parent.moveGroupBefore(a.id, c.id);
+
+    expect(updated.groups.map((g) => g.name)).toEqual(["B", "A", "C"]);
+  });
+
+  it("moveGroupBefore is a no-op when beforeId equals groupId", () => {
+    const a = Group.create("A");
+    const b = Group.create("B");
+    const parent = Group.create("Root").addGroup(a).addGroup(b);
+
+    const updated = parent.moveGroupBefore(a.id, a.id);
+
+    expect(updated.groups.map((g) => g.name)).toEqual(["A", "B"]);
+  });
+
+  it("moveGroupBefore is a no-op when beforeId is undefined and the group is already last", () => {
+    const a = Group.create("A");
+    const b = Group.create("B");
+    const parent = Group.create("Root").addGroup(a).addGroup(b);
+
+    const updated = parent.moveGroupBefore(b.id, undefined);
+
+    expect(updated.groups.map((g) => g.name)).toEqual(["A", "B"]);
+  });
+
+  it("moveGroupBefore is a no-op when the group is already directly before beforeId", () => {
+    const a = Group.create("A");
+    const b = Group.create("B");
+    const parent = Group.create("Root").addGroup(a).addGroup(b);
+
+    const updated = parent.moveGroupBefore(a.id, b.id);
+
+    expect(updated.groups.map((g) => g.name)).toEqual(["A", "B"]);
+  });
+
+  it("moveGroupBefore throws when groupId is not a child", () => {
+    const parent = Group.create("Root").addGroup(Group.create("A"));
+
+    expect(() => parent.moveGroupBefore(GroupId.create(), undefined)).toThrow(/not found/i);
+  });
+
+  it("moveGroupBefore throws when beforeId is not a child", () => {
+    const a = Group.create("A");
+    const parent = Group.create("Root").addGroup(a);
+
+    expect(() => parent.moveGroupBefore(a.id, GroupId.create())).toThrow(/not found/i);
+  });
 });

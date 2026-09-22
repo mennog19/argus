@@ -143,6 +143,21 @@ export class Vault {
     return new Vault(this.name, result.group, this.recycleBinId);
   }
 
+  /**
+   * Reorders `groupId` to sit immediately before `beforeId` among its
+   * siblings, or at the end when `beforeId` is `undefined`. Both ids must
+   * belong to the same parent group.
+   */
+  reorderGroup(groupId: GroupId, beforeId: GroupId | undefined): Vault {
+    const result = updateGroupContainingGroup(this.rootGroup, groupId, (owner) =>
+      owner.moveGroupBefore(groupId, beforeId),
+    );
+    if (!result.found) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    return new Vault(this.name, result.group, this.recycleBinId);
+  }
+
   renameGroup(groupId: GroupId, name: string): Vault {
     const result = updateGroupById(this.rootGroup, groupId, (group) => group.rename(name));
     if (!result.found) {
@@ -285,6 +300,49 @@ export class Vault {
       throw new Error("Cannot restore a group into itself or one of its own subgroups");
     }
     return this.removeGroup(groupId).addGroup(targetGroupId, group);
+  }
+
+  /**
+   * Reparents `groupId` to become the last child of `targetGroupId` (drag-and-drop
+   * "drop into a folder"). Returns this vault unchanged when it's already a direct
+   * child of that group.
+   */
+  moveGroupToParent(groupId: GroupId, targetGroupId: GroupId): Vault {
+    const group = this.findGroup(groupId);
+    if (!group) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    const target = this.findGroup(targetGroupId);
+    if (!target) {
+      throw new Error(`Group not found: ${targetGroupId.toString()}`);
+    }
+    if (findGroupInTree(group, targetGroupId)) {
+      throw new Error("Cannot move a group into itself or one of its own subgroups");
+    }
+    if (target.groups.some((child) => child.id.equals(groupId))) {
+      return this;
+    }
+    return this.removeGroup(groupId).addGroup(targetGroupId, group);
+  }
+
+  /**
+   * Reparents `groupId` into `targetParentId`, positioned immediately before
+   * `beforeId` among its new siblings (or at the end when `beforeId` is
+   * `undefined`) — drag-and-drop hovering a row's edge to both change a
+   * group's nesting level and place it in one drop. Throws the same
+   * cycle error as {@link moveGroupToParent} when the move would nest a
+   * group inside itself or one of its own subgroups.
+   */
+  moveGroupToPosition(
+    groupId: GroupId,
+    targetParentId: GroupId,
+    beforeId: GroupId | undefined,
+  ): Vault {
+    const moved = this.moveGroupToParent(groupId, targetParentId);
+    if (beforeId === undefined) {
+      return moved;
+    }
+    return moved.reorderGroup(groupId, beforeId);
   }
 
   /** Permanently deletes everything currently in the recycle bin, leaving it empty. */

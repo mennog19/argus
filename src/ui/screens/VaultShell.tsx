@@ -191,6 +191,24 @@ export function VaultShell({
     await persist(vault.changeGroupIcon(groupId, icon));
   }
 
+  async function handleMoveGroupToPosition(
+    groupId: GroupId,
+    targetParentId: GroupId,
+    beforeId: GroupId | undefined,
+  ) {
+    const next = vault.moveGroupToPosition(groupId, targetParentId, beforeId);
+    if (next !== vault) {
+      await persist(next);
+    }
+  }
+
+  async function handleMoveGroupToParent(groupId: GroupId, targetGroupId: GroupId) {
+    const next = vault.moveGroupToParent(groupId, targetGroupId);
+    if (next !== vault) {
+      await persist(next);
+    }
+  }
+
   async function handleDeleteGroup(groupId: GroupId) {
     await persist(
       groupDeleteMode === "keepContents"
@@ -346,6 +364,8 @@ export function VaultShell({
             groupDeleteMode={groupDeleteMode}
             entryDragActive={draggingEntryId !== undefined}
             onDropEntry={handleDropEntry}
+            onMoveGroupToPosition={handleMoveGroupToPosition}
+            onMoveGroupToParent={handleMoveGroupToParent}
           />
 
           {isRecycleBinSelected && recycleBin ? (

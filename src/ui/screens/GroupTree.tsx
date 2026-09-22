@@ -11,6 +11,7 @@ import { GroupDeleteMode } from "../../application/settings";
 import { collectAllEntries } from "../vault-browsing";
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
+import { GROUP_DRAG_TYPE } from "../group-drag";
 import { GroupAvatar } from "../entry-icons/EntryAvatar";
 import { IconPicker } from "../entry-icons/IconPicker";
 import { ChevronIcon, EditIcon, MoreIcon, PaletteIcon, PlusIcon, TrashIcon } from "../icons";
@@ -31,6 +32,55 @@ interface GroupTreeProps {
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */
   entryDragActive: boolean;
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
+  /**
+   * Reparents `groupId` into `targetParentId`, positioned before `beforeId`
+   * among its new siblings, or at the end when `beforeId` is undefined.
+   * `targetParentId` may be the group's current parent (a plain reorder) or
+   * a different one (drag it in or out of a level in the same drop).
+   */
+  onMoveGroupToPosition: (
+    groupId: GroupId,
+    targetParentId: GroupId,
+    beforeId: GroupId | undefined,
+  ) => Promise<void>;
+  /** Reparents `groupId` to become the last child of `targetGroupId`. */
+  onMoveGroupToParent: (groupId: GroupId, targetGroupId: GroupId) => Promise<void>;
+}
+
+/** Which part of a row a dragged group is currently hovering over. */
+type DropZone = "before" | "after" | "into";
+
+/** Which row a dragged group is currently hovering over, and where on it. */
+interface ReorderTarget {
+  groupId: string;
+  edge: DropZone;
+}
+
+/**
+ * Resolves the `beforeId` to pass to `onMoveGroupToPosition` for a drop on
+ * `hoveredId`'s given edge, within `siblings` — the full ordered list the
+ * hovered group belongs to (root level uses the underlying, unfiltered
+ * group list so dropping after the last visible group still lands before
+ * a trailing recycle bin rather than past it).
+ */
+function resolveBeforeId(
+  siblings: readonly Group[],
+  hoveredId: string,
+  edge: "before" | "after",
+): GroupId | undefined {
+  const index = siblings.findIndex((g) => g.id.toString() === hoveredId);
+  return edge === "before" ? siblings[index].id : siblings[index + 1]?.id;
+}
+
+/** Every group id in `group`'s own subtree, including itself — used to block dropping a group into itself or a descendant. */
+function collectSubtreeIds(group: Group): ReadonlySet<string> {
+  const ids = new Set<string>([group.id.toString()]);
+  for (const child of group.groups) {
+    for (const id of collectSubtreeIds(child)) {
+      ids.add(id);
+    }
+  }
+  return ids;
 }
 
 /** Where a floating panel's trigger button sat, in viewport coordinates, when it was opened. */
@@ -52,8 +102,7 @@ type Editor =
  * for either to fit. Only one is ever open at a time.
  */
 type Floating =
-  | { kind: "menu"; group: Group; anchor: Anchor }
-  | { kind: "icon"; group: Group; anchor: Anchor };
+  { kind: "menu"; group: Group; anchor: Anchor } | { kind: "icon"; group: Group; anchor: Anchor };
 
 const INDENT_PX = 14;
 const ROW_INSET_PX = 4;
@@ -84,6 +133,8 @@ export function GroupTree({
   groupDeleteMode,
   entryDragActive,
   onDropEntry,
+  onMoveGroupToPosition,
+  onMoveGroupToParent,
 }: GroupTreeProps) {
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
   const [floating, setFloating] = useState<Floating | undefined>(undefined);
@@ -94,6 +145,9 @@ export function GroupTree({
   const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined);
   const [flashId, setFlashId] = useState<string | undefined>(undefined);
   const [dropError, setDropError] = useState<string | undefined>(undefined);
+  const [draggingGroupId, setDraggingGroupId] = useState<string | undefined>(undefined);
+  const [draggingSubtreeIds, setDraggingSubtreeIds] = useState<ReadonlySet<string>>(new Set());
+  const [reorderTarget, setReorderTarget] = useState<ReorderTarget | undefined>(undefined);
   const floatingRef = useRef<HTMLDivElement>(null);
 
   // Closes the open menu/popover on an outside click or Escape, but not on a
@@ -245,6 +299,9 @@ export function GroupTree({
   }
 
   async function handleDrop(event: DragEvent<HTMLDivElement>, group: Group) {
+    if (!event.dataTransfer.types.includes(ENTRY_DRAG_TYPE)) {
+      return;
+    }
     event.preventDefault();
     setDropTargetId(undefined);
     const entryId = event.dataTransfer.getData(ENTRY_DRAG_TYPE);
@@ -254,6 +311,95 @@ export function GroupTree({
       setFlashId(group.id.toString());
     } catch (cause) {
       setDropError(errorMessage(cause, "Couldn't move the entry."));
+    }
+  }
+
+  function handleGroupDragStart(event: DragEvent<HTMLDivElement>, group: Group) {
+    event.dataTransfer.setData(GROUP_DRAG_TYPE, group.id.toString());
+    event.dataTransfer.effectAllowed = "move";
+    setDraggingGroupId(group.id.toString());
+    setDraggingSubtreeIds(collectSubtreeIds(group));
+  }
+
+  function handleGroupDragEnd() {
+    setDraggingGroupId(undefined);
+    setDraggingSubtreeIds(new Set());
+    setReorderTarget(undefined);
+  }
+
+  /** The top/bottom quarters of a row reorder around it (possibly into a different parent); the middle reparents into it. */
+  function dropZoneFor(event: DragEvent<HTMLDivElement>): DropZone {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const relativeY = event.clientY - rect.top;
+    if (relativeY < rect.height * 0.25) {
+      return "before";
+    }
+    if (relativeY > rect.height * 0.75) {
+      return "after";
+    }
+    return "into";
+  }
+
+  /**
+   * Shows a reorder or reparent indicator for any hovered row that isn't the
+   * dragged group's own subtree (dropping into itself or a descendant would
+   * create a cycle) — the top/bottom quarters target the hovered row's own
+   * level (which may differ from the dragged group's current parent), the
+   * middle targets becoming a child of the hovered row itself.
+   */
+  function handleGroupDragOver(event: DragEvent<HTMLDivElement>, group: Group) {
+    if (!event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
+      return;
+    }
+    const groupId = group.id.toString();
+    if (!draggingGroupId || draggingSubtreeIds.has(groupId)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setReorderTarget({ groupId, edge: dropZoneFor(event) });
+  }
+
+  function handleGroupDragLeave(event: DragEvent<HTMLDivElement>, groupId: string) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+    setReorderTarget((current) => (current?.groupId === groupId ? undefined : current));
+  }
+
+  async function handleGroupDrop(
+    event: DragEvent<HTMLDivElement>,
+    group: Group,
+    parentId: GroupId,
+    siblings: readonly Group[],
+  ) {
+    if (!event.dataTransfer.types.includes(GROUP_DRAG_TYPE)) {
+      return;
+    }
+    event.preventDefault();
+    setReorderTarget(undefined);
+    const groupIdStr = group.id.toString();
+    const draggedIdStr = event.dataTransfer.getData(GROUP_DRAG_TYPE);
+    if (!draggedIdStr || draggingSubtreeIds.has(groupIdStr)) {
+      return;
+    }
+    const zone = dropZoneFor(event);
+    if (zone === "into") {
+      try {
+        await onMoveGroupToParent(GroupId.fromString(draggedIdStr), group.id);
+        setDropError(undefined);
+        setFlashId(groupIdStr);
+      } catch (cause) {
+        setDropError(errorMessage(cause, "Couldn't move the group."));
+      }
+      return;
+    }
+    const beforeId = resolveBeforeId(siblings, groupIdStr, zone);
+    try {
+      await onMoveGroupToPosition(GroupId.fromString(draggedIdStr), parentId, beforeId);
+      setDropError(undefined);
+    } catch (cause) {
+      setDropError(errorMessage(cause, "Couldn't move the group."));
     }
   }
 
@@ -312,7 +458,7 @@ export function GroupTree({
     );
   }
 
-  function renderGroup(group: Group, depth: number) {
+  function renderGroup(group: Group, depth: number, parentId: GroupId, siblings: readonly Group[]) {
     const idStr = group.id.toString();
     const isActive = selectedGroupId === idStr;
     const isCollapsed = collapsed.has(idStr);
@@ -368,12 +514,29 @@ export function GroupTree({
           <div
             className={`group-row${isActive ? " active" : ""}${
               dropTargetId === idStr ? " drop-target" : ""
-            }${flashId === idStr ? " drop-flash" : ""}`}
+            }${flashId === idStr ? " drop-flash" : ""}${
+              draggingGroupId === idStr ? " dragging" : ""
+            }${reorderTarget?.groupId === idStr ? ` reorder-${reorderTarget.edge}` : ""}`}
             style={{ paddingLeft: indent }}
-            onDragEnter={(event) => handleDragOver(event, idStr)}
-            onDragOver={(event) => handleDragOver(event, idStr)}
-            onDragLeave={(event) => handleDragLeave(event, idStr)}
-            onDrop={(event) => void handleDrop(event, group)}
+            draggable
+            onDragStart={(event) => handleGroupDragStart(event, group)}
+            onDragEnd={handleGroupDragEnd}
+            onDragEnter={(event) => {
+              handleDragOver(event, idStr);
+              handleGroupDragOver(event, group);
+            }}
+            onDragOver={(event) => {
+              handleDragOver(event, idStr);
+              handleGroupDragOver(event, group);
+            }}
+            onDragLeave={(event) => {
+              handleDragLeave(event, idStr);
+              handleGroupDragLeave(event, idStr);
+            }}
+            onDrop={(event) => {
+              void handleDrop(event, group);
+              void handleGroupDrop(event, group, parentId, siblings);
+            }}
             onAnimationEnd={() => setFlashId(undefined)}
           >
             {group.groups.length > 0 ? (
@@ -427,11 +590,12 @@ export function GroupTree({
           )}
 
         {menu && (
-          <div ref={floatingRef} className="group-row-menu" style={floatingStyle(menu.anchor, ROW_MENU_WIDTH)}>
-            <button
-              type="button"
-              onClick={(event) => openIconPopover(group, event)}
-            >
+          <div
+            ref={floatingRef}
+            className="group-row-menu"
+            style={floatingStyle(menu.anchor, ROW_MENU_WIDTH)}
+          >
+            <button type="button" onClick={(event) => openIconPopover(group, event)}>
               <PaletteIcon size={14} />
               Change icon
             </button>
@@ -476,7 +640,8 @@ export function GroupTree({
           </div>
         )}
 
-        {!isCollapsed && group.groups.map((child) => renderGroup(child, depth + 1))}
+        {!isCollapsed &&
+          group.groups.map((child) => renderGroup(child, depth + 1, group.id, group.groups))}
       </div>
     );
   }
@@ -520,7 +685,7 @@ export function GroupTree({
         </div>
       )}
 
-      {visibleGroups.map((group) => renderGroup(group, 0))}
+      {visibleGroups.map((group) => renderGroup(group, 0, rootGroup.id, rootGroup.groups))}
 
       {recycleBin && (
         <>
