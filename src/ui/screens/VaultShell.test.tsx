@@ -54,6 +54,8 @@ function renderShell(
     onAccentColorChange?: (accentColor: AccentColor) => void;
     theme?: Theme;
     onThemeChange?: (theme: Theme) => void;
+    contentProtection?: boolean;
+    onContentProtectionChange?: (contentProtection: boolean) => void;
     entryFieldVisibility?: EntryFieldVisibility;
     onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
   } = {},
@@ -72,6 +74,8 @@ function renderShell(
   const onAccentColorChange = overrides.onAccentColorChange ?? vi.fn();
   const theme = overrides.theme ?? DEFAULT_THEME;
   const onThemeChange = overrides.onThemeChange ?? vi.fn();
+  const contentProtection = overrides.contentProtection ?? true;
+  const onContentProtectionChange = overrides.onContentProtectionChange ?? vi.fn();
   const entryFieldVisibility = overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY;
   const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
   render(
@@ -87,6 +91,7 @@ function renderShell(
       groupDeleteMode={groupDeleteMode}
       accentColor={accentColor}
       theme={theme}
+      contentProtection={contentProtection}
       entryFieldVisibility={entryFieldVisibility}
       onLock={onLock}
       onSave={onSave}
@@ -96,6 +101,7 @@ function renderShell(
       onGroupDeleteModeChange={vi.fn()}
       onAccentColorChange={onAccentColorChange}
       onThemeChange={onThemeChange}
+      onContentProtectionChange={onContentProtectionChange}
       onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
     />,
   );
@@ -108,6 +114,7 @@ function renderShell(
     onAutoLockChange,
     onAccentColorChange,
     onThemeChange,
+    onContentProtectionChange,
     onEntryFieldVisibilityChange,
   };
 }
@@ -296,10 +303,12 @@ describe("VaultShell", () => {
         groupDeleteMode="deleteContents"
         accentColor={DEFAULT_ACCENT_COLOR}
         theme={DEFAULT_THEME}
+        contentProtection={true}
         entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
         onGroupDeleteModeChange={vi.fn()}
         onAccentColorChange={vi.fn()}
         onThemeChange={vi.fn()}
+        onContentProtectionChange={vi.fn()}
         onEntryFieldVisibilityChange={vi.fn()}
       />,
     );
@@ -858,10 +867,12 @@ describe("VaultShell", () => {
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
           theme={DEFAULT_THEME}
+          contentProtection={true}
           entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
           onThemeChange={vi.fn()}
+          onContentProtectionChange={vi.fn()}
           onEntryFieldVisibilityChange={vi.fn()}
         />,
       );
@@ -891,10 +902,12 @@ describe("VaultShell", () => {
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
           theme={DEFAULT_THEME}
+          contentProtection={true}
           entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
           onThemeChange={vi.fn()}
+          onContentProtectionChange={vi.fn()}
           onEntryFieldVisibilityChange={vi.fn()}
         />,
       );
@@ -1183,6 +1196,18 @@ describe("VaultShell", () => {
       expect(onEntryFieldVisibilityChange).toHaveBeenCalledWith(
         expect.objectContaining({ notes: false }),
       );
+    });
+
+    it("reports a content protection change made in the settings screen", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      const { onContentProtectionChange } = renderShell(vault, { contentProtection: true });
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
+
+      expect(onContentProtectionChange).toHaveBeenCalledWith(false);
     });
   });
 

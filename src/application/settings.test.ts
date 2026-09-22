@@ -7,6 +7,7 @@ import {
   withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
+  withContentProtection,
   withEntryFieldVisibility,
   withGeneratorPolicy,
   withGroupDeleteMode,
@@ -166,6 +167,19 @@ describe("withTheme", () => {
     const result = withTheme(settings, "light");
 
     expect(result.theme).toBe("light");
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+});
+
+describe("withContentProtection", () => {
+  it("records the content protection setting without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withContentProtection(settings, false);
+
+    expect(result.contentProtection).toBe(false);
     expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });

@@ -68,6 +68,7 @@ interface VaultShellProps {
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
+  contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
@@ -77,6 +78,7 @@ interface VaultShellProps {
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
+  onContentProtectionChange: (contentProtection: boolean) => void;
   onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
 }
 
@@ -97,6 +99,7 @@ export function VaultShell({
   groupDeleteMode,
   accentColor,
   theme,
+  contentProtection,
   entryFieldVisibility,
   onLock,
   onSave,
@@ -106,6 +109,7 @@ export function VaultShell({
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
+  onContentProtectionChange,
   onEntryFieldVisibilityChange,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
@@ -313,12 +317,14 @@ export function VaultShell({
           groupDeleteMode={groupDeleteMode}
           accentColor={accentColor}
           theme={theme}
+          contentProtection={contentProtection}
           entryFieldVisibility={entryFieldVisibility}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
           onAutoLockChange={onAutoLockChange}
           onGroupDeleteModeChange={onGroupDeleteModeChange}
           onAccentColorChange={onAccentColorChange}
           onThemeChange={onThemeChange}
+          onContentProtectionChange={onContentProtectionChange}
           onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
         />
       ) : (

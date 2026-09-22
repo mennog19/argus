@@ -33,12 +33,14 @@ interface SettingsScreenProps {
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
+  contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
+  onContentProtectionChange: (contentProtection: boolean) => void;
   onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
 }
 
@@ -51,12 +53,14 @@ export function SettingsScreen({
   groupDeleteMode,
   accentColor,
   theme,
+  contentProtection,
   entryFieldVisibility,
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
+  onContentProtectionChange,
   onEntryFieldVisibilityChange,
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
@@ -287,6 +291,17 @@ export function SettingsScreen({
                   type="checkbox"
                   checked={autoLock.lockOnSleep}
                   onChange={(event) => updateAutoLock({ lockOnSleep: event.target.checked })}
+                />
+              </label>
+              <label className="detail-field-row" htmlFor="settings-content-protection">
+                <span className="detail-field-row-label">
+                  Hide window from screen sharing &amp; recording
+                </span>
+                <input
+                  id="settings-content-protection"
+                  type="checkbox"
+                  checked={contentProtection}
+                  onChange={(event) => onContentProtectionChange(event.target.checked)}
                 />
               </label>
             </div>

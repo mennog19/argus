@@ -44,6 +44,14 @@ export type Theme = "dark" | "light";
 export const DEFAULT_THEME: Theme = "dark";
 
 /**
+ * Whether the app window is excluded from screen recordings, screenshots,
+ * and screen-share/remote-desktop apps (via the OS's window-capture-affinity
+ * APIs). On by default: this is a password manager, so a capturable vault
+ * window is the wrong default.
+ */
+export const DEFAULT_CONTENT_PROTECTION = true;
+
+/**
  * Entry fields that can be individually hidden from the entry creation form.
  * Title is always shown (it's the only required field); Group falls back to
  * whichever group the entry is being created in when hidden.
@@ -80,6 +88,8 @@ export interface AppSettings {
   readonly accentColor?: AccentColor;
   /** Undefined until the user changes it, at which point `DEFAULT_THEME` applies. */
   readonly theme?: Theme;
+  /** Undefined until the user changes it, at which point `DEFAULT_CONTENT_PROTECTION` applies. */
+  readonly contentProtection?: boolean;
   /** Which fields are shown on the entry creation form. Undefined until the
    * user changes it, at which point `DEFAULT_ENTRY_FIELD_VISIBILITY` applies.
    * Only applies to creating new entries; editing an existing entry always
@@ -151,6 +161,14 @@ export function withAccentColor(settings: AppSettings, accentColor: AccentColor)
 /** Returns settings with `theme` recorded as the app's color scheme. */
 export function withTheme(settings: AppSettings, theme: Theme): AppSettings {
   return { ...settings, theme };
+}
+
+/** Returns settings with `contentProtection` recorded as the window capture-protection setting. */
+export function withContentProtection(
+  settings: AppSettings,
+  contentProtection: boolean,
+): AppSettings {
+  return { ...settings, contentProtection };
 }
 
 /** Returns settings with `visibility` recorded as the entry creation form's field visibility. */

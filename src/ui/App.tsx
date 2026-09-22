@@ -9,6 +9,7 @@ import {
   VaultSaveConflictError,
 } from "../application/vault-access-service";
 import { WindowEvents } from "../application/window-events";
+import { WindowProtection } from "../application/window-protection";
 import {
   AccentColor,
   AppSettings,
@@ -16,6 +17,7 @@ import {
   DEFAULT_ACCENT_COLOR,
   DEFAULT_AUTO_LOCK,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+  DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
@@ -28,6 +30,7 @@ import {
   withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
+  withContentProtection,
   withEntryFieldVisibility,
   withGeneratorPolicy,
   withGroupDeleteMode,
@@ -47,6 +50,7 @@ interface AppProps {
   urlOpener: UrlOpener;
   clipboardWriter: ClipboardWriter;
   windowEvents: WindowEvents;
+  windowProtection: WindowProtection;
 }
 
 const IDLE_CHECK_INTERVAL_MS = 10_000;
@@ -70,6 +74,7 @@ function App({
   urlOpener,
   clipboardWriter,
   windowEvents,
+  windowProtection,
 }: AppProps) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
@@ -156,6 +161,12 @@ function App({
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme ?? DEFAULT_THEME;
   }, [settings.theme]);
+
+  useEffect(() => {
+    void windowProtection.setContentProtected(
+      settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,
+    );
+  }, [settings.contentProtection, windowProtection]);
 
   async function refreshFileInfo(filePath: string) {
     try {
@@ -293,6 +304,16 @@ function App({
     }
   }
 
+  async function handleContentProtectionChange(contentProtection: boolean) {
+    const updated = withContentProtection(settings, contentProtection);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   async function handleEntryFieldVisibilityChange(visibility: EntryFieldVisibility) {
     const updated = withEntryFieldVisibility(settings, visibility);
     setSettings(updated);
@@ -339,6 +360,7 @@ function App({
         groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
         accentColor={settings.accentColor ?? DEFAULT_ACCENT_COLOR}
         theme={settings.theme ?? DEFAULT_THEME}
+        contentProtection={settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION}
         entryFieldVisibility={settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
@@ -348,6 +370,9 @@ function App({
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
         onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
         onThemeChange={(theme) => void handleThemeChange(theme)}
+        onContentProtectionChange={(contentProtection) =>
+          void handleContentProtectionChange(contentProtection)
+        }
         onEntryFieldVisibilityChange={(visibility) =>
           void handleEntryFieldVisibilityChange(visibility)
         }

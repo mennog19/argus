@@ -26,19 +26,14 @@ A feature branch isn't done until:
 3. CI is green on the PR.
 4. The PR is squash-merged into `main`.
 
-## Backlog (explicitly deferred, not v1 — future feature branches)
+## Todo
 
-- TOTP code generation and display.
-- File attachments on entries.
-- Entry history UI (KDBX already stores it; v1 just doesn't expose it).
-- Keyfile-based unlock; OS biometric (Windows Hello) convenience unlock.
+- flag to not show on obs en screenrecordings
 - Opt-in, off-by-default online breach-check (HIBP-style).
-- Code signing (Windows Authenticode, macOS notarization) ahead of any wider release.
-- macOS/Linux distribution channels (builds already work via Tauri; only Windows is an active release target for now).
-
-## Out of scope, period
-
-- Browser extension / autofill / native messaging.
-- Auto-type / global keystroke simulation into other apps.
-- Import from non-KDBX sources.
-- Export to non-KDBX formats.
+- on password entry show dynamic safety
+- option to change master key
+- import en export functionaliteit voor settings
+- merge file functionality
+- way to order groups
+- sort between entries, e.g. last used, alfabetical
+- autofill

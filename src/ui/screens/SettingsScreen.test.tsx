@@ -24,6 +24,7 @@ function renderSettings(
     groupDeleteMode?: GroupDeleteMode;
     accentColor?: AccentColor;
     theme?: Theme;
+    contentProtection?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
   } = {},
 ) {
@@ -32,6 +33,7 @@ function renderSettings(
   const onGroupDeleteModeChange = vi.fn();
   const onAccentColorChange = vi.fn();
   const onThemeChange = vi.fn();
+  const onContentProtectionChange = vi.fn();
   const onEntryFieldVisibilityChange = vi.fn();
   render(
     <SettingsScreen
@@ -43,12 +45,14 @@ function renderSettings(
       groupDeleteMode={overrides.groupDeleteMode ?? "deleteContents"}
       accentColor={overrides.accentColor ?? DEFAULT_ACCENT_COLOR}
       theme={overrides.theme ?? "dark"}
+      contentProtection={overrides.contentProtection ?? true}
       entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
       onAccentColorChange={onAccentColorChange}
       onThemeChange={onThemeChange}
+      onContentProtectionChange={onContentProtectionChange}
       onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
     />,
   );
@@ -58,6 +62,7 @@ function renderSettings(
     onGroupDeleteModeChange,
     onAccentColorChange,
     onThemeChange,
+    onContentProtectionChange,
     onEntryFieldVisibilityChange,
   };
 }
@@ -252,6 +257,20 @@ describe("SettingsScreen", () => {
     expect(onAutoLockChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ lockOnMinimize: false, lockOnSleep: true }),
     );
+  });
+
+  it("shows the current content protection setting", () => {
+    renderSettings({ contentProtection: false });
+
+    expect(screen.getByRole("checkbox", { name: /screen sharing/i })).not.toBeChecked();
+  });
+
+  it("reports a content protection toggle", () => {
+    const { onContentProtectionChange } = renderSettings({ contentProtection: true });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
+
+    expect(onContentProtectionChange).toHaveBeenCalledWith(false);
   });
 
   describe("accent color", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Vault } from "../domain";
@@ -11,6 +11,7 @@ import {
 import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
 import { WindowEvents } from "../application/window-events";
+import { WindowProtection } from "../application/window-protection";
 import App from "./App";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
@@ -44,6 +45,10 @@ function fakeWindowEvents(overrides: Partial<WindowEvents> = {}): WindowEvents {
   return { onMinimize: vi.fn().mockReturnValue(vi.fn()), ...overrides };
 }
 
+function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): WindowProtection {
+  return { setContentProtected: vi.fn().mockResolvedValue(undefined), ...overrides };
+}
+
 describe("App", () => {
   it("shows the welcome screen when there are no recent vaults", async () => {
     render(
@@ -53,6 +58,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -69,6 +75,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -90,6 +97,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -113,6 +121,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -150,6 +159,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -176,6 +186,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -201,6 +212,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -232,6 +244,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -262,6 +275,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -296,6 +310,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -330,6 +345,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -366,6 +382,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -399,6 +416,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -436,6 +454,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -475,6 +494,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -512,6 +532,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -550,6 +571,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -584,6 +606,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -600,6 +623,45 @@ describe("App", () => {
       expect.objectContaining({ groupDeleteMode: "keepContents" }),
     );
     expect(screen.getByRole("radio", { name: /keep its entries/i })).toBeChecked();
+  });
+
+  it("persists a content protection change and applies it via WindowProtection", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const settingsStore = fakeSettingsStore();
+    const windowProtection = fakeWindowProtection();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
+        settingsStore={settingsStore}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={windowProtection}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(windowProtection.setContentProtected).toHaveBeenCalledWith(true);
+
+    await user.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
+
+    expect(settingsStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ contentProtection: false }),
+    );
+    expect(windowProtection.setContentProtected).toHaveBeenCalledWith(false);
   });
 
   it("persists an entry field visibility change made in the vault shell's settings screen", async () => {
@@ -619,6 +681,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -654,6 +717,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -689,6 +753,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -727,6 +792,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
         />,
       );
 
@@ -769,6 +835,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
         />,
       );
 
@@ -815,6 +882,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
         />,
       );
 
@@ -862,6 +930,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
         />,
       );
 
@@ -910,6 +979,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
@@ -952,6 +1022,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
+        windowProtection={fakeWindowProtection()}
       />,
     );
 
