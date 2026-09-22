@@ -26,4 +26,13 @@ export {
 } from "./password-policy";
 export { Tag } from "./tag";
 export { Tags } from "./tags";
+export { generateTotpCode, type Hmac, type TotpCode } from "./totp-code";
+export {
+  parseOtpauthUri,
+  parseTotpInput,
+  totpConfigFromCustomFields,
+  TotpConfig,
+  TOTP_FIELD_KEYS,
+  type TotpAlgorithm,
+} from "./totp";
 export { Vault } from "./vault";

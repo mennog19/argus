@@ -2130,3 +2130,30 @@ input[type="radio"]:checked::after {
     animation-duration: 0.01ms !important;
   }
 }
+
+.totp-code-value {
+  letter-spacing: 2px;
+}
+
+.totp-progress-bar {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.totp-progress-bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 1s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .totp-progress-bar-fill {
+    transition-duration: 0.01ms;
+  }
+}

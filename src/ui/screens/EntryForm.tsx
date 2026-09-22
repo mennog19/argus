@@ -1,13 +1,18 @@
 import { FormEvent, useState } from "react";
 import {
+  CustomField,
+  CustomFields,
   Entry,
   Icon,
   generatePassword,
   GroupId,
+  parseTotpInput,
   Password,
   PasswordPolicy,
   PasswordPolicyOptions,
   Tags,
+  TOTP_FIELD_KEYS,
+  totpConfigFromCustomFields,
 } from "../../domain";
 import { IconPicker } from "../entry-icons/IconPicker";
 import { EyeIcon, EyeOffIcon } from "../icons";
@@ -36,6 +41,16 @@ export function EntryForm({
   const [username, setUsername] = useState(initialEntry?.username ?? "");
   const [password, setPassword] = useState(initialEntry?.password.reveal() ?? "");
   const [revealed, setRevealed] = useState(false);
+  const initialCustomFields = initialEntry?.customFields ?? new CustomFields();
+  // Prefer the raw `otp` field verbatim (byte-for-byte fidelity for what's
+  // actually stored); only synthesize a URI when the entry instead uses the
+  // classic TOTP Seed/Settings pair, which has no single raw value to show.
+  const initialTotpValue =
+    initialCustomFields.get("otp")?.value ??
+    totpConfigFromCustomFields(initialCustomFields)?.toOtpauthUri(initialEntry?.title ?? "") ??
+    "";
+  const [totpInput, setTotpInput] = useState(initialTotpValue);
+  const [totpRevealed, setTotpRevealed] = useState(false);
   const [url, setUrl] = useState(initialEntry?.url ?? "");
   const [notes, setNotes] = useState(initialEntry?.notes ?? "");
   const [groupId, setGroupId] = useState(initialGroupId);
@@ -57,6 +72,34 @@ export function EntryForm({
       return;
     }
 
+    // Only touch the TOTP custom field(s) if the user actually edited the
+    // input — otherwise an entry's existing TOTP data (in whichever
+    // convention it was stored under) passes through untouched.
+    let customFields = initialCustomFields;
+    const trimmedTotp = totpInput.trim();
+    if (trimmedTotp !== initialTotpValue) {
+      const withoutTotpFields = Array.from(TOTP_FIELD_KEYS).reduce(
+        (fields, key) => fields.remove(key),
+        initialCustomFields,
+      );
+      if (trimmedTotp === "") {
+        customFields = withoutTotpFields;
+      } else {
+        const totpConfig = parseTotpInput(trimmedTotp);
+        if (!totpConfig) {
+          setError("Invalid TOTP secret or otpauth:// URI.");
+          return;
+        }
+        // A pasted otpauth:// URI is stored exactly as given, preserving its
+        // issuer/label/param order; a bare secret has no URI to preserve, so
+        // one is synthesized from the entry's title.
+        const otpValue = trimmedTotp.toLowerCase().startsWith("otpauth://")
+          ? trimmedTotp
+          : totpConfig.toOtpauthUri(title.trim());
+        customFields = withoutTotpFields.set(new CustomField("otp", otpValue, true));
+      }
+    }
+
     const fields = {
       title,
       username,
@@ -64,6 +107,7 @@ export function EntryForm({
       url,
       notes,
       tags,
+      customFields,
       icon,
     };
     const entry = initialEntry ? initialEntry.update(fields) : Entry.create(fields);
@@ -132,6 +176,31 @@ export function EntryForm({
             onClick={() => setRevealed((value) => !value)}
           >
             {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+          </button>
+        </div>
+      </div>
+
+      <div className="field-group">
+        <label className="field-label" htmlFor="entry-totp">
+          Authenticator (TOTP)
+        </label>
+        <div className="field-input-with-action">
+          <input
+            id="entry-totp"
+            type={totpRevealed ? "text" : "password"}
+            className="field-input"
+            placeholder="Secret key or otpauth:// URI"
+            value={totpInput}
+            onChange={(event) => setTotpInput(event.target.value)}
+          />
+          <button
+            type="button"
+            className="field-reveal-button"
+            aria-label={totpRevealed ? "Hide authenticator secret" : "Show authenticator secret"}
+            title={totpRevealed ? "Hide authenticator secret" : "Show authenticator secret"}
+            onClick={() => setTotpRevealed((value) => !value)}
+          >
+            {totpRevealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
           </button>
         </div>
       </div>
