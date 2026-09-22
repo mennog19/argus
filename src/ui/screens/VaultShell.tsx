@@ -455,6 +455,8 @@ function EntryDetail({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [copiedField, setCopiedField] = useState<CopiedField>(undefined);
+  const [clearingField, setClearingField] = useState<CopiedField>(undefined);
+  const [clearingToken, setClearingToken] = useState(0);
   const copyToken = useRef(0);
 
   async function handleCopy(value: string, field: "username" | "password") {
@@ -462,6 +464,8 @@ function EntryDetail({
     const thisToken = copyToken.current;
     await clipboardWriter.writeText(value);
     setCopiedField(field);
+    setClearingField(field);
+    setClearingToken(thisToken);
     setTimeout(() => {
       setCopiedField((current) => (current === field ? undefined : current));
     }, 1500);
@@ -469,6 +473,7 @@ function EntryDetail({
       if (copyToken.current === thisToken) {
         void clipboardWriter.writeText("");
       }
+      setClearingField((current) => (current === field ? undefined : current));
     }, clipboardClearSeconds * 1000);
   }
 
@@ -556,6 +561,9 @@ function EntryDetail({
                 <CopyIcon size={17} strokeWidth={2.25} />
               </button>
             </div>
+            {clearingField === "username" && (
+              <ClipboardClearBar key={clearingToken} seconds={clipboardClearSeconds} />
+            )}
           </div>
           <div className="detail-field-row">
             <div>
@@ -588,6 +596,9 @@ function EntryDetail({
                 )}
               </button>
             </div>
+            {clearingField === "password" && (
+              <ClipboardClearBar key={clearingToken} seconds={clipboardClearSeconds} />
+            )}
           </div>
         </div>
 
@@ -630,6 +641,14 @@ function EntryDetail({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ClipboardClearBar({ seconds }: { seconds: number }) {
+  return (
+    <div className="clipboard-clear-bar" aria-hidden="true">
+      <div className="clipboard-clear-bar-fill" style={{ animationDuration: `${seconds}s` }} />
     </div>
   );
 }

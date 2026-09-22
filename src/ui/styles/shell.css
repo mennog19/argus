@@ -1234,6 +1234,7 @@ input[type="password"]::-ms-clear {
 }
 
 .detail-field-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1928,4 +1929,40 @@ input[type="password"]::-ms-clear {
 .copied-label {
   font-size: 11.5px;
   color: var(--color-accent);
+}
+
+.clipboard-clear-bar {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.clipboard-clear-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--color-accent);
+  transform-origin: left;
+  animation-name: clipboard-clear-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes clipboard-clear-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clipboard-clear-bar-fill {
+    animation-duration: 0.01ms !important;
+  }
 }

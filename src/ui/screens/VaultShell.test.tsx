@@ -324,16 +324,21 @@ describe("VaultShell", () => {
 
       expect(writeText).toHaveBeenCalledWith("octocat");
       expect(screen.getByText("Copied")).toBeInTheDocument();
+      const bar = document.querySelector(".clipboard-clear-bar-fill");
+      expect(bar).toBeInTheDocument();
+      expect(bar).toHaveStyle({ animationDuration: "5s" });
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1500);
       });
       expect(screen.queryByText("Copied")).not.toBeInTheDocument();
+      expect(document.querySelector(".clipboard-clear-bar-fill")).toBeInTheDocument();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000 - 1500);
       });
       expect(writeText).toHaveBeenLastCalledWith("");
+      expect(document.querySelector(".clipboard-clear-bar-fill")).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -384,16 +389,56 @@ describe("VaultShell", () => {
       });
 
       // The username's own clear timer (fires at 5s after its own copy) lands
-      // here, 2s after the password was copied — it must not wipe the password.
+      // here, 2s after the password was copied — it must not wipe the password,
+      // and it must not dismiss the password's own clear-countdown bar either.
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2000);
       });
       expect(writeText).not.toHaveBeenLastCalledWith("");
+      expect(document.querySelectorAll(".clipboard-clear-bar-fill")).toHaveLength(1);
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(3000);
       });
       expect(writeText).toHaveBeenLastCalledWith("");
+      expect(document.querySelector(".clipboard-clear-bar-fill")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("swaps the clear-countdown bar to the newly copied field instead of showing both", async () => {
+    const entry = Entry.create({
+      title: "GitHub",
+      username: "octocat",
+      password: new Password("s3cret!"),
+    });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    vi.useFakeTimers();
+    try {
+      renderShell(vault, {
+        clipboardWriter: fakeClipboardWriter({ writeText }),
+        clipboardClearSeconds: 5,
+      });
+      fireEvent.click(screen.getByText("GitHub"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy username" }));
+        await Promise.resolve();
+      });
+      expect(document.querySelectorAll(".clipboard-clear-bar-fill")).toHaveLength(1);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+        await Promise.resolve();
+      });
+
+      // Only the password's bar should remain; the clipboard now holds one
+      // value, so showing two countdowns would be misleading.
+      expect(document.querySelectorAll(".clipboard-clear-bar-fill")).toHaveLength(1);
     } finally {
       vi.useRealTimers();
     }
