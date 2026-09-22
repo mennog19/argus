@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Entry, EntryId, Group, GroupId, Icon, PasswordPolicyOptions, Vault } from "../../domain";
-import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { AccentColor, AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
@@ -47,12 +47,14 @@ interface VaultShellProps {
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
   groupDeleteMode: GroupDeleteMode;
+  accentColor: AccentColor;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
+  onAccentColorChange: (accentColor: AccentColor) => void;
 }
 
 const ALL_ITEMS = "__all__";
@@ -70,12 +72,14 @@ export function VaultShell({
   clipboardClearSeconds,
   autoLock,
   groupDeleteMode,
+  accentColor,
   onLock,
   onSave,
   onGeneratorPolicyChange,
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
+  onAccentColorChange,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -278,9 +282,11 @@ export function VaultShell({
           clipboardClearSeconds={clipboardClearSeconds}
           autoLock={autoLock}
           groupDeleteMode={groupDeleteMode}
+          accentColor={accentColor}
           onClipboardClearSecondsChange={onClipboardClearSecondsChange}
           onAutoLockChange={onAutoLockChange}
           onGroupDeleteModeChange={onGroupDeleteModeChange}
+          onAccentColorChange={onAccentColorChange}
         />
       ) : (
         <>

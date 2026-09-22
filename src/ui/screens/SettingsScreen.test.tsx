@@ -1,55 +1,60 @@
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { AutoLockSettings, GroupDeleteMode } from "../../application/settings";
+import { AccentColor, AutoLockSettings, GroupDeleteMode } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsScreen } from "./SettingsScreen";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 
 function renderSettings(
-  clipboardClearSeconds = 20,
-  autoLock: AutoLockSettings = DEFAULT_AUTO_LOCK,
-  groupDeleteMode: GroupDeleteMode = "deleteContents",
-  filePath = "C:/vaults/personal.kdbx",
-  fileInfo: VaultFileInfo | undefined = undefined,
-  entryCount = 0,
+  overrides: {
+    filePath?: string;
+    fileInfo?: VaultFileInfo;
+    entryCount?: number;
+    clipboardClearSeconds?: number;
+    autoLock?: AutoLockSettings;
+    groupDeleteMode?: GroupDeleteMode;
+    accentColor?: AccentColor;
+  } = {},
 ) {
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
+  const onAccentColorChange = vi.fn();
   render(
     <SettingsScreen
-      filePath={filePath}
-      fileInfo={fileInfo}
-      entryCount={entryCount}
-      clipboardClearSeconds={clipboardClearSeconds}
-      autoLock={autoLock}
-      groupDeleteMode={groupDeleteMode}
+      filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
+      fileInfo={overrides.fileInfo}
+      entryCount={overrides.entryCount ?? 0}
+      clipboardClearSeconds={overrides.clipboardClearSeconds ?? 20}
+      autoLock={overrides.autoLock ?? DEFAULT_AUTO_LOCK}
+      groupDeleteMode={overrides.groupDeleteMode ?? "deleteContents"}
+      accentColor={overrides.accentColor ?? DEFAULT_ACCENT_COLOR}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
+      onAccentColorChange={onAccentColorChange}
     />,
   );
-  return { onClipboardClearSecondsChange, onAutoLockChange, onGroupDeleteModeChange };
+  return {
+    onClipboardClearSecondsChange,
+    onAutoLockChange,
+    onGroupDeleteModeChange,
+    onAccentColorChange,
+  };
 }
 
 describe("SettingsScreen", () => {
   it("shows the vault file name and placeholders while file info hasn't loaded yet", () => {
-    renderSettings(20, DEFAULT_AUTO_LOCK, "deleteContents", "C:/vaults/personal.kdbx", undefined);
+    renderSettings();
 
     expect(screen.getByText("personal.kdbx")).toBeInTheDocument();
     expect(screen.getAllByText("—")).toHaveLength(2);
   });
 
   it("shows the number of stored passwords", () => {
-    renderSettings(
-      20,
-      DEFAULT_AUTO_LOCK,
-      "deleteContents",
-      "C:/vaults/personal.kdbx",
-      undefined,
-      7,
-    );
+    renderSettings({ entryCount: 7 });
 
     expect(screen.getByText("Passwords")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
@@ -57,14 +62,14 @@ describe("SettingsScreen", () => {
 
   it("shows the vault's size and last-saved time once file info loads", () => {
     const fileInfo: VaultFileInfo = { sizeBytes: 49152, lastModifiedMs: Date.now() };
-    renderSettings(20, DEFAULT_AUTO_LOCK, "deleteContents", "C:/vaults/personal.kdbx", fileInfo);
+    renderSettings({ fileInfo });
 
     expect(screen.getByText("48 KB")).toBeInTheDocument();
     expect(screen.getByText("just now")).toBeInTheDocument();
   });
 
   it("shows the current group delete mode", () => {
-    renderSettings(20, DEFAULT_AUTO_LOCK, "keepContents");
+    renderSettings({ groupDeleteMode: "keepContents" });
 
     expect(screen.getByRole("radio", { name: /keep its entries/i })).toBeChecked();
     expect(screen.getByRole("radio", { name: /delete its entries/i })).not.toBeChecked();
@@ -77,13 +82,13 @@ describe("SettingsScreen", () => {
     expect(onGroupDeleteModeChange).toHaveBeenLastCalledWith("keepContents");
 
     cleanup();
-    const second = renderSettings(20, DEFAULT_AUTO_LOCK, "keepContents");
+    const second = renderSettings({ groupDeleteMode: "keepContents" });
     fireEvent.click(screen.getByRole("radio", { name: /delete its entries/i }));
     expect(second.onGroupDeleteModeChange).toHaveBeenLastCalledWith("deleteContents");
   });
 
   it("shows the current clipboard clear delay", () => {
-    renderSettings(30);
+    renderSettings({ clipboardClearSeconds: 30 });
 
     expect(screen.getByLabelText(/clear clipboard after/i)).toHaveValue(30);
   });
@@ -114,7 +119,9 @@ describe("SettingsScreen", () => {
   });
 
   it("shows an already-configured idle timeout and toggles", () => {
-    renderSettings(20, { idleTimeoutMinutes: 15, lockOnMinimize: true, lockOnSleep: true });
+    renderSettings({
+      autoLock: { idleTimeoutMinutes: 15, lockOnMinimize: true, lockOnSleep: true },
+    });
 
     expect(screen.getByLabelText(/lock after inactivity/i)).toHaveValue(15);
     expect(screen.getByRole("checkbox", { name: /minimized/i })).toBeChecked();
@@ -132,10 +139,8 @@ describe("SettingsScreen", () => {
   });
 
   it("clears the idle timeout when the field is emptied", () => {
-    const { onAutoLockChange } = renderSettings(20, {
-      idleTimeoutMinutes: 10,
-      lockOnMinimize: false,
-      lockOnSleep: false,
+    const { onAutoLockChange } = renderSettings({
+      autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
     });
 
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "" } });
@@ -166,5 +171,57 @@ describe("SettingsScreen", () => {
     expect(onAutoLockChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ lockOnMinimize: false, lockOnSleep: true }),
     );
+  });
+
+  describe("accent color", () => {
+    it("marks the current preset as checked and the others as unchecked", () => {
+      renderSettings({ accentColor: { kind: "preset", id: "teal" } });
+
+      expect(screen.getByRole("radio", { name: "Teal" })).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByRole("radio", { name: "Blue" })).toHaveAttribute("aria-checked", "false");
+      expect(screen.getByRole("radio", { name: "Custom" })).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+    });
+
+    it("reports a preset selection", () => {
+      const { onAccentColorChange } = renderSettings();
+
+      fireEvent.click(screen.getByRole("radio", { name: "Purple" }));
+
+      expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "preset", id: "purple" });
+    });
+
+    it("does not show the hue slider while a preset is selected", () => {
+      renderSettings();
+
+      expect(screen.queryByLabelText(/custom color/i)).not.toBeInTheDocument();
+    });
+
+    it("switches to custom, seeded from the current preset's hue, when Custom is chosen", () => {
+      const { onAccentColorChange } = renderSettings({
+        accentColor: { kind: "preset", id: "teal" },
+      });
+
+      fireEvent.click(screen.getByRole("radio", { name: "Custom" }));
+
+      expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "custom", hue: 195 });
+    });
+
+    it("shows the hue slider at the current hue once custom is active", () => {
+      renderSettings({ accentColor: { kind: "custom", hue: 88 } });
+
+      expect(screen.getByRole("radio", { name: "Custom" })).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByLabelText(/custom color/i)).toHaveValue("88");
+    });
+
+    it("reports a new hue as the slider moves", () => {
+      const { onAccentColorChange } = renderSettings({ accentColor: { kind: "custom", hue: 88 } });
+
+      fireEvent.change(screen.getByLabelText(/custom color/i), { target: { value: "210" } });
+
+      expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "custom", hue: 210 });
+    });
   });
 });

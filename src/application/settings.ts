@@ -25,6 +25,19 @@ export type GroupDeleteMode = "deleteContents" | "keepContents";
 
 export const DEFAULT_GROUP_DELETE_MODE: GroupDeleteMode = "deleteContents";
 
+/** One of the app's built-in accent color presets (see `ui/accent-color.ts` for their hues). */
+export type AccentColorPresetId = "blue" | "purple" | "pink" | "orange" | "green" | "teal";
+
+/**
+ * The app's accent color: one of the built-in presets, or a hue (0-359,
+ * degrees) the user picked themselves via the custom color slider.
+ */
+export type AccentColor =
+  | { readonly kind: "preset"; readonly id: AccentColorPresetId }
+  | { readonly kind: "custom"; readonly hue: number };
+
+export const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
+
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
   /** Shared password generator settings, used by both the dedicated generator
@@ -39,6 +52,8 @@ export interface AppSettings {
   readonly autoLock?: AutoLockSettings;
   /** Undefined until the user changes it, at which point `DEFAULT_GROUP_DELETE_MODE` applies. */
   readonly groupDeleteMode?: GroupDeleteMode;
+  /** Undefined until the user changes it, at which point `DEFAULT_ACCENT_COLOR` applies. */
+  readonly accentColor?: AccentColor;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -95,4 +110,9 @@ export function withAutoLock(settings: AppSettings, autoLock: AutoLockSettings):
 /** Returns settings with `mode` recorded as the group delete behaviour. */
 export function withGroupDeleteMode(settings: AppSettings, mode: GroupDeleteMode): AppSettings {
   return { ...settings, groupDeleteMode: mode };
+}
+
+/** Returns settings with `accentColor` recorded as the app's accent color. */
+export function withAccentColor(settings: AppSettings, accentColor: AccentColor): AppSettings {
+  return { ...settings, accentColor };
 }

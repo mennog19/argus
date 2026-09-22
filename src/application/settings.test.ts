@@ -3,6 +3,7 @@ import {
   AppSettings,
   DEFAULT_SETTINGS,
   recordVaultOpened,
+  withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
   withGeneratorPolicy,
@@ -52,7 +53,10 @@ describe("recordVaultOpened", () => {
       2,
     );
 
-    expect(result.recentVaults.map((e) => e.path)).toEqual(["C:/vaults/c.kdbx", "C:/vaults/a.kdbx"]);
+    expect(result.recentVaults.map((e) => e.path)).toEqual([
+      "C:/vaults/c.kdbx",
+      "C:/vaults/a.kdbx",
+    ]);
   });
 
   it("defaults openedAt to now and maxEntries to 5 when not provided", () => {
@@ -109,7 +113,11 @@ describe("withAutoLock", () => {
       lockOnSleep: false,
     });
 
-    expect(result.autoLock).toEqual({ idleTimeoutMinutes: 10, lockOnMinimize: true, lockOnSleep: false });
+    expect(result.autoLock).toEqual({
+      idleTimeoutMinutes: 10,
+      lockOnMinimize: true,
+      lockOnSleep: false,
+    });
     expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });
@@ -124,5 +132,24 @@ describe("withGroupDeleteMode", () => {
 
     expect(result.groupDeleteMode).toBe("keepContents");
     expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+});
+
+describe("withAccentColor", () => {
+  it("records a preset accent color without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withAccentColor(settings, { kind: "preset", id: "teal" });
+
+    expect(result.accentColor).toEqual({ kind: "preset", id: "teal" });
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+
+  it("records a custom accent hue", () => {
+    const result = withAccentColor(DEFAULT_SETTINGS, { kind: "custom", hue: 210 });
+
+    expect(result.accentColor).toEqual({ kind: "custom", hue: 210 });
   });
 });

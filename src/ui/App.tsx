@@ -10,8 +10,10 @@ import {
 } from "../application/vault-access-service";
 import { WindowEvents } from "../application/window-events";
 import {
+  AccentColor,
   AppSettings,
   AutoLockSettings,
+  DEFAULT_ACCENT_COLOR,
   DEFAULT_AUTO_LOCK,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
   DEFAULT_GROUP_DELETE_MODE,
@@ -19,12 +21,14 @@ import {
   GroupDeleteMode,
   recordVaultOpened,
   SettingsStore,
+  withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
   withGeneratorPolicy,
   withGroupDeleteMode,
 } from "../application/settings";
 import { UrlOpener } from "../application/url-opener";
+import { accentColorCssVars, accentColorHue } from "./accent-color";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { LockedScreen } from "./screens/LockedScreen";
 import { VaultShell } from "./screens/VaultShell";
@@ -135,6 +139,13 @@ function App({
         // Stay on the welcome screen with default settings if loading fails.
       });
   }, [settingsStore]);
+
+  useEffect(() => {
+    const hue = accentColorHue(settings.accentColor ?? DEFAULT_ACCENT_COLOR);
+    const { accent, accentHover } = accentColorCssVars(hue);
+    document.documentElement.style.setProperty("--color-accent", accent);
+    document.documentElement.style.setProperty("--color-accent-hover", accentHover);
+  }, [settings.accentColor]);
 
   async function refreshFileInfo(filePath: string) {
     try {
@@ -252,6 +263,16 @@ function App({
     }
   }
 
+  async function handleAccentColorChange(accentColor: AccentColor) {
+    const updated = withAccentColor(settings, accentColor);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -286,12 +307,14 @@ function App({
         clipboardClearSeconds={settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS}
         autoLock={settings.autoLock ?? DEFAULT_AUTO_LOCK}
         groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
+        accentColor={settings.accentColor ?? DEFAULT_ACCENT_COLOR}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
         onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
         onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
+        onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
       />
       {conflict && (
         <div className="modal-overlay">
