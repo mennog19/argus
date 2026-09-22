@@ -115,6 +115,24 @@ describe("SettingsScreen", () => {
     expect(onClipboardClearSecondsChange).not.toHaveBeenCalled();
   });
 
+  it("steps the clipboard clear delay up and down via the stepper buttons", () => {
+    const { onClipboardClearSecondsChange } = renderSettings({ clipboardClearSeconds: 20 });
+
+    fireEvent.click(screen.getByRole("button", { name: /increase clipboard clear seconds/i }));
+    expect(onClipboardClearSecondsChange).toHaveBeenLastCalledWith(21);
+
+    fireEvent.click(screen.getByRole("button", { name: /decrease clipboard clear seconds/i }));
+    expect(onClipboardClearSecondsChange).toHaveBeenLastCalledWith(19);
+  });
+
+  it("floors the clipboard clear delay stepper at 1 second", () => {
+    const { onClipboardClearSecondsChange } = renderSettings({ clipboardClearSeconds: 1 });
+
+    fireEvent.click(screen.getByRole("button", { name: /decrease clipboard clear seconds/i }));
+
+    expect(onClipboardClearSecondsChange).toHaveBeenLastCalledWith(1);
+  });
+
   it("shows a blank idle timeout and unchecked toggles by default", () => {
     renderSettings();
 
@@ -160,6 +178,52 @@ describe("SettingsScreen", () => {
 
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "0" } });
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "abc" } });
+
+    expect(onAutoLockChange).not.toHaveBeenCalled();
+  });
+
+  it("steps a blank idle timeout up to 1 minute via the stepper button", () => {
+    const { onAutoLockChange } = renderSettings();
+
+    fireEvent.click(screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }));
+
+    expect(onAutoLockChange).toHaveBeenCalledWith(
+      expect.objectContaining({ idleTimeoutMinutes: 1 }),
+    );
+  });
+
+  it("steps an already-configured idle timeout up and down", () => {
+    const { onAutoLockChange } = renderSettings({
+      autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }));
+    expect(onAutoLockChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ idleTimeoutMinutes: 11 }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }));
+    expect(onAutoLockChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ idleTimeoutMinutes: 9 }),
+    );
+  });
+
+  it("clears the idle timeout when stepping down from 1 minute", () => {
+    const { onAutoLockChange } = renderSettings({
+      autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }));
+
+    expect(onAutoLockChange).toHaveBeenCalledWith(
+      expect.objectContaining({ idleTimeoutMinutes: undefined }),
+    );
+  });
+
+  it("ignores a decrease of an already-blank idle timeout", () => {
+    const { onAutoLockChange } = renderSettings();
+
+    fireEvent.click(screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }));
 
     expect(onAutoLockChange).not.toHaveBeenCalled();
   });

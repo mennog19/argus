@@ -3,6 +3,7 @@ import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../app
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
+import { ChevronIcon } from "../icons";
 
 interface SettingsScreenProps {
   filePath: string;
@@ -37,6 +38,23 @@ export function SettingsScreen({
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
+  }
+
+  function stepIdleTimeout(direction: 1 | -1) {
+    const current = autoLock.idleTimeoutMinutes;
+    if (direction === 1) {
+      updateAutoLock({ idleTimeoutMinutes: (current ?? 0) + 1 });
+      return;
+    }
+    if (current === undefined) {
+      return;
+    }
+    updateAutoLock({ idleTimeoutMinutes: current <= 1 ? undefined : current - 1 });
+  }
+
+  function stepClipboardClearSeconds(direction: 1 | -1) {
+    const next = clipboardClearSeconds + direction;
+    onClipboardClearSecondsChange(Math.max(1, next));
   }
 
   return (
@@ -154,24 +172,42 @@ export function SettingsScreen({
                 <label className="detail-field-row-label" htmlFor="settings-idle-timeout">
                   Lock after inactivity (minutes, blank = never)
                 </label>
-                <input
-                  id="settings-idle-timeout"
-                  type="number"
-                  min={1}
-                  className="field-input"
-                  value={autoLock.idleTimeoutMinutes ?? ""}
-                  onChange={(event) => {
-                    const raw = event.target.value;
-                    if (raw === "") {
-                      updateAutoLock({ idleTimeoutMinutes: undefined });
-                      return;
-                    }
-                    const minutes = Number(raw);
-                    if (Number.isInteger(minutes) && minutes >= 1) {
-                      updateAutoLock({ idleTimeoutMinutes: minutes });
-                    }
-                  }}
-                />
+                <div className="field-input-with-stepper">
+                  <input
+                    id="settings-idle-timeout"
+                    type="number"
+                    min={1}
+                    className="field-input"
+                    value={autoLock.idleTimeoutMinutes ?? ""}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === "") {
+                        updateAutoLock({ idleTimeoutMinutes: undefined });
+                        return;
+                      }
+                      const minutes = Number(raw);
+                      if (Number.isInteger(minutes) && minutes >= 1) {
+                        updateAutoLock({ idleTimeoutMinutes: minutes });
+                      }
+                    }}
+                  />
+                  <div className="field-stepper">
+                    <button
+                      type="button"
+                      aria-label="Increase lock-after-inactivity minutes"
+                      onClick={() => stepIdleTimeout(1)}
+                    >
+                      <ChevronIcon size={9} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Decrease lock-after-inactivity minutes"
+                      onClick={() => stepIdleTimeout(-1)}
+                    >
+                      <ChevronIcon size={9} />
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="detail-field-row">
                 <label
@@ -180,19 +216,37 @@ export function SettingsScreen({
                 >
                   Clear clipboard after (seconds)
                 </label>
-                <input
-                  id="settings-clipboard-clear-seconds"
-                  type="number"
-                  min={1}
-                  className="field-input"
-                  value={clipboardClearSeconds}
-                  onChange={(event) => {
-                    const seconds = Number(event.target.value);
-                    if (Number.isInteger(seconds) && seconds >= 1) {
-                      onClipboardClearSecondsChange(seconds);
-                    }
-                  }}
-                />
+                <div className="field-input-with-stepper">
+                  <input
+                    id="settings-clipboard-clear-seconds"
+                    type="number"
+                    min={1}
+                    className="field-input"
+                    value={clipboardClearSeconds}
+                    onChange={(event) => {
+                      const seconds = Number(event.target.value);
+                      if (Number.isInteger(seconds) && seconds >= 1) {
+                        onClipboardClearSecondsChange(seconds);
+                      }
+                    }}
+                  />
+                  <div className="field-stepper">
+                    <button
+                      type="button"
+                      aria-label="Increase clipboard clear seconds"
+                      onClick={() => stepClipboardClearSeconds(1)}
+                    >
+                      <ChevronIcon size={9} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Decrease clipboard clear seconds"
+                      onClick={() => stepClipboardClearSeconds(-1)}
+                    >
+                      <ChevronIcon size={9} />
+                    </button>
+                  </div>
+                </div>
               </div>
               <label className="detail-field-row" htmlFor="settings-lock-minimize">
                 <span className="detail-field-row-label">Lock when the window is minimized</span>
