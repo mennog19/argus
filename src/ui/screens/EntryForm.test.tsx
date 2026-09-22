@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CustomField, CustomFields, Entry, Icon, GroupId, Password, Tag, Tags } from "../../domain";
+import { DEFAULT_ENTRY_FIELD_VISIBILITY } from "../../application/settings";
 import { EntryForm } from "./EntryForm";
 
 const groupOptions = [
   { id: "root-id", label: "My Vault" },
   { id: "work-id", label: "  Work" },
 ];
+
+const ALL_FIELDS_VISIBLE = DEFAULT_ENTRY_FIELD_VISIBILITY;
 
 describe("EntryForm", () => {
   it("submits a newly created entry with the form's field values", async () => {
@@ -19,6 +22,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -59,6 +63,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -85,6 +90,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -107,6 +113,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{ length: 12, useSymbols: false }}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -129,6 +136,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -149,6 +157,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -169,6 +178,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -195,6 +205,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -216,6 +227,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -236,6 +248,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -264,6 +277,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -289,6 +303,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -316,6 +331,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -343,6 +359,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -373,6 +390,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -393,6 +411,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -414,6 +433,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -434,6 +454,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={vi.fn()}
         onCancel={onCancel}
       />,
@@ -455,6 +476,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -468,6 +490,7 @@ describe("EntryForm", () => {
         initialGroupId="root-id"
         groupOptions={groupOptions}
         generatorPolicy={{}}
+        fieldVisibility={ALL_FIELDS_VISIBLE}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
@@ -477,5 +500,64 @@ describe("EntryForm", () => {
     await user.click(screen.getByRole("button", { name: "Luggage" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSubmit.mock.calls[1][0].icon.toString()).toBe("library:luggage");
+  });
+
+  describe("field visibility", () => {
+    it("hides every toggleable field when its setting is off, always keeping the title", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      const noneVisible = {
+        username: false,
+        password: false,
+        totp: false,
+        url: false,
+        notes: false,
+        tags: false,
+        group: false,
+      };
+
+      render(
+        <EntryForm
+          initialGroupId="root-id"
+          groupOptions={groupOptions}
+          generatorPolicy={{}}
+          fieldVisibility={noneVisible}
+          onSubmit={onSubmit}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByLabelText("Title")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Username")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Authenticator (TOTP)")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("URL")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Notes")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Group")).not.toBeInTheDocument();
+      expect(screen.queryByText("Tags")).not.toBeInTheDocument();
+
+      await user.type(screen.getByLabelText("Title"), "GitHub");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      const [entry, groupId] = onSubmit.mock.calls[0];
+      expect(entry.title).toBe("GitHub");
+      expect(groupId).toEqual(GroupId.fromString("root-id"));
+    });
+
+    it("hides a single field while leaving the others visible", () => {
+      render(
+        <EntryForm
+          initialGroupId="root-id"
+          groupOptions={groupOptions}
+          generatorPolicy={{}}
+          fieldVisibility={{ ...ALL_FIELDS_VISIBLE, password: false }}
+          onSubmit={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Username")).toBeInTheDocument();
+    });
   });
 });

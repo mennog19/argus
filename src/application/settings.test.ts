@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   AppSettings,
+  DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_SETTINGS,
   recordVaultOpened,
   withAccentColor,
   withAutoLock,
   withClipboardClearSeconds,
+  withEntryFieldVisibility,
   withGeneratorPolicy,
   withGroupDeleteMode,
   withTheme,
@@ -164,6 +166,20 @@ describe("withTheme", () => {
     const result = withTheme(settings, "light");
 
     expect(result.theme).toBe("light");
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+});
+
+describe("withEntryFieldVisibility", () => {
+  it("records the entry field visibility without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+    const visibility = { ...DEFAULT_ENTRY_FIELD_VISIBILITY, password: false };
+
+    const result = withEntryFieldVisibility(settings, visibility);
+
+    expect(result.entryFieldVisibility).toEqual(visibility);
     expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });

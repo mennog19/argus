@@ -1,9 +1,28 @@
 import { CSSProperties } from "react";
-import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
+import {
+  AccentColor,
+  AutoLockSettings,
+  EntryFieldVisibility,
+  GroupDeleteMode,
+  Theme,
+} from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
 import { ChevronIcon } from "../icons";
+
+const ENTRY_FIELD_TOGGLES: ReadonlyArray<{
+  key: keyof EntryFieldVisibility;
+  label: string;
+}> = [
+  { key: "username", label: "Username" },
+  { key: "password", label: "Password" },
+  { key: "totp", label: "Authenticator (TOTP)" },
+  { key: "url", label: "URL" },
+  { key: "notes", label: "Notes" },
+  { key: "group", label: "Group" },
+  { key: "tags", label: "Tags" },
+];
 
 interface SettingsScreenProps {
   filePath: string;
@@ -14,11 +33,13 @@ interface SettingsScreenProps {
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
+  entryFieldVisibility: EntryFieldVisibility;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
+  onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
 }
 
 export function SettingsScreen({
@@ -30,11 +51,13 @@ export function SettingsScreen({
   groupDeleteMode,
   accentColor,
   theme,
+  entryFieldVisibility,
   onClipboardClearSecondsChange,
   onAutoLockChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
+  onEntryFieldVisibilityChange,
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
@@ -299,6 +322,32 @@ export function SettingsScreen({
                   Keep its entries and subgroups (move them to the parent group)
                 </label>
               </div>
+            </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Entry creation</div>
+            <div className="detail-card">
+              {ENTRY_FIELD_TOGGLES.map(({ key, label }) => (
+                <label
+                  key={key}
+                  className="detail-field-row"
+                  htmlFor={`settings-entry-field-${key}`}
+                >
+                  <span className="detail-field-row-label">{label}</span>
+                  <input
+                    id={`settings-entry-field-${key}`}
+                    type="checkbox"
+                    checked={entryFieldVisibility[key]}
+                    onChange={(event) =>
+                      onEntryFieldVisibilityChange({
+                        ...entryFieldVisibility,
+                        [key]: event.target.checked,
+                      })
+                    }
+                  />
+                </label>
+              ))}
             </div>
           </section>
         </div>

@@ -13,7 +13,14 @@ import {
   Tags,
   Vault,
 } from "../../domain";
-import { AccentColor, AutoLockSettings, GroupDeleteMode, Theme } from "../../application/settings";
+import {
+  AccentColor,
+  AutoLockSettings,
+  DEFAULT_ENTRY_FIELD_VISIBILITY,
+  EntryFieldVisibility,
+  GroupDeleteMode,
+  Theme,
+} from "../../application/settings";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { VaultShell } from "./VaultShell";
@@ -47,6 +54,8 @@ function renderShell(
     onAccentColorChange?: (accentColor: AccentColor) => void;
     theme?: Theme;
     onThemeChange?: (theme: Theme) => void;
+    entryFieldVisibility?: EntryFieldVisibility;
+    onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
@@ -63,6 +72,8 @@ function renderShell(
   const onAccentColorChange = overrides.onAccentColorChange ?? vi.fn();
   const theme = overrides.theme ?? DEFAULT_THEME;
   const onThemeChange = overrides.onThemeChange ?? vi.fn();
+  const entryFieldVisibility = overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY;
+  const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
   render(
     <VaultShell
       vault={vault}
@@ -76,6 +87,7 @@ function renderShell(
       groupDeleteMode={groupDeleteMode}
       accentColor={accentColor}
       theme={theme}
+      entryFieldVisibility={entryFieldVisibility}
       onLock={onLock}
       onSave={onSave}
       onGeneratorPolicyChange={onGeneratorPolicyChange}
@@ -84,6 +96,7 @@ function renderShell(
       onGroupDeleteModeChange={vi.fn()}
       onAccentColorChange={onAccentColorChange}
       onThemeChange={onThemeChange}
+      onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
     />,
   );
   return {
@@ -95,6 +108,7 @@ function renderShell(
     onAutoLockChange,
     onAccentColorChange,
     onThemeChange,
+    onEntryFieldVisibilityChange,
   };
 }
 
@@ -282,9 +296,11 @@ describe("VaultShell", () => {
         groupDeleteMode="deleteContents"
         accentColor={DEFAULT_ACCENT_COLOR}
         theme={DEFAULT_THEME}
+        entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
         onGroupDeleteModeChange={vi.fn()}
         onAccentColorChange={vi.fn()}
         onThemeChange={vi.fn()}
+        onEntryFieldVisibilityChange={vi.fn()}
       />,
     );
 
@@ -578,6 +594,20 @@ describe("VaultShell", () => {
       expect(onSave).not.toHaveBeenCalled();
       expect(screen.getByText("Select an entry to view details")).toBeInTheDocument();
     });
+
+    it("hides fields turned off in the entry field visibility setting", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      renderShell(vault, {
+        entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
+      });
+
+      await user.click(screen.getByRole("button", { name: /new entry/i }));
+
+      expect(screen.getByLabelText("Title")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Notes")).not.toBeInTheDocument();
+    });
   });
 
   describe("editing an entry", () => {
@@ -639,6 +669,22 @@ describe("VaultShell", () => {
 
       expect(onSave).not.toHaveBeenCalled();
       expect(screen.getByRole("heading", { name: "GitHub" })).toBeInTheDocument();
+    });
+
+    it("ignores the entry field visibility setting, always showing every field", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "GitHub", notes: "some notes" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+
+      renderShell(vault, {
+        entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
+      });
+
+      await user.click(screen.getByText("GitHub"));
+      await user.click(screen.getByRole("button", { name: "Edit entry" }));
+
+      expect(screen.getByLabelText("Notes")).toBeInTheDocument();
     });
   });
 
@@ -812,9 +858,11 @@ describe("VaultShell", () => {
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
           theme={DEFAULT_THEME}
+          entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
           onThemeChange={vi.fn()}
+          onEntryFieldVisibilityChange={vi.fn()}
         />,
       );
 
@@ -843,9 +891,11 @@ describe("VaultShell", () => {
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
           theme={DEFAULT_THEME}
+          entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
           onThemeChange={vi.fn()}
+          onEntryFieldVisibilityChange={vi.fn()}
         />,
       );
 
@@ -1119,6 +1169,20 @@ describe("VaultShell", () => {
 
       expect(screen.getByText("Passwords")).toBeInTheDocument();
       expect(screen.getByText("2")).toBeInTheDocument();
+    });
+
+    it("reports an entry field visibility change made in the settings screen", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+
+      const { onEntryFieldVisibilityChange } = renderShell(vault);
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("checkbox", { name: "Notes" }));
+
+      expect(onEntryFieldVisibilityChange).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: false }),
+      );
     });
   });
 
