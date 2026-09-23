@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { ArgusMark } from "./ArgusMark";
+import { GAZE_FALLOFF_PX, MAX_GAZE_SHIFT, gazeOffset } from "./argus-gaze";
 import {
   BLINK_DURATION_MS,
   DOUBLE_BLINK_CHANCE,
@@ -37,6 +38,38 @@ describe("ArgusMark", () => {
   it("reflects the focusing state", () => {
     const { container } = render(<ArgusMark state="focusing" />);
     expect(container.firstElementChild).toHaveAttribute("data-state", "focusing");
+  });
+});
+
+describe("ArgusMark gaze", () => {
+  it("starts looking straight ahead", () => {
+    const { container } = render(<ArgusMark />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue("--argus-gaze-x")).toBe("0px");
+    expect(root.style.getPropertyValue("--argus-gaze-y")).toBe("0px");
+  });
+
+  it("follows the pointer moving anywhere in the window", () => {
+    const { container } = render(<ArgusMark />);
+    const root = container.firstElementChild as HTMLElement;
+    // jsdom reports a zero-sized box, so the mark's centre is the origin.
+    fireEvent.pointerMove(window, { clientX: GAZE_FALLOFF_PX, clientY: 0 });
+
+    expect(root.style.getPropertyValue("--argus-gaze-x")).toBe(`${MAX_GAZE_SHIFT / 2}px`);
+    expect(root.style.getPropertyValue("--argus-gaze-y")).toBe("0px");
+
+    fireEvent.pointerMove(window, { clientX: -120, clientY: 90 });
+    const expected = gazeOffset(-120, 90);
+    expect(root.style.getPropertyValue("--argus-gaze-x")).toBe(`${expected.x}px`);
+    expect(root.style.getPropertyValue("--argus-gaze-y")).toBe(`${expected.y}px`);
+  });
+
+  it("stops following once unmounted", () => {
+    const { container, unmount } = render(<ArgusMark />);
+    const root = container.firstElementChild as HTMLElement;
+    unmount();
+    fireEvent.pointerMove(window, { clientX: 400, clientY: 400 });
+    expect(root.style.getPropertyValue("--argus-gaze-x")).toBe("0px");
   });
 });
 

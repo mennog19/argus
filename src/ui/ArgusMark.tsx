@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   BLINK_DURATION_MS,
   DOUBLE_BLINK_CHANCE,
   DOUBLE_BLINK_GAP_MS,
   nextBlinkDelay,
 } from "./argus-blink";
+import { gazeOffset, type GazeOffset } from "./argus-gaze";
 
 interface ArgusMarkProps {
   /** `watching` idles with a slow drift; `focusing` narrows the pupil and spins up while unlocking. */
@@ -18,6 +19,8 @@ const TICKS = Array.from({ length: 36 }, (_, index) => index * 10);
 /** The app's eye mark — Argus, the watchman who never (quite) slept. */
 export function ArgusMark({ state = "watching", random = Math.random }: ArgusMarkProps) {
   const [blinking, setBlinking] = useState(false);
+  const [gaze, setGaze] = useState<GazeOffset>({ x: 0, y: 0 });
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -43,12 +46,35 @@ export function ArgusMark({ state = "watching", random = Math.random }: ArgusMar
     return () => clearTimeout(timer);
   }, [random]);
 
+  // The eye follows the pointer anywhere on screen, not just over the mark.
+  useEffect(() => {
+    const root = rootRef.current!;
+    const follow = (event: PointerEvent) => {
+      const box = root.getBoundingClientRect();
+      setGaze(
+        gazeOffset(
+          event.clientX - (box.left + box.width / 2),
+          event.clientY - (box.top + box.height / 2),
+        ),
+      );
+    };
+    window.addEventListener("pointermove", follow);
+    return () => window.removeEventListener("pointermove", follow);
+  }, []);
+
   return (
     <div
+      ref={rootRef}
       className="argus-mark"
       data-state={state}
       data-blinking={blinking ? "true" : undefined}
       aria-hidden="true"
+      style={
+        {
+          "--argus-gaze-x": `${gaze.x}px`,
+          "--argus-gaze-y": `${gaze.y}px`,
+        } as CSSProperties
+      }
     >
       <svg viewBox="0 0 96 96">
         <defs>

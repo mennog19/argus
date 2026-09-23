@@ -29,9 +29,40 @@
 .argus-mark-ticks,
 .argus-mark-ring,
 .argus-mark-eye,
-.argus-mark-pupil {
+.argus-mark-iris,
+.argus-mark-pupil,
+.argus-mark-glint {
   transform-box: view-box;
   transform-origin: 48px 48px;
+}
+
+/* Pointer tracking. ArgusMark sets --argus-gaze-x/y from the cursor's position
+   relative to the mark's centre; the eye's parts take different fractions of
+   it, because the eye is a sphere turning rather than a disc sliding. The
+   pupil sits nearest the front and swings furthest, with the glint riding
+   along so the highlight stays put on the pupil rather than stranded on the
+   iris; the iris follows part of the way. Moving them all as one lump is what
+   reads as the eye rolling. */
+.argus-mark-iris,
+.argus-mark-pupil,
+.argus-mark-glint {
+  transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.argus-mark-iris {
+  transform: translate(
+    calc(var(--argus-gaze-x, 0px) * 0.38),
+    calc(var(--argus-gaze-y, 0px) * 0.38)
+  );
+}
+
+.argus-mark-pupil {
+  transform: translate(var(--argus-gaze-x, 0px), var(--argus-gaze-y, 0px))
+    scale(var(--argus-pupil-scale, 1));
+}
+
+.argus-mark-glint {
+  transform: translate(var(--argus-gaze-x, 0px), var(--argus-gaze-y, 0px));
 }
 
 /* Blinks squash the eye shut vertically; ArgusMark times them at random. */
@@ -71,7 +102,6 @@
 
 .argus-mark-pupil {
   fill: var(--color-bg);
-  transition: transform 420ms cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 
 /* A reflection highlight in the pupil, which is filled with --color-bg — so
@@ -81,9 +111,10 @@
   fill: color-mix(in oklab, var(--color-text) 85%, transparent);
 }
 
-/* While unlocking the eye focuses: pupil narrows, rings spin up. */
-.argus-mark[data-state="focusing"] .argus-mark-pupil {
-  transform: scale(0.45);
+/* While unlocking the eye focuses: pupil narrows, rings spin up. The scale
+   rides along in the pupil's transform so it composes with the gaze offset. */
+.argus-mark[data-state="focusing"] {
+  --argus-pupil-scale: 0.45;
 }
 
 .argus-mark[data-state="focusing"] .argus-mark-ring {
@@ -108,6 +139,21 @@
 
   .argus-mark[data-blinking] .argus-mark-eye {
     transform: none;
+  }
+
+  .argus-mark-iris,
+  .argus-mark-glint {
+    transform: none;
+  }
+
+  .argus-mark-pupil {
+    transform: scale(var(--argus-pupil-scale, 1));
+  }
+
+  .argus-mark-iris,
+  .argus-mark-pupil,
+  .argus-mark-glint {
+    transition: none;
   }
 }
 
