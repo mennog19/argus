@@ -69,6 +69,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "argus"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-opener",
+ "tauri-plugin-persisted-scope",
+ "tauri-plugin-single-instance",
+ "windows",
+]
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3652,24 +3670,6 @@ dependencies = [
  "webkit2gtk",
  "webview2-com",
  "window-vibrancy",
- "windows",
-]
-
-[[package]]
-name = "tauri-app"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-opener",
- "tauri-plugin-persisted-scope",
- "tauri-plugin-single-instance",
  "windows",
 ]
 

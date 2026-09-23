@@ -29,6 +29,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Studio Helios",
+    "copyright": "Copyright © 2026 Studio Helios",
+    "category": "Utility",
+    "shortDescription": "A local-first password manager for KeePass vaults",
+    "longDescription": "Argus is a local-first desktop password manager that reads and writes standard KeePass (.kdbx) files, so your vaults stay portable to KeePass and KeePassXC. Your data never leaves your device.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
