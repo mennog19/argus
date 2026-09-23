@@ -35,6 +35,15 @@ export const AUTO_TYPE_KEYS = [
 
 export type AutoTypeKey = (typeof AUTO_TYPE_KEYS)[number];
 
+/**
+ * Form fields a sequence can move focus to with `{FOCUS USERNAME}`. Unlike
+ * `{TAB}`, this doesn't depend on what sits between the fields: the adapter
+ * finds the field itself.
+ */
+export const AUTO_TYPE_FORM_FIELDS = ["username", "password"] as const;
+
+export type AutoTypeFormField = (typeof AUTO_TYPE_FORM_FIELDS)[number];
+
 /** Placeholder spellings accepted inside `{...}`, normalized to lower case. */
 const FIELD_NAMES: Readonly<Record<string, AutoTypeField>> = {
   username: "username",
@@ -67,12 +76,14 @@ export type AutoTypeToken =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "field"; readonly field: AutoTypeField }
   | { readonly kind: "key"; readonly key: AutoTypeKey }
+  | { readonly kind: "focus"; readonly field: AutoTypeFormField }
   | { readonly kind: "delay"; readonly milliseconds: number };
 
 /** A fully resolved instruction for the OS adapter: no entry data left to look up. */
 export type AutoTypeStep =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "key"; readonly key: AutoTypeKey }
+  | { readonly kind: "focus"; readonly field: AutoTypeFormField }
   | { readonly kind: "delay"; readonly milliseconds: number };
 
 /** The values a sequence's field placeholders expand to. */
@@ -106,6 +117,8 @@ const TOKEN_PATTERN = /\{\{\}|\{\}\}|\{([^{}]*)\}/g;
 
 const DELAY_PATTERN = /^delay\s+(\d+)$/;
 
+const FOCUS_PATTERN = /^focus\s+(username|password)$/;
+
 function parsePlaceholder(name: string): AutoTypeToken {
   const normalized = name.trim().toLowerCase();
 
@@ -117,6 +130,11 @@ function parsePlaceholder(name: string): AutoTypeToken {
   const key = KEY_NAMES[normalized];
   if (key) {
     return { kind: "key", key };
+  }
+
+  const focus = FOCUS_PATTERN.exec(normalized);
+  if (focus) {
+    return { kind: "focus", field: focus[1] as AutoTypeFormField };
   }
 
   const delay = DELAY_PATTERN.exec(normalized);

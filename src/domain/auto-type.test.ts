@@ -55,6 +55,17 @@ describe("parseAutoTypeSequence", () => {
     ]);
   });
 
+  it("parses the focus placeholders for the username and password fields", () => {
+    expect(parseAutoTypeSequence("{FOCUS USERNAME}{ focus  Password }")).toEqual([
+      { kind: "focus", field: "username" },
+      { kind: "focus", field: "password" },
+    ]);
+  });
+
+  it("rejects focusing a field that isn't a form field", () => {
+    expect(() => parseAutoTypeSequence("{FOCUS TOTP}")).toThrow(AutoTypeSequenceError);
+  });
+
   it("parses every key placeholder", () => {
     const keys = parseAutoTypeSequence(
       "{TAB}{ENTER}{SPACE}{BACKSPACE}{DELETE}{ESC}{ESCAPE}{HOME}{END}{UP}{DOWN}{LEFT}{RIGHT}",
@@ -169,6 +180,19 @@ describe("resolveAutoTypeSequence", () => {
   it("treats a missing TOTP code as an empty field", () => {
     expect(resolveAutoTypeSequence("{TOTP}{ENTER}", { ...VALUES, totp: undefined })).toEqual([
       { kind: "key", key: "enter" },
+    ]);
+  });
+
+  it("passes focus steps through untouched, even when the field they precede is empty", () => {
+    expect(
+      resolveAutoTypeSequence("{FOCUS USERNAME}{USERNAME}{FOCUS PASSWORD}{PASSWORD}", {
+        ...VALUES,
+        username: "",
+      }),
+    ).toEqual([
+      { kind: "focus", field: "username" },
+      { kind: "focus", field: "password" },
+      { kind: "text", text: "hunter2" },
     ]);
   });
 

@@ -102,7 +102,9 @@ function App({
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
   const [fileInfo, setFileInfo] = useState<VaultFileInfo | undefined>(undefined);
 
-  const autoTypeSettings = settings.autoType ?? DEFAULT_AUTO_TYPE;
+  // Merged over the defaults so settings saved before a field existed still
+  // get its default rather than an undefined.
+  const autoTypeSettings: AutoTypeSettings = { ...DEFAULT_AUTO_TYPE, ...settings.autoType };
 
   // Everything auto-type is allowed to offer: the whole vault minus the
   // recycle bin, so a deleted login can't be typed back into a live site.

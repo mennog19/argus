@@ -48,6 +48,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             grant_file_access,
             auto_type::auto_type_capture_target,
+            auto_type::auto_type_inspect_target,
             auto_type::auto_type_send
         ])
         .run(tauri::generate_context!())

@@ -17,6 +17,7 @@ const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
   enabled: false,
   hotkey: "CommandOrControl+Shift+A",
+  detectFields: true,
   sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
 };
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
@@ -512,7 +513,9 @@ describe("SettingsScreen", () => {
 
       expect(screen.getByRole("checkbox", { name: /hotkey/i })).not.toBeChecked();
       expect(screen.getByLabelText("Hotkey")).toHaveTextContent("Ctrl + Shift + A");
-      expect(screen.getByLabelText("What to type")).toHaveValue("{USERNAME}{TAB}{PASSWORD}{ENTER}");
+      expect(screen.getByLabelText("Fallback sequence")).toHaveValue(
+        "{USERNAME}{TAB}{PASSWORD}{ENTER}",
+      );
     });
 
     it("reports being switched on", async () => {
@@ -544,10 +547,28 @@ describe("SettingsScreen", () => {
       expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, hotkey: "Alt+Space" });
     });
 
+    it("has field detection on by default", () => {
+      renderSettings();
+
+      expect(
+        screen.getByRole("checkbox", { name: /find the username and password/i }),
+      ).toBeChecked();
+    });
+
+    it("reports field detection being switched off", async () => {
+      const { onAutoTypeChange } = renderSettings();
+
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: /find the username and password/i }),
+      );
+
+      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, detectFields: false });
+    });
+
     it("reports a new sequence", () => {
       const { onAutoTypeChange } = renderSettings();
 
-      fireEvent.change(screen.getByLabelText("What to type"), {
+      fireEvent.change(screen.getByLabelText("Fallback sequence"), {
         target: { value: "{PASSWORD}{ENTER}" },
       });
 
@@ -567,7 +588,7 @@ describe("SettingsScreen", () => {
       renderSettings({ autoType: { ...DEFAULT_AUTO_TYPE, sequence: "{NOPE}" } });
 
       expect(screen.getByText(/not a known auto-type placeholder/)).toBeInTheDocument();
-      expect(screen.getByLabelText("What to type")).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByLabelText("Fallback sequence")).toHaveAttribute("aria-invalid", "true");
       expect(screen.queryByText("{TOTP}")).not.toBeInTheDocument();
     });
   });

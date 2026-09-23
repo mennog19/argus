@@ -19,6 +19,14 @@ describe("TauriAutoTyper", () => {
     expect(await new TauriAutoTyper().captureTarget()).toBeUndefined();
   });
 
+  it("returns the form layout the inspect command reports", async () => {
+    const layout = { hasUsernameField: true, hasPasswordField: false };
+    vi.mocked(invoke).mockResolvedValue(layout);
+
+    expect(await new TauriAutoTyper().inspectTarget()).toEqual(layout);
+    expect(invoke).toHaveBeenCalledWith("auto_type_inspect_target");
+  });
+
   it("sends the steps to the typing command", async () => {
     vi.mocked(invoke).mockResolvedValue(undefined);
     const steps = [{ kind: "text", text: "menno" } as const, { kind: "key", key: "tab" } as const];

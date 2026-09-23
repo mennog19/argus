@@ -1,4 +1,4 @@
-import { AutoTypeStep } from "../domain";
+import { AutoTypeStep, FormLayout } from "../domain";
 
 /** The window that was focused when the auto-type hotkey was pressed. */
 export interface ForegroundWindow {
@@ -25,6 +25,13 @@ export interface AutoTyper {
    * Argus itself is in front, or the OS reports no foreground window.
    */
   captureTarget(): Promise<ForegroundWindow | undefined>;
+
+  /**
+   * Looks at the captured target's form and reports which login fields it
+   * has, so the caller can aim at them instead of assuming a tab order. Rejects
+   * when the OS can't describe the window, which callers treat as "unknown".
+   */
+  inspectTarget(): Promise<FormLayout>;
 
   /** Refocuses the captured target and plays `steps` into it. */
   typeIntoTarget(steps: readonly AutoTypeStep[]): Promise<void>;

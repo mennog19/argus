@@ -9,6 +9,7 @@ import { useAutoType } from "./use-auto-type";
 const SETTINGS: AutoTypeSettings = {
   enabled: true,
   hotkey: "CommandOrControl+Shift+A",
+  detectFields: false,
   sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
 };
 
@@ -24,6 +25,7 @@ const ENTRY = Entry.create({
 function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
   return {
     captureTarget: vi.fn().mockResolvedValue(WINDOW),
+    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: false, hasPasswordField: false }),
     typeIntoTarget: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -164,6 +166,29 @@ describe("useAutoType", () => {
       { kind: "key", key: "enter" },
     ]);
     expect(result.current.request).toBeUndefined();
+  });
+
+  it("fills the detected fields when detection is on", async () => {
+    const autoTyper = fakeAutoTyper({
+      inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: true, hasPasswordField: true }),
+    });
+    const { result, hotkey } = setup({ autoTyper, settings: { ...SETTINGS, detectFields: true } });
+    await press(hotkey);
+
+    await act(async () => {
+      result.current.typeInto(ENTRY);
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
+        { kind: "focus", field: "username" },
+        { kind: "text", text: "menno" },
+        { kind: "focus", field: "password" },
+        { kind: "text", text: "hunter2" },
+        { kind: "key", key: "enter" },
+      ]),
+    );
   });
 
   it("closes the picker without typing when dismissed", async () => {

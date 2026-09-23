@@ -71,6 +71,7 @@ function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeS
 function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
   return {
     captureTarget: vi.fn().mockResolvedValue(undefined),
+    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: false, hasPasswordField: false }),
     typeIntoTarget: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };

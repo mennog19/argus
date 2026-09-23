@@ -5,9 +5,11 @@ import {
   generateTotpCode,
   parseAutoTypeSequence,
   resolveAutoTypeSequence,
+  sequenceForForm,
   totpConfigFromCustomFields,
 } from "../domain";
 import { AutoTyper, ForegroundWindow } from "./auto-type";
+import { AutoTypeSettings } from "./settings";
 
 /** A pending auto-type: the window the user was in, and what might fit it. */
 export interface AutoTypeRequest {
@@ -41,8 +43,18 @@ export class AutoTypeService {
     return { window, matches: autoTypeMatches(entries, window.title) };
   }
 
-  /** Expands `sequence` for `entry` and types it into the captured window. */
-  async perform(entry: Entry, sequence: string): Promise<void> {
+  /**
+   * Types `entry` into the captured window. With `detectFields`, the window's
+   * form is inspected first and the fields it has are filled directly; the
+   * user's `sequence` is used as-is when detection is off, finds nothing, or
+   * can't run at all — a window UI Automation can't read still deserves an
+   * attempt, not an error.
+   */
+  async perform(
+    entry: Entry,
+    { sequence: configured, detectFields }: Pick<AutoTypeSettings, "sequence" | "detectFields">,
+  ): Promise<void> {
+    const sequence = detectFields ? await this.sequenceForTarget(configured) : configured;
     const steps = resolveAutoTypeSequence(sequence, {
       username: entry.username,
       password: entry.password.reveal(),
@@ -51,6 +63,14 @@ export class AutoTypeService {
       totp: await currentTotpCode(entry, sequence),
     });
     await this.autoTyper.typeIntoTarget(steps);
+  }
+
+  private async sequenceForTarget(fallback: string): Promise<string> {
+    try {
+      return sequenceForForm(await this.autoTyper.inspectTarget(), fallback);
+    } catch {
+      return fallback;
+    }
   }
 }
 
