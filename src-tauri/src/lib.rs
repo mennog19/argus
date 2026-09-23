@@ -1,3 +1,5 @@
+mod auto_type;
+
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
@@ -32,13 +34,23 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        // Auto-type's hotkey has to reach Argus while another app is focused,
+        // which is the whole point of a *global* shortcut. Which accelerator
+        // (if any) is bound is decided in TypeScript from settings.
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         // Must come after fs: persists filesystem paths the user grants via
         // the dialog plugin (e.g. picking a vault location) across app
         // restarts. Without this, re-opening a remembered vault path on a
         // fresh launch is rejected by Tauri's fs scope before the master
         // password is ever checked.
         .plugin(tauri_plugin_persisted_scope::init())
-        .invoke_handler(tauri::generate_handler![grant_file_access])
+        .manage(auto_type::AutoTypeState::default())
+        .invoke_handler(tauri::generate_handler![
+            grant_file_access,
+            auto_type::auto_type_capture_target,
+            auto_type::auto_type_inspect_target,
+            auto_type::auto_type_send
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -14,6 +14,8 @@ import { UrlOpener } from "../application/url-opener";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
 import { VaultMergeSource } from "../application/vault-merge-source";
+import { AutoTyper, GlobalHotkey } from "../application/auto-type";
+import { AutoTypeService } from "../application/auto-type-service";
 import App from "./App";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
@@ -66,6 +68,27 @@ function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeS
   return { pickFile: vi.fn(), openFile: vi.fn(), ...overrides };
 }
 
+function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
+  return {
+    captureTarget: vi.fn().mockResolvedValue(undefined),
+    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: true, hasPasswordField: true }),
+    typeIntoTarget: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function fakeAutoTypeService(autoTyper: AutoTyper = fakeAutoTyper()): AutoTypeService {
+  return new AutoTypeService(autoTyper);
+}
+
+function fakeGlobalHotkey(overrides: Partial<GlobalHotkey> = {}): GlobalHotkey {
+  return {
+    register: vi.fn().mockResolvedValue(undefined),
+    unregister: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 describe("App", () => {
   it("shows the welcome screen when there are no recent vaults", async () => {
     render(
@@ -78,6 +101,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -97,6 +122,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -121,6 +148,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -147,6 +176,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -187,6 +218,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -216,6 +249,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -244,6 +279,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -278,6 +315,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -311,6 +350,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -361,6 +402,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -402,6 +445,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -440,6 +485,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -475,6 +522,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -512,6 +561,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -551,6 +602,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -587,6 +640,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -627,6 +682,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -669,6 +726,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -709,6 +768,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -750,6 +811,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -787,6 +850,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -826,6 +891,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={windowProtection}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -866,6 +933,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -904,6 +973,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -945,6 +1016,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -984,6 +1057,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -1022,6 +1097,8 @@ describe("App", () => {
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -1063,6 +1140,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -1108,6 +1187,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -1157,6 +1238,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -1207,6 +1290,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
 
@@ -1258,6 +1343,8 @@ describe("App", () => {
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -1303,6 +1390,8 @@ describe("App", () => {
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
         mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
       />,
     );
 
@@ -1345,6 +1434,8 @@ describe("App", () => {
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
           mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
         />,
       );
     }
@@ -1444,6 +1535,173 @@ describe("App", () => {
 
       expect(await screen.findByText("disk full")).toBeInTheDocument();
       expect(document.documentElement.dataset.theme).toBe("dark");
+    });
+  });
+
+  describe("auto-type", () => {
+    const GITHUB = Entry.create({
+      title: "GitHub",
+      username: "menno",
+      url: "https://github.com",
+    });
+
+    function vaultWithGithub(): Vault {
+      const vault = Vault.create("Personal");
+      return vault.addEntry(vault.rootGroup.id, GITHUB);
+    }
+
+    /**
+     * Creates a vault, opens the settings screen, and ticks the auto-type
+     * checkbox — which is also what binds the hotkey, since the hook only
+     * claims it while a vault is unlocked and the setting is on.
+     */
+    async function enableAutoType(
+      user: ReturnType<typeof userEvent.setup>,
+      options: {
+        settingsStore?: SettingsStore;
+        autoTyper?: AutoTyper;
+        globalHotkey?: GlobalHotkey;
+        vault?: Vault;
+      } = {},
+    ) {
+      const settingsStore = options.settingsStore ?? fakeSettingsStore();
+      const globalHotkey = options.globalHotkey ?? fakeGlobalHotkey();
+      const opened: OpenedVault = {
+        vault: options.vault ?? vaultWithGithub(),
+        filePath: "C:/vaults/personal.kdbx",
+      };
+
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+          })}
+          settingsStore={settingsStore}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService(options.autoTyper)}
+          globalHotkey={globalHotkey}
+        />,
+      );
+
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      await user.click(await screen.findByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("checkbox", { name: /hotkey/i }));
+
+      return { settingsStore, globalHotkey };
+    }
+
+    /** Fires the handler the app handed the hotkey port, as a real press would. */
+    async function pressHotkey(globalHotkey: GlobalHotkey) {
+      const handler = vi.mocked(globalHotkey.register).mock.calls[0][1];
+      await act(async () => {
+        handler();
+        await Promise.resolve();
+      });
+    }
+
+    it("persists an auto-type change made in the settings screen", async () => {
+      const user = userEvent.setup();
+
+      const { settingsStore } = await enableAutoType(user);
+
+      expect(settingsStore.save).toHaveBeenCalledWith(
+        expect.objectContaining({ autoType: expect.objectContaining({ enabled: true }) }),
+      );
+    });
+
+    it("offers the entries matching the captured window when the hotkey is pressed", async () => {
+      const user = userEvent.setup();
+      const autoTyper = fakeAutoTyper({
+        captureTarget: vi
+          .fn()
+          .mockResolvedValue({ title: "GitHub — Firefox", processName: "firefox.exe" }),
+      });
+
+      const { globalHotkey } = await enableAutoType(user, { autoTyper });
+      await pressHotkey(globalHotkey);
+
+      expect(await screen.findByRole("dialog", { name: "Auto-type" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: /GitHub/ })).toBeInTheDocument();
+    });
+
+    it("types the picked entry into the captured window", async () => {
+      const user = userEvent.setup();
+      const autoTyper = fakeAutoTyper({
+        captureTarget: vi
+          .fn()
+          .mockResolvedValue({ title: "GitHub — Firefox", processName: "firefox.exe" }),
+      });
+      const { globalHotkey } = await enableAutoType(user, { autoTyper });
+      await pressHotkey(globalHotkey);
+
+      await user.click(await screen.findByRole("option", { name: /GitHub/ }));
+
+      expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
+        { kind: "focus", field: "username" },
+        { kind: "text", text: "menno" },
+        { kind: "submit" },
+      ]);
+      expect(screen.queryByRole("dialog", { name: "Auto-type" })).not.toBeInTheDocument();
+    });
+
+    it("closes the picker when it is cancelled", async () => {
+      const user = userEvent.setup();
+      const autoTyper = fakeAutoTyper({
+        captureTarget: vi
+          .fn()
+          .mockResolvedValue({ title: "GitHub — Firefox", processName: "firefox.exe" }),
+      });
+      const { globalHotkey } = await enableAutoType(user, { autoTyper });
+      await pressHotkey(globalHotkey);
+      expect(await screen.findByRole("dialog", { name: "Auto-type" })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByRole("dialog", { name: "Auto-type" })).not.toBeInTheDocument();
+    });
+
+    it("never offers an entry that is in the recycle bin", async () => {
+      const user = userEvent.setup();
+      const deleted = Entry.create({ title: "GitHub old", url: "https://github.com" });
+      const base = vaultWithGithub();
+      const withDeleted = base.addEntry(base.rootGroup.id, deleted).deleteEntry(deleted.id);
+      const autoTyper = fakeAutoTyper({
+        captureTarget: vi
+          .fn()
+          .mockResolvedValue({ title: "GitHub — Firefox", processName: "firefox.exe" }),
+      });
+
+      const { globalHotkey } = await enableAutoType(user, { autoTyper, vault: withDeleted });
+      await pressHotkey(globalHotkey);
+
+      expect(await screen.findByRole("option", { name: /GitHub/ })).toBeInTheDocument();
+      expect(screen.getAllByRole("option")).toHaveLength(1);
+      expect(screen.queryByRole("option", { name: /GitHub old/ })).not.toBeInTheDocument();
+    });
+
+    it("says so when the OS refuses the hotkey, and lets the message be dismissed", async () => {
+      const user = userEvent.setup();
+      const globalHotkey = fakeGlobalHotkey({
+        register: vi.fn().mockRejectedValue(new Error("hotkey already in use")),
+      });
+
+      await enableAutoType(user, { globalHotkey });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("hotkey already in use");
+
+      await user.click(screen.getByRole("button", { name: "Dismiss auto-type error" }));
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
   });
 });

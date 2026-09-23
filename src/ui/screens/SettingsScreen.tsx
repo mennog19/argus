@@ -2,15 +2,18 @@ import { CSSProperties } from "react";
 import {
   AccentColor,
   AutoLockSettings,
+  AutoTypeSettings,
   EntryFieldVisibility,
   GroupDeleteMode,
   Theme,
 } from "../../application/settings";
+
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
 import { ChevronIcon } from "../icons";
 import { ChangeMasterPasswordCard } from "./ChangeMasterPasswordCard";
+import { HotkeyField } from "./HotkeyField";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 
 const ENTRY_FIELD_TOGGLES: ReadonlyArray<{
@@ -32,6 +35,7 @@ interface SettingsScreenProps {
   entryCount: number;
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
+  autoType: AutoTypeSettings;
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
@@ -43,6 +47,7 @@ interface SettingsScreenProps {
   onOpenMergeWizard: () => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
+  onAutoTypeChange: (autoType: AutoTypeSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
@@ -58,6 +63,7 @@ export function SettingsScreen({
   entryCount,
   clipboardClearSeconds,
   autoLock,
+  autoType,
   groupDeleteMode,
   accentColor,
   theme,
@@ -68,6 +74,7 @@ export function SettingsScreen({
   onOpenMergeWizard,
   onClipboardClearSecondsChange,
   onAutoLockChange,
+  onAutoTypeChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
@@ -78,6 +85,10 @@ export function SettingsScreen({
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
+  }
+
+  function updateAutoType(patch: Partial<AutoTypeSettings>) {
+    onAutoTypeChange({ ...autoType, ...patch });
   }
 
   function stepIdleTimeout(direction: 1 | -1) {
@@ -317,6 +328,45 @@ export function SettingsScreen({
                   onChange={(event) => onContentProtectionChange(event.target.checked)}
                 />
               </label>
+            </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Auto-type</div>
+            <div className="detail-card">
+              <label className="detail-field-row" htmlFor="settings-auto-type-enabled">
+                <span className="detail-field-row-label">
+                  Type credentials into other apps with a hotkey
+                </span>
+                <input
+                  id="settings-auto-type-enabled"
+                  type="checkbox"
+                  checked={autoType.enabled}
+                  onChange={(event) => updateAutoType({ enabled: event.target.checked })}
+                />
+              </label>
+              <p className="detail-card-hint">
+                Press the hotkey while another window is focused and Argus offers the entries
+                matching that window&rsquo;s title, then types the chosen one into it. Only works
+                while the vault is unlocked.
+              </p>
+              <div className="detail-field-row">
+                <label className="detail-field-row-label" htmlFor="settings-auto-type-hotkey">
+                  Hotkey
+                </label>
+                <HotkeyField
+                  id="settings-auto-type-hotkey"
+                  value={autoType.hotkey}
+                  onChange={(hotkey) => updateAutoType({ hotkey })}
+                />
+              </div>
+              <p className="detail-card-hint">
+                Argus finds the username and password fields on the page and types into them
+                directly, so extra fields or icons between them don&rsquo;t matter. On the first
+                page of a two-step login it fills the username; press the hotkey again on the next
+                page for the password. It doesn&rsquo;t type into pages where it can&rsquo;t find a
+                login field.
+              </p>
             </div>
           </section>
 

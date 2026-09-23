@@ -1,3 +1,19 @@
+export {
+  AutoTypeNoFieldsError,
+  autoTypeSteps,
+  type AutoTypeCredentials,
+  type AutoTypeFormField,
+  type AutoTypeStep,
+  type FormLayout,
+} from "./auto-type";
+export {
+  autoTypeHost,
+  autoTypeMatches,
+  autoTypeMatchScore,
+  autoTypeSiteName,
+  AUTO_TYPE_MATCH_SCORES,
+  type AutoTypeMatch,
+} from "./auto-type-match";
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";
 export { Entry, type EntryFields, type EntryTimes } from "./entry";

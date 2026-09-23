@@ -11,6 +11,9 @@ import { SettingsTransferService } from "./application/settings-transfer-service
 import { JsonSettingsStore } from "./infrastructure/json-settings-store";
 import { TauriUrlOpener } from "./infrastructure/tauri-url-opener";
 import { TauriClipboard } from "./infrastructure/tauri-clipboard";
+import { TauriAutoTyper } from "./infrastructure/tauri-auto-typer";
+import { TauriGlobalHotkey } from "./infrastructure/tauri-global-hotkey";
+import { AutoTypeService } from "./application/auto-type-service";
 import { TauriWindowEvents } from "./infrastructure/tauri-window-events";
 import { TauriWindowProtection } from "./infrastructure/tauri-window-protection";
 
@@ -31,6 +34,8 @@ const urlOpener = new TauriUrlOpener();
 const clipboardWriter = new TauriClipboard();
 const windowEvents = new TauriWindowEvents();
 const windowProtection = new TauriWindowProtection();
+const autoTypeService = new AutoTypeService(new TauriAutoTyper());
+const globalHotkey = new TauriGlobalHotkey();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -43,6 +48,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       windowEvents={windowEvents}
       windowProtection={windowProtection}
       mergeSource={mergeSource}
+      autoTypeService={autoTypeService}
+      globalHotkey={globalHotkey}
     />
   </React.StrictMode>,
 );
