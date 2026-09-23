@@ -1113,27 +1113,6 @@ input[type="radio"]:checked::after {
   margin: 0;
 }
 
-.entry-list-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.entry-sort-select {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-input);
-  color: var(--color-text-dim);
-  font-size: 12px;
-  outline: none;
-  max-width: 150px;
-}
-
-.entry-sort-select:focus {
-  border-color: var(--color-accent);
-}
-
 .entry-list-header .btn-secondary {
   display: flex;
   align-items: center;
@@ -1186,6 +1165,142 @@ input[type="radio"]:checked::after {
 
 .entry-search-clear:hover {
   color: var(--color-text);
+}
+
+/* The sort trigger sits at the far right of the search bar, behind a hairline
+   so it reads as its own control rather than part of the text field. */
+.entry-sort-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-dimmer);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+/* The hairline lives in the flex gap rather than on the button, so the
+   button stays a clean rounded square once its accent well lights up. */
+.entry-sort-trigger::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 18px;
+  background: var(--color-border-strong);
+}
+
+.entry-sort-trigger:hover,
+.entry-sort-trigger[aria-expanded="true"] {
+  color: var(--color-text);
+}
+
+.entry-sort-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Sorted is a state worth seeing without opening the menu: an accent glyph
+   over a faint accent well says "this list is not in vault order". */
+.entry-sort-trigger.sorted {
+  color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+}
+
+.entry-sort-trigger.sorted:hover,
+.entry-sort-trigger.sorted[aria-expanded="true"] {
+  color: var(--color-accent-hover);
+  background: color-mix(in oklab, var(--color-accent) 20%, transparent);
+}
+
+.entry-sort-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  animation: entry-sort-menu-in 140ms ease-out;
+}
+
+.entry-sort-menu-label {
+  padding: 5px 9px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-dimmer);
+}
+
+.entry-sort-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entry-sort-menu-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-sort-menu-item svg {
+  flex: none;
+  color: var(--color-text-dimmer);
+}
+
+.entry-sort-menu-item:hover,
+.entry-sort-menu-item:focus-visible {
+  background: color-mix(in oklab, var(--color-text) 8%, transparent);
+  outline: none;
+}
+
+.entry-sort-menu-item.selected {
+  color: var(--color-accent);
+}
+
+.entry-sort-menu-item.selected svg {
+  color: var(--color-accent);
+}
+
+@keyframes entry-sort-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-sort-menu {
+    animation: none;
+  }
+
+  .entry-sort-trigger {
+    transition: none;
+  }
 }
 
 .entry-list {

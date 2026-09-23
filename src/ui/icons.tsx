@@ -282,3 +282,51 @@ export function RefreshIcon({ size = 16, color = "currentColor" }: IconProps) {
     </svg>
   );
 }
+
+/**
+ * The canonical sort glyph: bars descending in length. Doubles as the entry
+ * list's sort trigger and as the row glyph for descending orders.
+ */
+export function SortIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 7h16M4 12h10M4 17h5"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** `SortIcon` mirrored: bars ascending in length, for ascending orders. */
+export function SortAscIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 7h5M4 12h10M4 17h16"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Bars of equal length — an order with no direction to it, i.e. the vault's own. */
+export function ListIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 7h16M4 12h16M4 17h16"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

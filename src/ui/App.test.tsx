@@ -878,7 +878,8 @@ describe("App", () => {
     await user.type(screen.getByLabelText("Confirm password"), "hunter2");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
-    await user.selectOptions(await screen.findByLabelText("Sort entries"), "title-asc");
+    await user.click(await screen.findByRole("button", { name: "Sort entries (Vault order)" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Title (A–Z)" }));
 
     expect(settingsStore.save).toHaveBeenCalledWith(
       expect.objectContaining({ entrySort: "title-asc" }),

@@ -1776,14 +1776,19 @@ describe("VaultShell entry sorting", () => {
     expect(entryTitles()).toEqual(["Alpha mail", "Zeta mail"]);
   });
 
-  it("reports the sort order the user picks", () => {
+  it("reports the sort order the user picks from the search bar's sort menu", () => {
     const { onEntrySortChange } = renderShell(vaultWith([]));
 
-    fireEvent.change(screen.getByLabelText("Sort entries"), {
-      target: { value: "accessed-desc" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Sort entries (Vault order)" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Recently opened" }));
 
     expect(onEntrySortChange).toHaveBeenCalledWith("accessed-desc");
+  });
+
+  it("names the active order on the sort trigger", () => {
+    renderShell(vaultWith([]), { entrySort: "title-asc" });
+
+    expect(screen.getByRole("button", { name: "Sort entries (Title (A–Z))" })).toBeInTheDocument();
   });
 
   it("records when an entry was opened, in memory, without saving the vault", () => {

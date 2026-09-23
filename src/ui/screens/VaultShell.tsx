@@ -43,7 +43,7 @@ import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
-import { ENTRY_SORT_OPTIONS, sortEntries } from "../entry-sort";
+import { sortEntries } from "../entry-sort";
 import {
   collectAllEntries,
   entriesOf,
@@ -52,6 +52,7 @@ import {
   searchEntries,
 } from "../vault-browsing";
 import { EntryForm } from "./EntryForm";
+import { EntrySortMenu } from "./EntrySortMenu";
 import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
 import { HealthScreen } from "./HealthScreen";
@@ -461,23 +462,9 @@ export function VaultShell({
                 <div className="entry-list-panel">
                   <div className="entry-list-header">
                     <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
-                    <div className="entry-list-header-actions">
-                      <select
-                        className="entry-sort-select"
-                        aria-label="Sort entries"
-                        value={entrySort}
-                        onChange={(event) => onEntrySortChange(event.target.value as EntrySortId)}
-                      >
-                        {ENTRY_SORT_OPTIONS.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="button" className="btn-secondary" onClick={startCreateEntry}>
-                        <PlusIcon size={13} /> New Entry
-                      </button>
-                    </div>
+                    <button type="button" className="btn-secondary" onClick={startCreateEntry}>
+                      <PlusIcon size={13} /> New Entry
+                    </button>
                   </div>
                   <div className="entry-search">
                     <SearchIcon size={14} />
@@ -499,6 +486,7 @@ export function VaultShell({
                         <XIcon size={12} />
                       </button>
                     )}
+                    <EntrySortMenu value={entrySort} onChange={onEntrySortChange} />
                   </div>
                   <div className="entry-list">
                     {visibleEntries.length === 0 && (

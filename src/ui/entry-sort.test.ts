@@ -14,14 +14,18 @@ function titles(entries: readonly EntryWithGroup[]): string[] {
 }
 
 describe("ENTRY_SORT_OPTIONS", () => {
-  it("offers a label for every sort order, starting with the vault's own order", () => {
-    expect(ENTRY_SORT_OPTIONS[0]).toEqual({ id: "manual", label: "Vault order" });
-    expect(ENTRY_SORT_OPTIONS.map((option) => option.id)).toEqual([
-      "manual",
-      "title-asc",
-      "title-desc",
-      "accessed-desc",
-      "accessed-asc",
+  it("offers a labelled, directed option for every sort order, vault order first", () => {
+    expect(ENTRY_SORT_OPTIONS[0]).toEqual({
+      id: "manual",
+      label: "Vault order",
+      direction: "none",
+    });
+    expect(ENTRY_SORT_OPTIONS.map((option) => [option.id, option.direction])).toEqual([
+      ["manual", "none"],
+      ["title-asc", "asc"],
+      ["title-desc", "desc"],
+      ["accessed-desc", "desc"],
+      ["accessed-asc", "asc"],
     ]);
   });
 });

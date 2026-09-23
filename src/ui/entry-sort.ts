@@ -1,18 +1,26 @@
 import { EntrySortId } from "../application/settings";
 import { EntryWithGroup } from "./vault-browsing";
 
+/**
+ * Which way an order runs, so the menu can show it as a glyph instead of
+ * spelling it out again. `"none"` is the vault's own order, which has no
+ * direction to reverse.
+ */
+export type EntrySortDirection = "none" | "asc" | "desc";
+
 export interface EntrySortOption {
   readonly id: EntrySortId;
   readonly label: string;
+  readonly direction: EntrySortDirection;
 }
 
 /** The sort orders offered in the entry list, in the order they're listed. */
 export const ENTRY_SORT_OPTIONS: readonly EntrySortOption[] = [
-  { id: "manual", label: "Vault order" },
-  { id: "title-asc", label: "Title (A–Z)" },
-  { id: "title-desc", label: "Title (Z–A)" },
-  { id: "accessed-desc", label: "Recently opened" },
-  { id: "accessed-asc", label: "Least recently opened" },
+  { id: "manual", label: "Vault order", direction: "none" },
+  { id: "title-asc", label: "Title (A–Z)", direction: "asc" },
+  { id: "title-desc", label: "Title (Z–A)", direction: "desc" },
+  { id: "accessed-desc", label: "Recently opened", direction: "desc" },
+  { id: "accessed-asc", label: "Least recently opened", direction: "asc" },
 ];
 
 function compareTitles(a: EntryWithGroup, b: EntryWithGroup): number {
