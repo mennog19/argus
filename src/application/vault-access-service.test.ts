@@ -396,7 +396,7 @@ describe("VaultAccessService", () => {
       expect(fileStorage.writeFile).not.toHaveBeenCalled();
     });
 
-    it("surfaces a save conflict raised while persisting the re-keyed vault", async () => {
+    it("refuses to re-key at all when the file changed on disk", async () => {
       const vault = Vault.create("My Vault");
       const repository = fakeRepository({
         openVault: vi.fn().mockResolvedValue(vault),
@@ -415,7 +415,11 @@ describe("VaultAccessService", () => {
       await expect(
         service.changeMasterPassword(vault, "C:/vaults/mine.kdbx", "old pw", "new pw"),
       ).rejects.toBeInstanceOf(VaultSaveConflictError);
-      expect(repository.changeMasterPassword).toHaveBeenCalledWith("old pw", "new pw");
+      // The re-key mutates the open document's credentials. Doing it before
+      // discovering the conflict would leave the app holding a password the
+      // file on disk was never written with.
+      expect(repository.changeMasterPassword).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
     });
   });
 });

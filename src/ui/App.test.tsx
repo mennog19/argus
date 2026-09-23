@@ -422,6 +422,49 @@ describe("App", () => {
       expect(await screen.findByText("Master password changed.")).toBeInTheDocument();
     });
 
+    it("does not report the password as changed when the save conflicted", async () => {
+      const user = userEvent.setup();
+      const opened: OpenedVault = {
+        vault: Vault.create("Personal"),
+        filePath: "C:/vaults/personal.kdbx",
+      };
+      const changeMasterPassword = vi
+        .fn()
+        .mockRejectedValue(new VaultSaveConflictError(opened.filePath));
+
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+            changeMasterPassword,
+          })}
+          settingsStore={fakeSettingsStore()}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+        />,
+      );
+
+      await createVaultAndOpenSettings(user);
+      await user.type(screen.getByLabelText("Current password"), "hunter2");
+      await user.type(screen.getByLabelText("New password"), "hunter3");
+      await user.type(screen.getByLabelText("Confirm new password"), "hunter3");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+      // Nothing reached the file, so the card must not claim otherwise —
+      // the user would be left believing a password that doesn't open it.
+      expect(await screen.findByText(/nothing was saved/i)).toBeInTheDocument();
+      expect(screen.queryByText("Master password changed.")).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: /vault changed on disk/i }),
+      ).toBeInTheDocument();
+    });
+
     it("shows the error message inline when the current password is incorrect", async () => {
       const user = userEvent.setup();
       const opened: OpenedVault = {
@@ -741,10 +784,14 @@ describe("App", () => {
     await user.type(screen.getByLabelText("Title"), "GitHub");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
+    // Nothing was written, so the form says so and stays open rather than
+    // closing as though the entry had been saved.
+    expect(await screen.findByText(/nothing was saved/i)).toBeInTheDocument();
+
     await user.click(await screen.findByRole("button", { name: /overwrite anyway/i }));
 
     expect(saveVault).toHaveBeenLastCalledWith(expect.anything(), opened.filePath, { force: true });
-    expect(await screen.findByRole("heading", { name: "GitHub" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /GitHub/ })).toBeInTheDocument();
   });
 
   it("locks the vault, discarding the pending edit, when the user chooses to discard the conflict", async () => {

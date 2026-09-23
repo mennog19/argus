@@ -22,10 +22,13 @@ export interface SaveVaultOptions {
  * Thrown by `saveVault` when the file at `filePath` was modified on disk
  * since it was last opened/saved through this service, so the caller can
  * warn the user instead of silently discarding the external change.
+ *
+ * The message is written for the user: this reaches the screen that asked
+ * for the save, alongside the modal offering to overwrite or discard.
  */
 export class VaultSaveConflictError extends Error {
-  constructor(filePath: string) {
-    super(`Vault file changed on disk since it was last opened or saved: ${filePath}`);
+  constructor(readonly filePath: string) {
+    super("This vault changed on disk, so nothing was saved. Choose how to resolve that first.");
     this.name = "VaultSaveConflictError";
   }
 }
@@ -98,13 +101,9 @@ export class VaultAccessService {
    */
   async saveVault(vault: Vault, filePath: string, options: SaveVaultOptions = {}): Promise<void> {
     const fileExists = await this.fileStorage.exists(filePath);
-    const knownMtime = this.lastKnownMtime.get(filePath);
 
-    if (fileExists && !options.force && knownMtime !== undefined) {
-      const onDiskMtime = await this.fileStorage.lastModified(filePath);
-      if (onDiskMtime !== knownMtime) {
-        throw new VaultSaveConflictError(filePath);
-      }
+    if (!options.force) {
+      await this.assertNoConflict(filePath, fileExists);
     }
 
     if (fileExists) {
@@ -118,9 +117,14 @@ export class VaultAccessService {
 
   /**
    * Re-keys the open vault with a new master password and immediately
-   * persists it via `saveVault` (including its conflict check and backup
-   * rotation), so a re-key never leaves the file re-encrypted in memory
-   * without a matching save on disk.
+   * persists it via `saveVault` (including its backup rotation), so a re-key
+   * never leaves the file re-encrypted in memory without a matching save on
+   * disk.
+   *
+   * The conflict check runs *before* the re-key, not just inside `saveVault`:
+   * re-keying mutates the open document's credentials, so a conflict
+   * discovered afterwards would leave the app holding a password the file on
+   * disk has never been written with.
    */
   async changeMasterPassword(
     vault: Vault,
@@ -128,8 +132,24 @@ export class VaultAccessService {
     currentMasterPassword: string,
     newMasterPassword: string,
   ): Promise<void> {
+    await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
     await this.repository.changeMasterPassword(currentMasterPassword, newMasterPassword);
     await this.saveVault(vault, filePath);
+  }
+
+  /**
+   * Throws `VaultSaveConflictError` when the file changed on disk since it
+   * was last opened or saved through this service. A file this service has
+   * never seen, or one that doesn't exist yet, has nothing to conflict with.
+   */
+  private async assertNoConflict(filePath: string, fileExists: boolean): Promise<void> {
+    const knownMtime = this.lastKnownMtime.get(filePath);
+    if (!fileExists || knownMtime === undefined) {
+      return;
+    }
+    if ((await this.fileStorage.lastModified(filePath)) !== knownMtime) {
+      throw new VaultSaveConflictError(filePath);
+    }
   }
 
   /** Current on-disk size and last-modified time of the vault at `filePath`. */

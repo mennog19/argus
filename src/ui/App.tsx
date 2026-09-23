@@ -258,19 +258,24 @@ function App({
     };
   }
 
+  /**
+   * A conflict opens the resolution modal *and* rejects. The screens awaiting
+   * this treat it resolving as "the file was written" — they close the editor,
+   * select the new entry, report the password as changed — so swallowing the
+   * failure here would have them all confirm a save that never happened.
+   */
   function handleVaultSave(filePath: string) {
     return async (nextVault: Vault) => {
       try {
         await vaultAccessService.saveVault(nextVault, filePath);
-        setScreen({ kind: "unlocked", vault: nextVault, filePath });
-        void refreshFileInfo(filePath);
       } catch (cause) {
         if (cause instanceof VaultSaveConflictError) {
           setConflict({ nextVault, filePath });
-          return;
         }
         throw cause;
       }
+      setScreen({ kind: "unlocked", vault: nextVault, filePath });
+      void refreshFileInfo(filePath);
     };
   }
 
@@ -292,31 +297,26 @@ function App({
           currentPassword,
           newPassword,
         );
-        void refreshFileInfo(filePath);
       } catch (cause) {
         if (cause instanceof VaultSaveConflictError) {
           setConflict({ nextVault: vault, filePath });
-          return;
         }
         throw cause;
       }
+      void refreshFileInfo(filePath);
     };
   }
 
-  // Only rendered from within `{conflict && (...)}` below, so `conflict` is
-  // always set by the time either handler can be invoked.
-  async function handleOverwriteConflict() {
-    const { nextVault, filePath } = conflict!;
-    await vaultAccessService.saveVault(nextVault, filePath, { force: true });
-    setScreen({ kind: "unlocked", vault: nextVault, filePath });
+  async function handleOverwriteConflict(pending: SaveConflict) {
+    await vaultAccessService.saveVault(pending.nextVault, pending.filePath, { force: true });
+    setScreen({ kind: "unlocked", vault: pending.nextVault, filePath: pending.filePath });
     setConflict(undefined);
-    void refreshFileInfo(filePath);
+    void refreshFileInfo(pending.filePath);
   }
 
-  function handleDiscardConflict() {
-    const filePath = conflict!.filePath;
+  function handleDiscardConflict(pending: SaveConflict) {
     setConflict(undefined);
-    handleLock(filePath)();
+    handleLock(pending.filePath)();
   }
 
   async function handleGeneratorPolicyChange(policy: PasswordPolicyOptions) {
@@ -529,13 +529,17 @@ function App({
               Overwriting will discard that external change.
             </p>
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={handleDiscardConflict}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => handleDiscardConflict(conflict)}
+              >
                 Discard my changes &amp; lock
               </button>
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => void handleOverwriteConflict()}
+                onClick={() => void handleOverwriteConflict(conflict)}
               >
                 Overwrite anyway
               </button>
