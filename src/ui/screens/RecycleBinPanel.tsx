@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { EntryId, Group, GroupId } from "../../domain";
-import { collectAllEntries } from "../vault-browsing";
+import { collectAllEntries, countGroupContents } from "../vault-browsing";
 import { errorMessage } from "../error-message";
+import { formatGroupContents } from "../format";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 
 interface RecycleBinPanelProps {
@@ -115,6 +116,9 @@ export function RecycleBinPanel({
                 ) : (
                   <>
                     <span className="recycle-row-name">{group.name}</span>
+                    <span className="recycle-row-meta">
+                      Restores {formatGroupContents(countGroupContents(group))}
+                    </span>
                     <span className="recycle-row-actions">
                       <button
                         type="button"

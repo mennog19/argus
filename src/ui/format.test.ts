@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { basename, formatFileSize, formatRelativeTime, formatTotpCode, isSamePath } from "./format";
+import {
+  basename,
+  formatFileSize,
+  formatGroupContents,
+  formatRelativeTime,
+  formatTotpCode,
+  isSamePath,
+} from "./format";
 
 describe("basename", () => {
   it("returns the last segment of a forward-slash path", () => {
@@ -107,5 +114,27 @@ describe("isSamePath", () => {
 
   it("does not match the same filename in different directories", () => {
     expect(isSamePath("C:/vaults/personal.kdbx", "D:/backup/personal.kdbx")).toBe(false);
+  });
+});
+
+describe("formatGroupContents", () => {
+  it("spells out a zero entry count", () => {
+    expect(formatGroupContents({ entries: 0, groups: 0 })).toBe("0 entries");
+  });
+
+  it("uses the singular for a single entry", () => {
+    expect(formatGroupContents({ entries: 1, groups: 0 })).toBe("1 entry");
+  });
+
+  it("uses the plural for several entries", () => {
+    expect(formatGroupContents({ entries: 4, groups: 0 })).toBe("4 entries");
+  });
+
+  it("still spells out zero entries alongside a subgroup", () => {
+    expect(formatGroupContents({ entries: 0, groups: 1 })).toBe("0 entries · 1 subgroup");
+  });
+
+  it("joins entries and subgroups", () => {
+    expect(formatGroupContents({ entries: 3, groups: 2 })).toBe("3 entries · 2 subgroups");
   });
 });

@@ -29,6 +29,26 @@ describe("RecycleBinPanel", () => {
     expect(screen.getByRole("button", { name: "Empty Recycle Bin" })).toBeDisabled();
   });
 
+  it("notes how much restoring a deleted group would put back", () => {
+    const grandchild = Group.create("Archive").addEntry(Entry.create({ title: "Old" }));
+    const deletedGroup = Group.create("Deleted Group")
+      .addEntry(Entry.create({ title: "Inside" }))
+      .addGroup(grandchild);
+    const bin = Group.create("Recycle Bin").addGroup(deletedGroup);
+
+    render(<RecycleBinPanel {...baseProps(bin)} />);
+
+    expect(screen.getByText("Restores 2 entries · 1 subgroup")).toBeInTheDocument();
+  });
+
+  it("notes an emptied group as restoring no entries", () => {
+    const bin = Group.create("Recycle Bin").addGroup(Group.create("Deleted Group"));
+
+    render(<RecycleBinPanel {...baseProps(bin)} />);
+
+    expect(screen.getByText("Restores 0 entries")).toBeInTheDocument();
+  });
+
   it("lists deleted groups and deleted entries in separate sections", () => {
     const deletedGroup = Group.create("Deleted Group");
     const bin = Group.create("Recycle Bin")

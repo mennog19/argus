@@ -1,3 +1,5 @@
+import { GroupContents } from "./vault-browsing";
+
 /** Last path segment, accepting both `/` and `\` separators. */
 export function basename(path: string): string {
   const normalized = path.replace(/\\/g, "/");
@@ -55,4 +57,17 @@ export function isSamePath(a: string, b: string): boolean {
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
+/**
+ * What a group would put back when restored, e.g. "3 entries · 1 subgroup".
+ * The entry count is always spelled out, so an empty group reads "0 entries"
+ * rather than going silent.
+ */
+export function formatGroupContents({ entries, groups }: GroupContents): string {
+  const entryPart = `${entries} ${entries === 1 ? "entry" : "entries"}`;
+  if (groups === 0) {
+    return entryPart;
+  }
+  return `${entryPart} · ${groups} ${groups === 1 ? "subgroup" : "subgroups"}`;
 }

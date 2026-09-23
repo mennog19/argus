@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Entry, Group } from "../domain";
-import { collectAllEntries, entriesOf, flattenGroupOptions, searchEntries } from "./vault-browsing";
+import {
+  collectAllEntries,
+  countGroupContents,
+  entriesOf,
+  flattenGroupOptions,
+  searchEntries,
+} from "./vault-browsing";
 
 describe("entriesOf", () => {
   it("returns only the group's own entries, paired with that group", () => {
@@ -119,5 +125,31 @@ describe("flattenGroupOptions", () => {
       { id: root.id.toString(), label: "Root" },
       { id: sibling.id.toString(), label: "  Sibling" },
     ]);
+  });
+});
+
+describe("countGroupContents", () => {
+  it("counts nothing for an empty group", () => {
+    expect(countGroupContents(Group.create("Empty"))).toEqual({ entries: 0, groups: 0 });
+  });
+
+  it("counts the group's own entries", () => {
+    const group = Group.create("Work")
+      .addEntry(Entry.create({ title: "GitHub" }))
+      .addEntry(Entry.create({ title: "GitLab" }));
+
+    expect(countGroupContents(group)).toEqual({ entries: 2, groups: 0 });
+  });
+
+  it("counts entries and groups nested at any depth", () => {
+    const grandchild = Group.create("Grandchild").addEntry(Entry.create({ title: "Deep" }));
+    const child = Group.create("Child")
+      .addEntry(Entry.create({ title: "Nested" }))
+      .addGroup(grandchild);
+    const root = Group.create("Root")
+      .addEntry(Entry.create({ title: "Own" }))
+      .addGroup(child);
+
+    expect(countGroupContents(root)).toEqual({ entries: 3, groups: 2 });
   });
 });

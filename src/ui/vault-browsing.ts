@@ -37,10 +37,7 @@ export function entriesOf(group: Group): EntryWithGroup[] {
  * the result of `collectAllEntries` (already excluding the recycle bin) so
  * search never surfaces deleted entries.
  */
-export function searchEntries(
-  entries: readonly EntryWithGroup[],
-  query: string,
-): EntryWithGroup[] {
+export function searchEntries(entries: readonly EntryWithGroup[], query: string): EntryWithGroup[] {
   return entries.filter(({ entry }) => matchesSearchQuery(entry, query));
 }
 
@@ -66,4 +63,28 @@ export function flattenGroupOptions(
     .filter((child) => !isExcluded(child, excludeIds))
     .flatMap((child) => flattenGroupOptions(child, excludeIds, depth + 1));
   return [own, ...nested];
+}
+
+export interface GroupContents {
+  /** Entries in the group itself and in every descendant group. */
+  readonly entries: number;
+  /** Descendant groups at any depth. */
+  readonly groups: number;
+}
+
+/**
+ * Everything `group` carries with it when it's moved as a whole — used by the
+ * recycle bin to say how much restoring a deleted group would put back.
+ */
+export function countGroupContents(group: Group): GroupContents {
+  return group.groups.reduce<GroupContents>(
+    (total, child) => {
+      const nested = countGroupContents(child);
+      return {
+        entries: total.entries + nested.entries,
+        groups: total.groups + 1 + nested.groups,
+      };
+    },
+    { entries: group.entries.length, groups: 0 },
+  );
 }
