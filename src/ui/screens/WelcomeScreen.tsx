@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { OpenedVault, VaultAccessService } from "../../application/vault-access-service";
 import { RecentVaultEntry } from "../../application/settings";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename, formatRelativeTime } from "../format";
 
@@ -21,8 +21,7 @@ export function WelcomeScreen({
   onSelectRecent,
 }: WelcomeScreenProps) {
   const [mode, setMode] = useState<Mode>("idle");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run, fail, clearError } = useAsyncAction();
   const [openPassword, setOpenPassword] = useState("");
   const [createName, setCreateName] = useState("");
   const [createPassword, setCreatePassword] = useState("");
@@ -30,7 +29,7 @@ export function WelcomeScreen({
 
   function resetToIdle() {
     setMode("idle");
-    setError(undefined);
+    clearError();
     setOpenPassword("");
     setCreateName("");
     setCreatePassword("");
@@ -39,47 +38,37 @@ export function WelcomeScreen({
 
   async function handleOpenSubmit(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
-    setError(undefined);
-    try {
+    await run(async () => {
+      // Undefined means the user cancelled the file dialog — nothing opened,
+      // nothing to report.
       const opened = await vaultAccessService.openExistingVault(openPassword);
       if (opened) {
         onOpened(opened);
       }
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to open vault."));
-    } finally {
-      setBusy(false);
-    }
+    }, "Failed to open vault.");
   }
 
   async function handleCreateSubmit(event: FormEvent) {
     event.preventDefault();
     if (createName.trim().length === 0) {
-      setError("Vault name is required.");
+      fail("Vault name is required.");
       return;
     }
     if (createPassword.length === 0) {
-      setError("Master password is required.");
+      fail("Master password is required.");
       return;
     }
     if (createPassword !== createConfirmPassword) {
-      setError("Passwords do not match.");
+      fail("Passwords do not match.");
       return;
     }
 
-    setBusy(true);
-    setError(undefined);
-    try {
+    await run(async () => {
       const opened = await vaultAccessService.createNewVault(createName, createPassword);
       if (opened) {
         onOpened(opened);
       }
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to create vault."));
-    } finally {
-      setBusy(false);
-    }
+    }, "Failed to create vault.");
   }
 
   return (

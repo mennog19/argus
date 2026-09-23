@@ -9,11 +9,11 @@ import {
 import { Group, GroupId, Icon } from "../../domain";
 import { GroupDeleteMode } from "../../application/settings";
 import { collectAllEntries } from "../vault-browsing";
-import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { GROUP_DRAG_TYPE } from "../group-drag";
 import { GroupAvatar } from "../entry-icons/EntryAvatar";
 import { IconPicker } from "../entry-icons/IconPicker";
+import { useAsyncAction } from "../use-async-action";
 import { ChevronIcon, EditIcon, MoreIcon, PaletteIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface GroupTreeProps {
@@ -107,6 +107,8 @@ type Floating =
 const INDENT_PX = 14;
 const ROW_INSET_PX = 4;
 
+const MOVE_GROUP_FAILED = "Couldn't move the group.";
+
 const FLOATING_GUTTER = 12;
 const ROW_MENU_WIDTH = 176;
 const ICON_POPOVER_WIDTH = 300;
@@ -139,12 +141,15 @@ export function GroupTree({
   const [editor, setEditor] = useState<Editor | undefined>(undefined);
   const [floating, setFloating] = useState<Floating | undefined>(undefined);
   const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  // The inline editors (add/rename/delete) and the icon popover share one
+  // action: only one of them is ever open at a time.
+  const { busy, error, run, fail, clearError } = useAsyncAction();
+  // Drops report separately — they can fail while an editor is open, and the
+  // message belongs at the top of the sidebar rather than inside that editor.
+  const drop = useAsyncAction();
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined);
   const [flashId, setFlashId] = useState<string | undefined>(undefined);
-  const [dropError, setDropError] = useState<string | undefined>(undefined);
   const [draggingGroupId, setDraggingGroupId] = useState<string | undefined>(undefined);
   const [draggingSubtreeIds, setDraggingSubtreeIds] = useState<ReadonlySet<string>>(new Set());
   const [reorderTarget, setReorderTarget] = useState<ReorderTarget | undefined>(undefined);
@@ -167,12 +172,12 @@ export function GroupTree({
         return;
       }
       setFloating(undefined);
-      setError(undefined);
+      clearError();
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setFloating(undefined);
-        setError(undefined);
+        clearError();
       }
     }
     document.addEventListener("mousedown", handlePointerDown);
@@ -181,23 +186,23 @@ export function GroupTree({
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [floating]);
+  }, [floating, clearError]);
 
   function startAdd(parentId: GroupId) {
     setEditor({ kind: "add", parentId });
     setDraft("");
-    setError(undefined);
+    clearError();
   }
 
   function startRename(group: Group) {
     setEditor({ kind: "rename", group });
     setDraft(group.name);
-    setError(undefined);
+    clearError();
   }
 
   function startDelete(group: Group) {
     setEditor({ kind: "delete", group });
-    setError(undefined);
+    clearError();
   }
 
   function toggleMenu(group: Group, event: ReactMouseEvent<HTMLButtonElement>) {
@@ -207,78 +212,49 @@ export function GroupTree({
     }
     const { top, left, bottom } = event.currentTarget.getBoundingClientRect();
     setFloating({ kind: "menu", group, anchor: { top, left, bottom } });
-    setError(undefined);
+    clearError();
   }
 
   /** Swaps the open row menu for the icon popover, anchored at the same spot. */
   function openIconPopover(group: Group, event: ReactMouseEvent<HTMLButtonElement>) {
     const { top, left, bottom } = event.currentTarget.getBoundingClientRect();
     setFloating({ kind: "icon", group, anchor: { top, left, bottom } });
-    setError(undefined);
+    clearError();
   }
 
   function cancelEditor() {
     setEditor(undefined);
-    setError(undefined);
+    clearError();
   }
 
   async function changeIcon(group: Group, icon: Icon) {
-    setError(undefined);
-    try {
-      await onChangeGroupIcon(group.id, icon);
-    } catch (cause) {
-      setError(errorMessage(cause, "Something went wrong."));
+    await run(() => onChangeGroupIcon(group.id, icon));
+  }
+
+  /** The editors all close on success and stay open, explaining, on failure. */
+  async function submitNamed(name: string, save: (name: string) => Promise<void>) {
+    const trimmed = name.trim();
+    if (trimmed === "") {
+      fail("Group name is required.");
+      return;
+    }
+    if (await run(() => save(trimmed))) {
+      setEditor(undefined);
+      setDraft("");
     }
   }
 
   async function submitAdd(parentId: GroupId) {
-    const name = draft.trim();
-    if (name === "") {
-      setError("Group name is required.");
-      return;
-    }
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onCreateGroup(parentId, name);
-      setEditor(undefined);
-      setDraft("");
-    } catch (cause) {
-      setError(errorMessage(cause, "Something went wrong."));
-    } finally {
-      setBusy(false);
-    }
+    await submitNamed(draft, (name) => onCreateGroup(parentId, name));
   }
 
   async function submitRename(group: Group) {
-    const name = draft.trim();
-    if (name === "") {
-      setError("Group name is required.");
-      return;
-    }
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onRenameGroup(group.id, name);
-      setEditor(undefined);
-      setDraft("");
-    } catch (cause) {
-      setError(errorMessage(cause, "Something went wrong."));
-    } finally {
-      setBusy(false);
-    }
+    await submitNamed(draft, (name) => onRenameGroup(group.id, name));
   }
 
   async function submitDelete(group: Group) {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onDeleteGroup(group.id);
+    if (await run(() => onDeleteGroup(group.id))) {
       setEditor(undefined);
-    } catch (cause) {
-      setError(errorMessage(cause, "Something went wrong."));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -305,12 +281,8 @@ export function GroupTree({
     event.preventDefault();
     setDropTargetId(undefined);
     const entryId = event.dataTransfer.getData(ENTRY_DRAG_TYPE);
-    try {
-      await onDropEntry(entryId, group.id);
-      setDropError(undefined);
+    if (await drop.run(() => onDropEntry(entryId, group.id), "Couldn't move the entry.")) {
       setFlashId(group.id.toString());
-    } catch (cause) {
-      setDropError(errorMessage(cause, "Couldn't move the entry."));
     }
   }
 
@@ -383,24 +355,16 @@ export function GroupTree({
     if (!draggedIdStr || draggingSubtreeIds.has(groupIdStr)) {
       return;
     }
+    const dragged = GroupId.fromString(draggedIdStr);
     const zone = dropZoneFor(event);
     if (zone === "into") {
-      try {
-        await onMoveGroupToParent(GroupId.fromString(draggedIdStr), group.id);
-        setDropError(undefined);
+      if (await drop.run(() => onMoveGroupToParent(dragged, group.id), MOVE_GROUP_FAILED)) {
         setFlashId(groupIdStr);
-      } catch (cause) {
-        setDropError(errorMessage(cause, "Couldn't move the group."));
       }
       return;
     }
     const beforeId = resolveBeforeId(siblings, groupIdStr, zone);
-    try {
-      await onMoveGroupToPosition(GroupId.fromString(draggedIdStr), parentId, beforeId);
-      setDropError(undefined);
-    } catch (cause) {
-      setDropError(errorMessage(cause, "Couldn't move the group."));
-    }
+    await drop.run(() => onMoveGroupToPosition(dragged, parentId, beforeId), MOVE_GROUP_FAILED);
   }
 
   function toggleCollapsed(groupId: string) {
@@ -679,9 +643,9 @@ export function GroupTree({
 
       {isAddingTopLevel &&
         renderInlineForm("New group name", 0, () => void submitAdd(rootGroup.id))}
-      {dropError && (
+      {drop.error && (
         <div className="group-drop-error" role="alert">
-          {dropError}
+          {drop.error}
         </div>
       )}
 

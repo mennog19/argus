@@ -34,12 +34,12 @@ import {
   VaultIcon,
   XIcon,
 } from "../icons";
-import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
 import { ClipboardCopy, useClipboardCopy } from "../use-clipboard-copy";
+import { useAsyncAction } from "../use-async-action";
 import { sortEntries } from "../entry-sort";
 import {
   collectAllEntries,
@@ -602,20 +602,11 @@ function EntryDetail({
     ? entry.customFields.values.filter((field) => !TOTP_FIELD_KEYS.has(field.key))
     : entry.customFields.values;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run } = useAsyncAction();
   const { copiedField, clearingField, clearingToken, copy } = clipboard;
 
   async function handleConfirmDelete() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onDelete();
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to delete entry."));
-    } finally {
-      setBusy(false);
-    }
+    await run(onDelete, "Failed to delete entry.");
   }
 
   return (

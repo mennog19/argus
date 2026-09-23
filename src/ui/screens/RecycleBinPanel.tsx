@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { EntryId, Group, GroupId } from "../../domain";
 import { collectAllEntries, countGroupContents } from "../vault-browsing";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { formatGroupContents } from "../format";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 
@@ -28,23 +28,16 @@ export function RecycleBinPanel({
   onEmptyRecycleBin,
 }: RecycleBinPanelProps) {
   const [pending, setPending] = useState<PendingAction | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run: runAction } = useAsyncAction();
 
   const deletedGroups = binGroup.groups;
   const deletedEntries = collectAllEntries(binGroup);
   const isEmpty = deletedGroups.length === 0 && deletedEntries.length === 0;
 
+  /** Dismisses the confirmation only once the deletion actually happened. */
   async function run(action: () => Promise<void>) {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await action();
+    if (await runAction(action)) {
       setPending(undefined);
-    } catch (cause) {
-      setError(errorMessage(cause, "Something went wrong."));
-    } finally {
-      setBusy(false);
     }
   }
 
