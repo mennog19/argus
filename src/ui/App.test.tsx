@@ -1,7 +1,7 @@
 ﻿import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Vault } from "../domain";
+import { Entry, Vault } from "../domain";
 import { ClipboardWriter } from "../application/clipboard";
 import {
   OpenedVault,
@@ -882,6 +882,86 @@ describe("App", () => {
       expect.objectContaining({ entryFieldVisibility: expect.objectContaining({ notes: false }) }),
     );
     expect(screen.getByRole("checkbox", { name: "Notes" })).not.toBeChecked();
+  });
+
+  it("persists the entry list sort order and applies it to the list", async () => {
+    const user = userEvent.setup();
+    let vault = Vault.create("Personal");
+    vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Zeta" }));
+    vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Alpha" }));
+    const opened: OpenedVault = { vault, filePath: "C:/vaults/personal.kdbx" };
+    const settingsStore = fakeSettingsStore();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
+        settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Sort entries (Vault order)" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Title (A–Z)" }));
+
+    expect(settingsStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ entrySort: "title-asc" }),
+    );
+    const titles = screen
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("entry-row"))
+      .map((button) => button.querySelector(".entry-row-title")?.textContent);
+    expect(titles).toEqual(["Alpha", "Zeta"]);
+  });
+
+  it("records an entry as opened without writing the vault file", async () => {
+    const user = userEvent.setup();
+    let vault = Vault.create("Personal");
+    vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Mail" }));
+    const opened: OpenedVault = { vault, filePath: "C:/vaults/personal.kdbx" };
+    const vaultAccessService = fakeVaultAccessService({
+      createNewVault: vi.fn().mockResolvedValue(opened),
+    });
+
+    render(
+      <App
+        vaultAccessService={vaultAccessService}
+        settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "hunter2");
+    await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByText("Mail"));
+
+    expect(vaultAccessService.saveVault).not.toHaveBeenCalled();
+    // The stamped vault replaces the old one in place: the row stays selected
+    // and the detail pane opens, rather than the selection being lost.
+    const [listRow, detailTitle] = screen.getAllByText("Mail");
+    expect(listRow.closest(".entry-row")).toHaveClass("active");
+    expect(detailTitle).toBeInTheDocument();
   });
 
   it("persists an accent color change made in the vault shell's settings screen", async () => {

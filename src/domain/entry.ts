@@ -4,6 +4,21 @@ import { EntryId } from "./entry-id";
 import { Password } from "./password";
 import { Tags } from "./tags";
 
+/**
+ * The KDBX timestamps an entry carries. All optional: an entry created in
+ * memory has none until the repository stamps them on save, and a KDBX file
+ * is free to omit them.
+ *
+ * These are metadata, not content — the mapper's change detection ignores
+ * them deliberately, so recording that an entry was opened never counts as an
+ * edit and never pushes an entry history revision.
+ */
+export interface EntryTimes {
+  readonly createdAt?: Date;
+  readonly modifiedAt?: Date;
+  readonly accessedAt?: Date;
+}
+
 export interface EntryFields {
   title?: string;
   username?: string;
@@ -13,6 +28,7 @@ export interface EntryFields {
   tags?: Tags;
   customFields?: CustomFields;
   icon?: Icon;
+  times?: EntryTimes;
 }
 
 /**
@@ -29,6 +45,7 @@ export class Entry {
   readonly tags: Tags;
   readonly customFields: CustomFields;
   readonly icon: Icon;
+  readonly times: EntryTimes;
 
   constructor(id: EntryId, fields: EntryFields = {}) {
     this.id = id;
@@ -40,6 +57,7 @@ export class Entry {
     this.tags = fields.tags ?? new Tags();
     this.customFields = fields.customFields ?? new CustomFields();
     this.icon = fields.icon ?? Icon.AUTO;
+    this.times = fields.times ?? {};
   }
 
   static create(fields: EntryFields = {}): Entry {
@@ -60,6 +78,12 @@ export class Entry {
       tags: fields.tags ?? this.tags,
       customFields: fields.customFields ?? this.customFields,
       icon: fields.icon ?? this.icon,
+      times: fields.times ?? this.times,
     });
+  }
+
+  /** The same entry with `at` recorded as when it was last opened. */
+  markAccessed(at: Date): Entry {
+    return this.update({ times: { ...this.times, accessedAt: at } });
   }
 }

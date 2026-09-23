@@ -93,6 +93,15 @@ export const DEFAULT_ENTRY_FIELD_VISIBILITY: EntryFieldVisibility = {
   group: true,
 };
 
+/**
+ * How the entry list is ordered. `"manual"` is the vault's own order — the
+ * order stored in the `.kdbx` file and shown by KeePass/KeePassXC, in which a
+ * newly added or moved entry lands at the end of its group.
+ */
+export type EntrySortId = "manual" | "title-asc" | "title-desc" | "accessed-desc" | "accessed-asc";
+
+export const DEFAULT_ENTRY_SORT: EntrySortId = "manual";
+
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
   /** Shared password generator settings, used by both the dedicated generator
@@ -118,6 +127,9 @@ export interface AppSettings {
    * Only applies to creating new entries; editing an existing entry always
    * shows all of its fields. */
   readonly entryFieldVisibility?: EntryFieldVisibility;
+  /** How the entry list is sorted. Undefined until the user changes it, at
+   * which point `DEFAULT_ENTRY_SORT` applies. */
+  readonly entrySort?: EntrySortId;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -200,4 +212,9 @@ export function withEntryFieldVisibility(
   visibility: EntryFieldVisibility,
 ): AppSettings {
   return { ...settings, entryFieldVisibility: visibility };
+}
+
+/** Returns settings with `sort` recorded as the entry list's sort order. */
+export function withEntrySort(settings: AppSettings, sort: EntrySortId): AppSettings {
+  return { ...settings, entrySort: sort };
 }

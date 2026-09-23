@@ -17,7 +17,9 @@ import {
   AccentColor,
   AutoLockSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
+  DEFAULT_ENTRY_SORT,
   EntryFieldVisibility,
+  EntrySortId,
   GroupDeleteMode,
   Theme,
 } from "../../application/settings";
@@ -67,6 +69,9 @@ function renderShell(
     onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
     onExportSettings?: () => Promise<string | undefined>;
     onImportSettings?: () => Promise<string | undefined>;
+    entrySort?: EntrySortId;
+    onEntrySortChange?: (sort: EntrySortId) => void;
+    onVaultChange?: (vault: Vault) => void;
     mergeSource?: VaultMergeSource;
   } = {},
 ) {
@@ -92,6 +97,9 @@ function renderShell(
   const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
   const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
+  const entrySort = overrides.entrySort ?? DEFAULT_ENTRY_SORT;
+  const onEntrySortChange = overrides.onEntrySortChange ?? vi.fn();
+  const onVaultChange = overrides.onVaultChange ?? vi.fn();
   const mergeSource = overrides.mergeSource ?? fakeMergeSource();
   render(
     <VaultShell
@@ -108,6 +116,7 @@ function renderShell(
       theme={theme}
       contentProtection={contentProtection}
       entryFieldVisibility={entryFieldVisibility}
+      entrySort={entrySort}
       mergeSource={mergeSource}
       onLock={onLock}
       onSave={onSave}
@@ -122,6 +131,8 @@ function renderShell(
       onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
       onExportSettings={onExportSettings}
       onImportSettings={onImportSettings}
+      onEntrySortChange={onEntrySortChange}
+      onVaultChange={onVaultChange}
     />,
   );
   return {
@@ -136,6 +147,8 @@ function renderShell(
     onThemeChange,
     onContentProtectionChange,
     onEntryFieldVisibilityChange,
+    onEntrySortChange,
+    onVaultChange,
     mergeSource,
   };
 }
@@ -327,6 +340,7 @@ describe("VaultShell", () => {
         theme={DEFAULT_THEME}
         contentProtection={true}
         entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+        entrySort={DEFAULT_ENTRY_SORT}
         mergeSource={fakeMergeSource()}
         onGroupDeleteModeChange={vi.fn()}
         onAccentColorChange={vi.fn()}
@@ -335,6 +349,8 @@ describe("VaultShell", () => {
         onEntryFieldVisibilityChange={vi.fn()}
         onExportSettings={vi.fn().mockResolvedValue(undefined)}
         onImportSettings={vi.fn().mockResolvedValue(undefined)}
+        onEntrySortChange={vi.fn()}
+        onVaultChange={vi.fn()}
       />,
     );
 
@@ -1008,6 +1024,7 @@ describe("VaultShell", () => {
           theme={DEFAULT_THEME}
           contentProtection={true}
           entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+          entrySort={DEFAULT_ENTRY_SORT}
           mergeSource={fakeMergeSource()}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
@@ -1016,6 +1033,8 @@ describe("VaultShell", () => {
           onEntryFieldVisibilityChange={vi.fn()}
           onExportSettings={vi.fn().mockResolvedValue(undefined)}
           onImportSettings={vi.fn().mockResolvedValue(undefined)}
+          onEntrySortChange={vi.fn()}
+          onVaultChange={vi.fn()}
         />,
       );
 
@@ -1047,6 +1066,7 @@ describe("VaultShell", () => {
           theme={DEFAULT_THEME}
           contentProtection={true}
           entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+          entrySort={DEFAULT_ENTRY_SORT}
           mergeSource={fakeMergeSource()}
           onGroupDeleteModeChange={vi.fn()}
           onAccentColorChange={vi.fn()}
@@ -1055,6 +1075,8 @@ describe("VaultShell", () => {
           onEntryFieldVisibilityChange={vi.fn()}
           onExportSettings={vi.fn().mockResolvedValue(undefined)}
           onImportSettings={vi.fn().mockResolvedValue(undefined)}
+          onEntrySortChange={vi.fn()}
+          onVaultChange={vi.fn()}
         />,
       );
 
@@ -1706,5 +1728,90 @@ describe("VaultShell", () => {
       expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^\d{6}$/));
       expect(screen.getByText("Copied")).toBeInTheDocument();
     });
+  });
+});
+
+describe("VaultShell entry sorting", () => {
+  function entryTitles() {
+    return screen
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("entry-row"))
+      .map((button) => button.querySelector(".entry-row-title")?.textContent);
+  }
+
+  function vaultWith(entries: readonly Entry[]) {
+    let vault = Vault.create("Mine");
+    for (const entry of entries) {
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+    }
+    return vault;
+  }
+
+  it("lists entries in the vault's own order by default", () => {
+    const vault = vaultWith([Entry.create({ title: "Zeta" }), Entry.create({ title: "Alpha" })]);
+
+    renderShell(vault);
+
+    expect(entryTitles()).toEqual(["Zeta", "Alpha"]);
+  });
+
+  it("applies the chosen sort order to the list", () => {
+    const vault = vaultWith([Entry.create({ title: "Zeta" }), Entry.create({ title: "Alpha" })]);
+
+    renderShell(vault, { entrySort: "title-asc" });
+
+    expect(entryTitles()).toEqual(["Alpha", "Zeta"]);
+  });
+
+  it("sorts entries within a single group too, not just All Items", () => {
+    const work = Group.create("Work")
+      .addEntry(Entry.create({ title: "Zeta" }))
+      .addEntry(Entry.create({ title: "Alpha" }));
+    let vault = Vault.create("Mine");
+    vault = vault.addGroup(vault.rootGroup.id, work);
+
+    renderShell(vault, { entrySort: "title-asc" });
+    fireEvent.click(rowButton("Work"));
+
+    expect(entryTitles()).toEqual(["Alpha", "Zeta"]);
+  });
+
+  it("sorts search results as well", () => {
+    const vault = vaultWith([
+      Entry.create({ title: "Zeta mail" }),
+      Entry.create({ title: "Alpha mail" }),
+    ]);
+
+    renderShell(vault, { entrySort: "title-asc" });
+    fireEvent.change(screen.getByLabelText("Search entries"), { target: { value: "mail" } });
+
+    expect(entryTitles()).toEqual(["Alpha mail", "Zeta mail"]);
+  });
+
+  it("reports the sort order the user picks from the search bar's sort menu", () => {
+    const { onEntrySortChange } = renderShell(vaultWith([]));
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort entries (Vault order)" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Recently opened" }));
+
+    expect(onEntrySortChange).toHaveBeenCalledWith("accessed-desc");
+  });
+
+  it("names the active order on the sort trigger", () => {
+    renderShell(vaultWith([]), { entrySort: "title-asc" });
+
+    expect(screen.getByRole("button", { name: "Sort entries (Title (A–Z))" })).toBeInTheDocument();
+  });
+
+  it("records when an entry was opened, in memory, without saving the vault", () => {
+    const entry = Entry.create({ title: "Mail" });
+    const onVaultChange = vi.fn();
+    const { onSave } = renderShell(vaultWith([entry]), { onVaultChange });
+
+    fireEvent.click(screen.getByText("Mail"));
+
+    expect(onSave).not.toHaveBeenCalled();
+    const nextVault = onVaultChange.mock.calls[0][0] as Vault;
+    expect(nextVault.findEntry(entry.id)?.times.accessedAt).toBeInstanceOf(Date);
   });
 });

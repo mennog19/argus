@@ -33,6 +33,11 @@ function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
   const tags = kdbxEntry.tags.map((tag) => new Tag(tag));
 
   return new Entry(EntryId.fromString(kdbxUuidToDomainId(kdbxEntry.uuid)), {
+    times: {
+      createdAt: kdbxEntry.times.creationTime,
+      modifiedAt: kdbxEntry.times.lastModTime,
+      accessedAt: kdbxEntry.times.lastAccessTime,
+    },
     title: fieldToString(kdbxEntry.fields.get("Title")),
     username: fieldToString(kdbxEntry.fields.get("UserName")),
     password: new Password(fieldToString(kdbxEntry.fields.get("Password"))),
@@ -73,7 +78,12 @@ export function vaultFromKdbx(db: Kdbx): Vault {
   );
 }
 
-/** Canonical, order-independent snapshot of the value an `Entry` carries, used to detect real changes. */
+/**
+ * Canonical, order-independent snapshot of the value an `Entry` carries, used
+ * to detect real changes. `times` is deliberately absent: timestamps are
+ * metadata about the entry, not part of it, so recording that an entry was
+ * opened must not look like an edit and must not push a history revision.
+ */
 function snapshotEntry(entry: Entry): string {
   return JSON.stringify({
     title: entry.title,
@@ -132,6 +142,23 @@ function writeEntryFields(
   kdbxEntry.times.update();
 }
 
+/**
+ * Carries an "entry was opened" stamp into the KDBX document. Applied after
+ * `writeEntryFields` (whose `times.update()` would otherwise clobber it) and
+ * only when it moves the timestamp forward, so a vault opened alongside
+ * another KeePass client never has its access time rolled back.
+ */
+function writeAccessTime(kdbxEntry: KdbxEntry, entry: Entry): void {
+  const accessedAt = entry.times.accessedAt;
+  if (!accessedAt) {
+    return;
+  }
+  const current = kdbxEntry.times.lastAccessTime;
+  if (!current || accessedAt.getTime() > current.getTime()) {
+    kdbxEntry.times.lastAccessTime = accessedAt;
+  }
+}
+
 function syncEntry(
   entry: Entry,
   parentKdbxGroup: KdbxGroup,
@@ -147,6 +174,7 @@ function syncEntry(
     const kdbxEntry = db.createEntry(parentKdbxGroup);
     kdbxEntry.uuid = domainIdToKdbxUuid(id);
     writeEntryFields(kdbxEntry, entry, db.meta.memoryProtection);
+    writeAccessTime(kdbxEntry, entry);
     return;
   }
 
@@ -157,6 +185,7 @@ function syncEntry(
     existing.pushHistory();
     writeEntryFields(existing, entry, db.meta.memoryProtection);
   }
+  writeAccessTime(existing, entry);
 }
 
 function syncGroup(
