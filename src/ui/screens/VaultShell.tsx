@@ -89,6 +89,8 @@ interface VaultShellProps {
   onThemeChange: (theme: Theme) => void;
   onContentProtectionChange: (contentProtection: boolean) => void;
   onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
+  onExportSettings: () => Promise<string | undefined>;
+  onImportSettings: () => Promise<string | undefined>;
   onEntrySortChange: (sort: EntrySortId) => void;
   /** Replaces the in-memory vault without writing the file — used for the
    * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
@@ -127,6 +129,8 @@ export function VaultShell({
   onThemeChange,
   onContentProtectionChange,
   onEntryFieldVisibilityChange,
+  onExportSettings,
+  onImportSettings,
   onEntrySortChange,
   onVaultChange,
 }: VaultShellProps) {
@@ -427,6 +431,8 @@ export function VaultShell({
             onThemeChange={onThemeChange}
             onContentProtectionChange={onContentProtectionChange}
             onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
+            onExportSettings={onExportSettings}
+            onImportSettings={onImportSettings}
           />
         ) : (
           <>

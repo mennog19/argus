@@ -21,12 +21,23 @@ export const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lock
  * the group with its whole subtree into the recycle bin; `"keepContents"`
  * moves its entries and subgroups up into the parent group first.
  */
-export type GroupDeleteMode = "deleteContents" | "keepContents";
+export const GROUP_DELETE_MODES = ["deleteContents", "keepContents"] as const;
+
+export type GroupDeleteMode = (typeof GROUP_DELETE_MODES)[number];
 
 export const DEFAULT_GROUP_DELETE_MODE: GroupDeleteMode = "deleteContents";
 
 /** One of the app's built-in accent color presets (see `ui/accent-color.ts` for their hues). */
-export type AccentColorPresetId = "blue" | "purple" | "pink" | "orange" | "green" | "teal";
+export const ACCENT_COLOR_PRESET_IDS = [
+  "blue",
+  "purple",
+  "pink",
+  "orange",
+  "green",
+  "teal",
+] as const;
+
+export type AccentColorPresetId = (typeof ACCENT_COLOR_PRESET_IDS)[number];
 
 /**
  * The app's accent color: one of the built-in presets, or a hue (0-359,
@@ -39,7 +50,9 @@ export type AccentColor =
 export const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 
 /** The app's overall color scheme. */
-export type Theme = "dark" | "light";
+export const THEMES = ["dark", "light"] as const;
+
+export type Theme = (typeof THEMES)[number];
 
 export const DEFAULT_THEME: Theme = "dark";
 
@@ -56,7 +69,17 @@ export const DEFAULT_CONTENT_PROTECTION = true;
  * Title is always shown (it's the only required field); Group falls back to
  * whichever group the entry is being created in when hidden.
  */
-export type EntryFieldKey = "username" | "password" | "totp" | "url" | "notes" | "tags" | "group";
+export const ENTRY_FIELD_KEYS = [
+  "username",
+  "password",
+  "totp",
+  "url",
+  "notes",
+  "tags",
+  "group",
+] as const;
+
+export type EntryFieldKey = (typeof ENTRY_FIELD_KEYS)[number];
 
 export type EntryFieldVisibility = Readonly<Record<EntryFieldKey, boolean>>;
 

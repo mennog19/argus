@@ -39,6 +39,7 @@ import {
   withGroupDeleteMode,
   withTheme,
 } from "../application/settings";
+import { SettingsTransferService } from "../application/settings-transfer-service";
 import { UrlOpener } from "../application/url-opener";
 import { VaultMergeSource } from "../application/vault-merge-source";
 import { accentColorCssVars, accentColorHue } from "./accent-color";
@@ -51,6 +52,7 @@ import "./styles/shell.css";
 interface AppProps {
   vaultAccessService: VaultAccessService;
   settingsStore: SettingsStore;
+  settingsTransferService: SettingsTransferService;
   urlOpener: UrlOpener;
   clipboardWriter: ClipboardWriter;
   windowEvents: WindowEvents;
@@ -76,6 +78,7 @@ interface SaveConflict {
 function App({
   vaultAccessService,
   settingsStore,
+  settingsTransferService,
   urlOpener,
   clipboardWriter,
   windowEvents,
@@ -369,6 +372,25 @@ function App({
     }
   }
 
+  function handleExportSettings(): Promise<string | undefined> {
+    return settingsTransferService.exportSettings(settings);
+  }
+
+  /**
+   * Persists the imported settings before applying them, so a failed write
+   * surfaces as an error on the settings screen instead of leaving the app
+   * showing settings that would be gone again on the next launch.
+   */
+  async function handleImportSettings(): Promise<string | undefined> {
+    const imported = await settingsTransferService.importSettings(settings);
+    if (!imported) {
+      return undefined;
+    }
+    await settingsStore.save(imported.settings);
+    setSettings(imported.settings);
+    return imported.filePath;
+  }
+
   if (screen.kind === "welcome") {
     return (
       <WelcomeScreen
@@ -426,6 +448,8 @@ function App({
         onEntryFieldVisibilityChange={(visibility) =>
           void handleEntryFieldVisibilityChange(visibility)
         }
+        onExportSettings={handleExportSettings}
+        onImportSettings={handleImportSettings}
       />
       {conflict && (
         <div className="modal-overlay">

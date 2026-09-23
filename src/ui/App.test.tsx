@@ -9,6 +9,7 @@ import {
   VaultSaveConflictError,
 } from "../application/vault-access-service";
 import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
+import { SettingsTransferService } from "../application/settings-transfer-service";
 import { UrlOpener } from "../application/url-opener";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
@@ -33,6 +34,16 @@ function fakeSettingsStore(overrides: Partial<SettingsStore> = {}): SettingsStor
     save: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
+}
+
+function fakeSettingsTransferService(
+  overrides: Partial<SettingsTransferService> = {},
+): SettingsTransferService {
+  return {
+    exportSettings: vi.fn().mockResolvedValue(undefined),
+    importSettings: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as SettingsTransferService;
 }
 
 function fakeUrlOpener(): UrlOpener {
@@ -61,6 +72,7 @@ describe("App", () => {
       <App
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -79,6 +91,7 @@ describe("App", () => {
         settingsStore={fakeSettingsStore({
           load: vi.fn().mockRejectedValue(new Error("no backend")),
         })}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -102,6 +115,7 @@ describe("App", () => {
       <App
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -127,6 +141,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -166,6 +181,7 @@ describe("App", () => {
           openVaultAtPath: vi.fn().mockResolvedValue(vault),
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -194,6 +210,7 @@ describe("App", () => {
           getFileInfo: vi.fn().mockRejectedValue(new Error("stat failed")),
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -221,6 +238,7 @@ describe("App", () => {
       <App
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -254,6 +272,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -286,6 +305,7 @@ describe("App", () => {
           saveVault,
         })}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -335,6 +355,7 @@ describe("App", () => {
             changeMasterPassword,
           })}
           settingsStore={fakeSettingsStore()}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -375,6 +396,7 @@ describe("App", () => {
             changeMasterPassword,
           })}
           settingsStore={fakeSettingsStore()}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -412,6 +434,7 @@ describe("App", () => {
             changeMasterPassword,
           })}
           settingsStore={fakeSettingsStore()}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -446,6 +469,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -482,6 +506,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -520,6 +545,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -555,6 +581,7 @@ describe("App", () => {
           saveVault,
         })}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -594,6 +621,7 @@ describe("App", () => {
           saveVault,
         })}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -635,6 +663,7 @@ describe("App", () => {
           saveVault,
         })}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -674,6 +703,7 @@ describe("App", () => {
           saveVault,
         })}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -714,6 +744,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -750,6 +781,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -788,6 +820,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -827,6 +860,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -864,6 +898,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -904,6 +939,7 @@ describe("App", () => {
       <App
         vaultAccessService={vaultAccessService}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -942,6 +978,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -979,6 +1016,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1019,6 +1057,7 @@ describe("App", () => {
             createNewVault: vi.fn().mockResolvedValue(opened),
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1063,6 +1102,7 @@ describe("App", () => {
             createNewVault: vi.fn().mockResolvedValue(opened),
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1111,6 +1151,7 @@ describe("App", () => {
             createNewVault: vi.fn().mockResolvedValue(opened),
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1160,6 +1201,7 @@ describe("App", () => {
             createNewVault: vi.fn().mockResolvedValue(opened),
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1210,6 +1252,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
@@ -1254,6 +1297,7 @@ describe("App", () => {
           createNewVault: vi.fn().mockResolvedValue(opened),
         })}
         settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
@@ -1270,5 +1314,136 @@ describe("App", () => {
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
     expect(minimizeRegistered).toBe(false);
+  });
+  describe("settings import/export", () => {
+    async function openSettings(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+      await user.click(await screen.findByRole("button", { name: "Settings" }));
+    }
+
+    function renderUnlocked(
+      settingsStore: SettingsStore,
+      settingsTransferService: SettingsTransferService,
+    ) {
+      const opened: OpenedVault = {
+        vault: Vault.create("Personal"),
+        filePath: "C:/vaults/personal.kdbx",
+      };
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+          })}
+          settingsStore={settingsStore}
+          settingsTransferService={settingsTransferService}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
+        />,
+      );
+    }
+
+    it("exports the settings it currently holds", async () => {
+      const user = userEvent.setup();
+      const settingsTransferService = fakeSettingsTransferService({
+        exportSettings: vi.fn().mockResolvedValue("C:/share/argus-settings.json"),
+      });
+      renderUnlocked(fakeSettingsStore(), settingsTransferService);
+
+      await openSettings(user);
+      await user.click(screen.getByRole("button", { name: /export settings/i }));
+
+      expect(settingsTransferService.exportSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recentVaults: [expect.objectContaining({ path: "C:/vaults/personal.kdbx" })],
+        }),
+      );
+      expect(
+        await screen.findByText("Settings exported to argus-settings.json."),
+      ).toBeInTheDocument();
+    });
+
+    it("persists and applies imported settings", async () => {
+      const user = userEvent.setup();
+      const imported: AppSettings = { recentVaults: [], theme: "light" };
+      const settingsStore = fakeSettingsStore();
+      renderUnlocked(
+        settingsStore,
+        fakeSettingsTransferService({
+          importSettings: vi
+            .fn()
+            .mockResolvedValue({ settings: imported, filePath: "C:/share/from-a-friend.json" }),
+        }),
+      );
+
+      await openSettings(user);
+      await user.click(screen.getByRole("button", { name: /import settings/i }));
+
+      expect(
+        await screen.findByText("Settings imported from from-a-friend.json."),
+      ).toBeInTheDocument();
+      expect(settingsStore.save).toHaveBeenCalledWith(imported);
+      expect(document.documentElement.dataset.theme).toBe("light");
+      expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("changes nothing when the import dialog is cancelled", async () => {
+      const user = userEvent.setup();
+      const settingsStore = fakeSettingsStore();
+      renderUnlocked(settingsStore, fakeSettingsTransferService());
+
+      await openSettings(user);
+      await user.click(screen.getByRole("button", { name: /import settings/i }));
+
+      expect(screen.queryByText(/settings imported/i)).not.toBeInTheDocument();
+    });
+
+    it("shows why an import was rejected, leaving the current settings in place", async () => {
+      const user = userEvent.setup();
+      const settingsStore = fakeSettingsStore();
+      renderUnlocked(
+        settingsStore,
+        fakeSettingsTransferService({
+          importSettings: vi.fn().mockRejectedValue(new Error("That file is not valid JSON.")),
+        }),
+      );
+
+      await openSettings(user);
+      await user.click(screen.getByRole("button", { name: /import settings/i }));
+
+      expect(await screen.findByText("That file is not valid JSON.")).toBeInTheDocument();
+      expect(settingsStore.save).not.toHaveBeenCalledWith(
+        expect.objectContaining({ theme: "light" }),
+      );
+      expect(document.documentElement.dataset.theme).toBe("dark");
+    });
+
+    it("reports a failure to persist imported settings instead of applying them", async () => {
+      const user = userEvent.setup();
+      const settingsStore = fakeSettingsStore({
+        save: vi.fn().mockRejectedValue(new Error("disk full")),
+      });
+      renderUnlocked(
+        settingsStore,
+        fakeSettingsTransferService({
+          importSettings: vi.fn().mockResolvedValue({
+            settings: { recentVaults: [], theme: "light" } satisfies AppSettings,
+            filePath: "C:/share/from-a-friend.json",
+          }),
+        }),
+      );
+
+      await openSettings(user);
+      await user.click(screen.getByRole("button", { name: /import settings/i }));
+
+      expect(await screen.findByText("disk full")).toBeInTheDocument();
+      expect(document.documentElement.dataset.theme).toBe("dark");
+    });
   });
 });

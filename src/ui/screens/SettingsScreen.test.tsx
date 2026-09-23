@@ -30,6 +30,8 @@ function renderSettings(
     onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
     onOpenMergeWizard?: () => void;
     mergeError?: string;
+    onExportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<string | undefined>;
   } = {},
 ) {
   const onChangeMasterPassword =
@@ -42,6 +44,8 @@ function renderSettings(
   const onThemeChange = vi.fn();
   const onContentProtectionChange = vi.fn();
   const onEntryFieldVisibilityChange = vi.fn();
+  const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
+  const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
   const { container, unmount } = render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
@@ -64,6 +68,8 @@ function renderSettings(
       onThemeChange={onThemeChange}
       onContentProtectionChange={onContentProtectionChange}
       onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
+      onExportSettings={onExportSettings}
+      onImportSettings={onImportSettings}
     />,
   );
   return {
@@ -78,6 +84,8 @@ function renderSettings(
     onThemeChange,
     onContentProtectionChange,
     onEntryFieldVisibilityChange,
+    onExportSettings,
+    onImportSettings,
   };
 }
 
@@ -467,6 +475,23 @@ describe("SettingsScreen", () => {
       expect(second.onEntryFieldVisibilityChange).toHaveBeenCalledWith(
         expect.objectContaining({ notes: true }),
       );
+    });
+  });
+  describe("settings file", () => {
+    it("exports the settings through the injected handler", () => {
+      const { onExportSettings } = renderSettings();
+
+      fireEvent.click(screen.getByRole("button", { name: /export settings/i }));
+
+      expect(onExportSettings).toHaveBeenCalled();
+    });
+
+    it("imports the settings through the injected handler", () => {
+      const { onImportSettings } = renderSettings();
+
+      fireEvent.click(screen.getByRole("button", { name: /import settings/i }));
+
+      expect(onImportSettings).toHaveBeenCalled();
     });
   });
 });

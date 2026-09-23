@@ -67,6 +67,8 @@ function renderShell(
     onContentProtectionChange?: (contentProtection: boolean) => void;
     entryFieldVisibility?: EntryFieldVisibility;
     onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
+    onExportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<string | undefined>;
     entrySort?: EntrySortId;
     onEntrySortChange?: (sort: EntrySortId) => void;
     onVaultChange?: (vault: Vault) => void;
@@ -93,6 +95,8 @@ function renderShell(
   const onContentProtectionChange = overrides.onContentProtectionChange ?? vi.fn();
   const entryFieldVisibility = overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY;
   const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
+  const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
+  const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
   const entrySort = overrides.entrySort ?? DEFAULT_ENTRY_SORT;
   const onEntrySortChange = overrides.onEntrySortChange ?? vi.fn();
   const onVaultChange = overrides.onVaultChange ?? vi.fn();
@@ -125,6 +129,8 @@ function renderShell(
       onThemeChange={onThemeChange}
       onContentProtectionChange={onContentProtectionChange}
       onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
+      onExportSettings={onExportSettings}
+      onImportSettings={onImportSettings}
       onEntrySortChange={onEntrySortChange}
       onVaultChange={onVaultChange}
     />,
@@ -341,6 +347,8 @@ describe("VaultShell", () => {
         onThemeChange={vi.fn()}
         onContentProtectionChange={vi.fn()}
         onEntryFieldVisibilityChange={vi.fn()}
+        onExportSettings={vi.fn().mockResolvedValue(undefined)}
+        onImportSettings={vi.fn().mockResolvedValue(undefined)}
         onEntrySortChange={vi.fn()}
         onVaultChange={vi.fn()}
       />,
@@ -1023,6 +1031,8 @@ describe("VaultShell", () => {
           onThemeChange={vi.fn()}
           onContentProtectionChange={vi.fn()}
           onEntryFieldVisibilityChange={vi.fn()}
+          onExportSettings={vi.fn().mockResolvedValue(undefined)}
+          onImportSettings={vi.fn().mockResolvedValue(undefined)}
           onEntrySortChange={vi.fn()}
           onVaultChange={vi.fn()}
         />,
@@ -1063,6 +1073,8 @@ describe("VaultShell", () => {
           onThemeChange={vi.fn()}
           onContentProtectionChange={vi.fn()}
           onEntryFieldVisibilityChange={vi.fn()}
+          onExportSettings={vi.fn().mockResolvedValue(undefined)}
+          onImportSettings={vi.fn().mockResolvedValue(undefined)}
           onEntrySortChange={vi.fn()}
           onVaultChange={vi.fn()}
         />,
