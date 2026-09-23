@@ -83,4 +83,28 @@ describe("Entry", () => {
     expect(entry.update({ title: "x" }).icon.equals(Icon.library("star"))).toBe(true);
     expect(entry.update({ icon: Icon.brand("github") }).icon.toString()).toBe("brand:github");
   });
+
+  it("has no timestamps until something supplies them", () => {
+    expect(Entry.create({ title: "Fresh" }).times).toEqual({});
+  });
+
+  it("carries timestamps through update, keeping them when unspecified", () => {
+    const createdAt = new Date("2026-01-01T00:00:00Z");
+    const entry = Entry.create({ title: "Mail", times: { createdAt } });
+
+    expect(entry.update({ title: "Webmail" }).times).toEqual({ createdAt });
+    expect(entry.update({ times: {} }).times).toEqual({});
+  });
+
+  it("markAccessed records when the entry was opened, leaving other times alone", () => {
+    const createdAt = new Date("2026-01-01T00:00:00Z");
+    const openedAt = new Date("2026-02-02T09:30:00Z");
+    const entry = Entry.create({ title: "Mail", times: { createdAt } });
+
+    const opened = entry.markAccessed(openedAt);
+
+    expect(opened.times).toEqual({ createdAt, accessedAt: openedAt });
+    expect(opened.id.equals(entry.id)).toBe(true);
+    expect(entry.times.accessedAt).toBeUndefined();
+  });
 });

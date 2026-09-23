@@ -19,10 +19,12 @@ import {
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
   DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
+  DEFAULT_ENTRY_SORT,
   DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
   DEFAULT_THEME,
   EntryFieldVisibility,
+  EntrySortId,
   GroupDeleteMode,
   recordVaultOpened,
   SettingsStore,
@@ -32,6 +34,7 @@ import {
   withClipboardClearSeconds,
   withContentProtection,
   withEntryFieldVisibility,
+  withEntrySort,
   withGeneratorPolicy,
   withGroupDeleteMode,
   withTheme,
@@ -231,6 +234,15 @@ function App({
     };
   }
 
+  // The vault changed in a way that doesn't warrant writing the file — today
+  // only the "entry was opened" stamp, which rides along with the next real
+  // save instead of re-encrypting the whole vault on every click.
+  function handleVaultChange(filePath: string) {
+    return (nextVault: Vault) => {
+      setScreen({ kind: "unlocked", vault: nextVault, filePath });
+    };
+  }
+
   function handleChangeMasterPassword(vault: Vault, filePath: string) {
     return async (currentPassword: string, newPassword: string) => {
       try {
@@ -337,6 +349,16 @@ function App({
     }
   }
 
+  async function handleEntrySortChange(sort: EntrySortId) {
+    const updated = withEntrySort(settings, sort);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   async function handleEntryFieldVisibilityChange(visibility: EntryFieldVisibility) {
     const updated = withEntryFieldVisibility(settings, visibility);
     setSettings(updated);
@@ -385,9 +407,11 @@ function App({
         theme={settings.theme ?? DEFAULT_THEME}
         contentProtection={settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION}
         entryFieldVisibility={settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
+        entrySort={settings.entrySort ?? DEFAULT_ENTRY_SORT}
         mergeSource={mergeSource}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
+        onVaultChange={handleVaultChange(screen.filePath)}
         onChangeMasterPassword={handleChangeMasterPassword(screen.vault, screen.filePath)}
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
         onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
@@ -395,6 +419,7 @@ function App({
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
         onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
         onThemeChange={(theme) => void handleThemeChange(theme)}
+        onEntrySortChange={(sort) => void handleEntrySortChange(sort)}
         onContentProtectionChange={(contentProtection) =>
           void handleContentProtectionChange(contentProtection)
         }

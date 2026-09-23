@@ -15,6 +15,7 @@ import {
   AutoLockSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   EntryFieldVisibility,
+  EntrySortId,
   GroupDeleteMode,
   Theme,
 } from "../../application/settings";
@@ -42,6 +43,7 @@ import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
+import { sortEntries } from "../entry-sort";
 import {
   collectAllEntries,
   entriesOf,
@@ -50,6 +52,7 @@ import {
   searchEntries,
 } from "../vault-browsing";
 import { EntryForm } from "./EntryForm";
+import { EntrySortMenu } from "./EntrySortMenu";
 import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
 import { HealthScreen } from "./HealthScreen";
@@ -73,6 +76,7 @@ interface VaultShellProps {
   theme: Theme;
   contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
+  entrySort: EntrySortId;
   mergeSource: VaultMergeSource;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
@@ -85,6 +89,10 @@ interface VaultShellProps {
   onThemeChange: (theme: Theme) => void;
   onContentProtectionChange: (contentProtection: boolean) => void;
   onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
+  onEntrySortChange: (sort: EntrySortId) => void;
+  /** Replaces the in-memory vault without writing the file — used for the
+   * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
+  onVaultChange: (vault: Vault) => void;
 }
 
 const ALL_ITEMS = "__all__";
@@ -106,6 +114,7 @@ export function VaultShell({
   theme,
   contentProtection,
   entryFieldVisibility,
+  entrySort,
   mergeSource,
   onLock,
   onSave,
@@ -118,6 +127,8 @@ export function VaultShell({
   onThemeChange,
   onContentProtectionChange,
   onEntryFieldVisibilityChange,
+  onEntrySortChange,
+  onVaultChange,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -150,13 +161,14 @@ export function VaultShell({
   const trimmedQuery = searchQuery.trim();
   const isSearching = trimmedQuery !== "";
 
-  const visibleEntries: EntryWithGroup[] = isRecycleBinSelected
+  const matchingEntries: EntryWithGroup[] = isRecycleBinSelected
     ? []
     : isSearching
       ? searchEntries(collectAllEntries(rootGroup, excludeFromBrowsing), trimmedQuery)
       : effectiveGroupId === ALL_ITEMS
         ? collectAllEntries(rootGroup, excludeFromBrowsing)
         : entriesOf(selectedGroup!);
+  const visibleEntries = sortEntries(matchingEntries, entrySort);
 
   const selected = visibleEntries.find((item) => item.entry.id.toString() === selectedEntryId);
   const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing).map((option) =>
@@ -171,15 +183,22 @@ export function VaultShell({
     setSearchQuery("");
   }
 
-  function selectEntry(entryId: string) {
-    setSelectedEntryId(entryId);
+  /**
+   * Opening an entry records "opened just now" on it, in memory only — that
+   * stamp is what the "recently opened" sort reads. Saving here instead would
+   * re-run the KDF and re-encrypt the whole vault on every click, so the stamp
+   * rides along with the next save the user's own edits trigger.
+   */
+  function selectEntry(entry: Entry) {
+    setSelectedEntryId(entry.id.toString());
     setRevealed(false);
     setFormMode({ kind: "none" });
+    onVaultChange(vault.updateEntry(entry.markAccessed(new Date())));
   }
 
   function handleSelectHealthEntry(entry: Entry, group: Group) {
     selectGroup(group.id.toString());
-    selectEntry(entry.id.toString());
+    selectEntry(entry);
     setView("vault");
   }
 
@@ -467,6 +486,7 @@ export function VaultShell({
                         <XIcon size={12} />
                       </button>
                     )}
+                    <EntrySortMenu value={entrySort} onChange={onEntrySortChange} />
                   </div>
                   <div className="entry-list">
                     {visibleEntries.length === 0 && (
@@ -490,7 +510,7 @@ export function VaultShell({
                           setDraggingEntryId(entry.id.toString());
                         }}
                         onDragEnd={() => setDraggingEntryId(undefined)}
-                        onClick={() => selectEntry(entry.id.toString())}
+                        onClick={() => selectEntry(entry)}
                       >
                         <EntryAvatar entry={entry} />
                         <div className="entry-row-text">
