@@ -3534,6 +3534,40 @@ input[type="radio"]:checked::after {
   line-height: 1.5;
 }
 
+/* The hotkey reads as plain text; clicking it records a new one. */
+.hotkey-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hotkey-field-value {
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.hotkey-field-value:hover,
+.hotkey-field-value.recording {
+  background: var(--color-input);
+}
+
+.hotkey-field-value.recording {
+  color: var(--color-text-dim);
+}
+
+.hotkey-field-hint {
+  font-size: 12.5px;
+  color: var(--color-text-dim);
+}
+
 .detail-card-hint code {
   font-size: 11.5px;
   padding: 1px 5px;

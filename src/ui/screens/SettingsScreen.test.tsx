@@ -511,7 +511,7 @@ describe("SettingsScreen", () => {
       renderSettings();
 
       expect(screen.getByRole("checkbox", { name: /hotkey/i })).not.toBeChecked();
-      expect(screen.getByLabelText("Hotkey")).toHaveValue("CommandOrControl+Shift+A");
+      expect(screen.getByLabelText("Hotkey")).toHaveTextContent("Ctrl + Shift + A");
       expect(screen.getByLabelText("What to type")).toHaveValue("{USERNAME}{TAB}{PASSWORD}{ENTER}");
     });
 
@@ -533,10 +533,13 @@ describe("SettingsScreen", () => {
       expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, enabled: false });
     });
 
-    it("reports a new hotkey", () => {
+    it("reports a newly recorded hotkey", async () => {
       const { onAutoTypeChange } = renderSettings();
+      const hotkey = screen.getByLabelText("Hotkey");
 
-      fireEvent.change(screen.getByLabelText("Hotkey"), { target: { value: "Alt+Space" } });
+      await userEvent.click(hotkey);
+      fireEvent.keyDown(hotkey, { code: "Space", altKey: true });
+      fireEvent.keyDown(hotkey, { code: "Enter" });
 
       expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, hotkey: "Alt+Space" });
     });

@@ -13,6 +13,7 @@ import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
 import { ChevronIcon } from "../icons";
 import { ChangeMasterPasswordCard } from "./ChangeMasterPasswordCard";
+import { HotkeyField } from "./HotkeyField";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 
 const ENTRY_FIELD_TOGGLES: ReadonlyArray<{
@@ -355,13 +356,10 @@ export function SettingsScreen({
                 <label className="detail-field-row-label" htmlFor="settings-auto-type-hotkey">
                   Hotkey
                 </label>
-                <input
+                <HotkeyField
                   id="settings-auto-type-hotkey"
-                  type="text"
-                  className="field-input"
                   value={autoType.hotkey}
-                  spellCheck={false}
-                  onChange={(event) => updateAutoType({ hotkey: event.target.value })}
+                  onChange={(hotkey) => updateAutoType({ hotkey })}
                 />
               </div>
               <div className="detail-field-row">
