@@ -12,6 +12,7 @@ import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/set
 import { UrlOpener } from "../application/url-opener";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
+import { VaultMergeSource } from "../application/vault-merge-source";
 import App from "./App";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
@@ -50,6 +51,10 @@ function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): Window
   return { setContentProtected: vi.fn().mockResolvedValue(undefined), ...overrides };
 }
 
+function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
+  return { pickFile: vi.fn(), openFile: vi.fn(), ...overrides };
+}
+
 describe("App", () => {
   it("shows the welcome screen when there are no recent vaults", async () => {
     render(
@@ -60,6 +65,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -77,6 +83,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -99,6 +106,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -123,6 +131,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -161,6 +170,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -188,6 +198,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -214,6 +225,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -246,6 +258,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -277,6 +290,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -325,6 +339,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -364,6 +379,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -400,6 +416,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -433,6 +450,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -468,6 +486,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -505,6 +524,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -539,6 +559,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -577,6 +598,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -617,6 +639,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -655,6 +678,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -694,6 +718,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -729,6 +754,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -766,6 +792,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={windowProtection}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -804,6 +831,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -840,6 +868,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -876,6 +905,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -915,6 +945,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -958,6 +989,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -1005,6 +1037,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -1053,6 +1086,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          mergeSource={fakeMergeSource()}
         />,
       );
 
@@ -1102,6 +1136,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 
@@ -1145,6 +1180,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
       />,
     );
 

@@ -30,8 +30,6 @@ A feature branch isn't done until:
 
 - Opt-in, off-by-default online breach-check (HIBP-style).
 - import en export functionaliteit voor settings
-- merge file functionality
-- way to order groups
 - sort between entries, e.g. last used, alfabetical
 - autofill
 - stats schermpje?

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, formatFileSize, formatRelativeTime, formatTotpCode } from "./format";
+import { basename, formatFileSize, formatRelativeTime, formatTotpCode, isSamePath } from "./format";
 
 describe("basename", () => {
   it("returns the last segment of a forward-slash path", () => {
@@ -81,5 +81,31 @@ describe("formatTotpCode", () => {
 
   it("groups an 8-digit code with a trailing short group", () => {
     expect(formatTotpCode("12345678")).toBe("123 456 78");
+  });
+});
+
+describe("isSamePath", () => {
+  it("matches identical paths", () => {
+    expect(isSamePath("C:/vaults/personal.kdbx", "C:/vaults/personal.kdbx")).toBe(true);
+  });
+
+  it("matches across separator styles", () => {
+    expect(isSamePath("C:\\vaults\\personal.kdbx", "C:/vaults/personal.kdbx")).toBe(true);
+  });
+
+  it("ignores case", () => {
+    expect(isSamePath("C:/Vaults/Personal.kdbx", "c:/vaults/personal.kdbx")).toBe(true);
+  });
+
+  it("ignores a trailing separator", () => {
+    expect(isSamePath("/home/me/vaults/", "/home/me/vaults")).toBe(true);
+  });
+
+  it("does not match different files in the same directory", () => {
+    expect(isSamePath("C:/vaults/personal.kdbx", "C:/vaults/work.kdbx")).toBe(false);
+  });
+
+  it("does not match the same filename in different directories", () => {
+    expect(isSamePath("C:/vaults/personal.kdbx", "D:/backup/personal.kdbx")).toBe(false);
   });
 });

@@ -43,3 +43,16 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
 export function formatTotpCode(code: string): string {
   return code.match(/.{1,3}/g)!.join(" ");
 }
+
+/**
+ * Whether two paths point at the same file. Separators and any trailing slash
+ * are normalized away, and the comparison ignores case because the desktop
+ * platforms Argus targets treat paths that way.
+ */
+export function isSamePath(a: string, b: string): boolean {
+  return normalizePath(a) === normalizePath(b);
+}
+
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}

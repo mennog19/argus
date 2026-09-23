@@ -36,3 +36,12 @@ export {
   type TotpAlgorithm,
 } from "./totp";
 export { Vault } from "./vault";
+export {
+  diffVaults,
+  mergeFieldValue,
+  MERGE_FIELDS,
+  type FieldDifference,
+  type MatchedEntryPair,
+  type MergeFieldKey,
+  type VaultMergePlan,
+} from "./vault-merge";

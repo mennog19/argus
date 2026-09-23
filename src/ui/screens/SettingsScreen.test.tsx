@@ -28,10 +28,13 @@ function renderSettings(
     contentProtection?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
     onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
+    onOpenMergeWizard?: () => void;
+    mergeError?: string;
   } = {},
 ) {
   const onChangeMasterPassword =
     overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
+  const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
@@ -39,7 +42,7 @@ function renderSettings(
   const onThemeChange = vi.fn();
   const onContentProtectionChange = vi.fn();
   const onEntryFieldVisibilityChange = vi.fn();
-  render(
+  const { container, unmount } = render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
       fileInfo={overrides.fileInfo}
@@ -52,6 +55,8 @@ function renderSettings(
       contentProtection={overrides.contentProtection ?? true}
       entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
       onChangeMasterPassword={onChangeMasterPassword}
+      mergeError={overrides.mergeError}
+      onOpenMergeWizard={onOpenMergeWizard}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
@@ -62,7 +67,10 @@ function renderSettings(
     />,
   );
   return {
+    container,
+    unmount,
     onChangeMasterPassword,
+    onOpenMergeWizard,
     onClipboardClearSecondsChange,
     onAutoLockChange,
     onGroupDeleteModeChange,
@@ -287,6 +295,37 @@ describe("SettingsScreen", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
     expect(onContentProtectionChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("danger zone", () => {
+    it("reports a request to open the merge wizard", () => {
+      const { onOpenMergeWizard } = renderSettings();
+
+      fireEvent.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      expect(onOpenMergeWizard).toHaveBeenCalled();
+    });
+
+    it("shows why a merge could not be started, and nothing when there's no reason", () => {
+      const { unmount } = renderSettings({ mergeError: "That's the vault you already have open." });
+
+      expect(screen.getByText("That's the vault you already have open.")).toBeInTheDocument();
+
+      unmount();
+      renderSettings();
+
+      expect(screen.queryByText("That's the vault you already have open.")).not.toBeInTheDocument();
+    });
+
+    it("groups merging and changing the master password under one danger zone", () => {
+      const { container } = renderSettings();
+
+      const dangerZone = container.querySelector(".danger-zone");
+      expect(dangerZone).not.toBeNull();
+      expect(dangerZone).toHaveTextContent("Danger zone");
+      expect(dangerZone).toHaveTextContent(/merge another vault in/i);
+      expect(dangerZone).toHaveTextContent(/change master password/i);
+    });
   });
 
   describe("master password", () => {

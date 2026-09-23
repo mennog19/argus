@@ -19,6 +19,7 @@ import {
   Theme,
 } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
+import { VaultMergeSource } from "../../application/vault-merge-source";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import {
@@ -39,7 +40,7 @@ import {
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
-import { formatTotpCode } from "../format";
+import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
 import {
   collectAllEntries,
@@ -52,6 +53,8 @@ import { EntryForm } from "./EntryForm";
 import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
 import { HealthScreen } from "./HealthScreen";
+import { MergeUnlockDialog } from "./MergeUnlockDialog";
+import { MergeWizardScreen } from "./MergeWizardScreen";
 import { RecycleBinPanel } from "./RecycleBinPanel";
 import { SettingsScreen } from "./SettingsScreen";
 import { ArgusMark } from "../ArgusMark";
@@ -70,6 +73,7 @@ interface VaultShellProps {
   theme: Theme;
   contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
+  mergeSource: VaultMergeSource;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -86,7 +90,7 @@ interface VaultShellProps {
 const ALL_ITEMS = "__all__";
 
 type FormMode = { kind: "none" } | { kind: "create" } | { kind: "edit" };
-type View = "vault" | "generator" | "health" | "settings";
+type View = "vault" | "generator" | "health" | "settings" | "merge";
 
 export function VaultShell({
   vault,
@@ -102,6 +106,7 @@ export function VaultShell({
   theme,
   contentProtection,
   entryFieldVisibility,
+  mergeSource,
   onLock,
   onSave,
   onChangeMasterPassword,
@@ -121,6 +126,9 @@ export function VaultShell({
   const [formMode, setFormMode] = useState<FormMode>({ kind: "none" });
   const [searchQuery, setSearchQuery] = useState("");
   const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
+  const [mergeFilePath, setMergeFilePath] = useState<string | undefined>(undefined);
+  const [mergeSourceVault, setMergeSourceVault] = useState<Vault | undefined>(undefined);
+  const [mergeError, setMergeError] = useState<string | undefined>(undefined);
 
   const rootGroup = vault.rootGroup;
   const recycleBin = vault.recycleBin;
@@ -267,6 +275,45 @@ export function VaultShell({
     await persist(vault.emptyRecycleBin());
   }
 
+  async function startMerge() {
+    setMergeError(undefined);
+    const picked = await mergeSource.pickFile();
+    if (!picked) {
+      return;
+    }
+    // Merging a vault into itself would compare every entry against its own
+    // twin and, entry by entry, offer to overwrite it with itself — nothing
+    // useful, and plenty to get wrong. Refuse it before asking for a password.
+    if (isSamePath(picked, filePath)) {
+      setMergeError(
+        "That's the vault you already have open. Pick a different .kdbx file to merge in.",
+      );
+      return;
+    }
+    setMergeFilePath(picked);
+  }
+
+  /** The wizard only opens once the incoming vault is actually unlocked. */
+  function openMergeWizard(sourceVault: Vault) {
+    setMergeSourceVault(sourceVault);
+    setView("merge");
+  }
+
+  function closeMerge() {
+    setMergeFilePath(undefined);
+    setMergeSourceVault(undefined);
+    setMergeError(undefined);
+    setView("settings");
+  }
+
+  /** Leaving via the nav rail abandons any in-progress merge. */
+  function goToView(next: View) {
+    setMergeFilePath(undefined);
+    setMergeSourceVault(undefined);
+    setMergeError(undefined);
+    setView(next);
+  }
+
   function startCreateEntry() {
     setSelectedEntryId(undefined);
     setFormMode({ kind: "create" });
@@ -276,216 +323,240 @@ export function VaultShell({
     effectiveGroupId === ALL_ITEMS ? rootGroup.id.toString() : effectiveGroupId;
 
   return (
-    <div className="vault-shell">
-      <nav className="nav-rail">
-        <div className="nav-logo">
-          <ArgusMark />
-        </div>
-        <div className="nav-rail-icons">
-          <button
-            type="button"
-            className={`icon-button${view === "vault" ? " active" : ""}`}
-            aria-label="Vault"
-            onClick={() => setView("vault")}
-          >
-            <VaultIcon />
+    <>
+      <div className="vault-shell">
+        <nav className="nav-rail">
+          <div className="nav-logo">
+            <ArgusMark />
+          </div>
+          <div className="nav-rail-icons">
+            <button
+              type="button"
+              className={`icon-button${view === "vault" ? " active" : ""}`}
+              aria-label="Vault"
+              onClick={() => goToView("vault")}
+            >
+              <VaultIcon />
+            </button>
+            <button
+              type="button"
+              className={`icon-button${view === "generator" ? " active" : ""}`}
+              aria-label="Password generator"
+              onClick={() => goToView("generator")}
+            >
+              <GeneratorIcon />
+            </button>
+            <button
+              type="button"
+              className={`icon-button${view === "health" ? " active" : ""}`}
+              aria-label="Password health"
+              onClick={() => goToView("health")}
+            >
+              <HealthIcon />
+            </button>
+            <button
+              type="button"
+              className={`icon-button${view === "settings" || view === "merge" ? " active" : ""}`}
+              aria-label="Settings"
+              onClick={() => goToView("settings")}
+            >
+              <SettingsIcon />
+            </button>
+          </div>
+          <button type="button" className="icon-button" onClick={onLock} aria-label="Lock vault">
+            <LockIcon />
           </button>
-          <button
-            type="button"
-            className={`icon-button${view === "generator" ? " active" : ""}`}
-            aria-label="Password generator"
-            onClick={() => setView("generator")}
-          >
-            <GeneratorIcon />
-          </button>
-          <button
-            type="button"
-            className={`icon-button${view === "health" ? " active" : ""}`}
-            aria-label="Password health"
-            onClick={() => setView("health")}
-          >
-            <HealthIcon />
-          </button>
-          <button
-            type="button"
-            className={`icon-button${view === "settings" ? " active" : ""}`}
-            aria-label="Settings"
-            onClick={() => setView("settings")}
-          >
-            <SettingsIcon />
-          </button>
-        </div>
-        <button type="button" className="icon-button" onClick={onLock} aria-label="Lock vault">
-          <LockIcon />
-        </button>
-      </nav>
+        </nav>
 
-      {view === "generator" ? (
-        <GeneratorScreen policyOptions={generatorPolicy} onPolicyChange={onGeneratorPolicyChange} />
-      ) : view === "health" ? (
-        <HealthScreen
-          entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
-          onSelectEntry={handleSelectHealthEntry}
-        />
-      ) : view === "settings" ? (
-        <SettingsScreen
-          filePath={filePath}
-          fileInfo={fileInfo}
-          entryCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
-          clipboardClearSeconds={clipboardClearSeconds}
-          autoLock={autoLock}
-          groupDeleteMode={groupDeleteMode}
-          accentColor={accentColor}
-          theme={theme}
-          contentProtection={contentProtection}
-          entryFieldVisibility={entryFieldVisibility}
-          onChangeMasterPassword={onChangeMasterPassword}
-          onClipboardClearSecondsChange={onClipboardClearSecondsChange}
-          onAutoLockChange={onAutoLockChange}
-          onGroupDeleteModeChange={onGroupDeleteModeChange}
-          onAccentColorChange={onAccentColorChange}
-          onThemeChange={onThemeChange}
-          onContentProtectionChange={onContentProtectionChange}
-          onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
-        />
-      ) : (
-        <>
-          <GroupTree
-            rootGroup={rootGroup}
-            recycleBin={recycleBin}
-            selectedGroupId={effectiveGroupId}
-            allItemsId={ALL_ITEMS}
-            allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
-            onSelect={selectGroup}
-            onCreateGroup={handleCreateGroup}
-            onRenameGroup={handleRenameGroup}
-            onDeleteGroup={handleDeleteGroup}
-            onChangeGroupIcon={handleChangeGroupIcon}
-            groupDeleteMode={groupDeleteMode}
-            entryDragActive={draggingEntryId !== undefined}
-            onDropEntry={handleDropEntry}
-            onMoveGroupToPosition={handleMoveGroupToPosition}
-            onMoveGroupToParent={handleMoveGroupToParent}
+        {view === "merge" && mergeFilePath !== undefined && mergeSourceVault !== undefined ? (
+          <MergeWizardScreen
+            vault={vault}
+            filePath={mergeFilePath}
+            sourceVault={mergeSourceVault}
+            onApply={persist}
+            onClose={closeMerge}
           />
-
-          {isRecycleBinSelected && recycleBin ? (
-            <RecycleBinPanel
-              binGroup={recycleBin}
-              onRestoreEntry={handleRestoreEntry}
-              onDeleteEntryForever={handleDeleteEntryForever}
-              onRestoreGroup={handleRestoreGroup}
-              onDeleteGroupForever={handleDeleteGroupForever}
-              onEmptyRecycleBin={handleEmptyRecycleBin}
+        ) : view === "generator" ? (
+          <GeneratorScreen
+            policyOptions={generatorPolicy}
+            onPolicyChange={onGeneratorPolicyChange}
+          />
+        ) : view === "health" ? (
+          <HealthScreen
+            entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
+            onSelectEntry={handleSelectHealthEntry}
+          />
+        ) : view === "settings" ? (
+          <SettingsScreen
+            filePath={filePath}
+            fileInfo={fileInfo}
+            entryCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
+            clipboardClearSeconds={clipboardClearSeconds}
+            autoLock={autoLock}
+            groupDeleteMode={groupDeleteMode}
+            accentColor={accentColor}
+            theme={theme}
+            contentProtection={contentProtection}
+            entryFieldVisibility={entryFieldVisibility}
+            onChangeMasterPassword={onChangeMasterPassword}
+            mergeError={mergeError}
+            onOpenMergeWizard={() => void startMerge()}
+            onClipboardClearSecondsChange={onClipboardClearSecondsChange}
+            onAutoLockChange={onAutoLockChange}
+            onGroupDeleteModeChange={onGroupDeleteModeChange}
+            onAccentColorChange={onAccentColorChange}
+            onThemeChange={onThemeChange}
+            onContentProtectionChange={onContentProtectionChange}
+            onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
+          />
+        ) : (
+          <>
+            <GroupTree
+              rootGroup={rootGroup}
+              recycleBin={recycleBin}
+              selectedGroupId={effectiveGroupId}
+              allItemsId={ALL_ITEMS}
+              allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
+              onSelect={selectGroup}
+              onCreateGroup={handleCreateGroup}
+              onRenameGroup={handleRenameGroup}
+              onDeleteGroup={handleDeleteGroup}
+              onChangeGroupIcon={handleChangeGroupIcon}
+              groupDeleteMode={groupDeleteMode}
+              entryDragActive={draggingEntryId !== undefined}
+              onDropEntry={handleDropEntry}
+              onMoveGroupToPosition={handleMoveGroupToPosition}
+              onMoveGroupToParent={handleMoveGroupToParent}
             />
-          ) : (
-            <>
-              <div className="entry-list-panel">
-                <div className="entry-list-header">
-                  <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
-                  <button type="button" className="btn-secondary" onClick={startCreateEntry}>
-                    <PlusIcon size={13} /> New Entry
-                  </button>
-                </div>
-                <div className="entry-search">
-                  <SearchIcon size={14} />
-                  <input
-                    type="text"
-                    className="entry-search-input"
-                    placeholder="Search entries…"
-                    aria-label="Search entries"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                  />
-                  {isSearching && (
-                    <button
-                      type="button"
-                      className="entry-search-clear"
-                      aria-label="Clear search"
-                      onClick={() => setSearchQuery("")}
-                    >
-                      <XIcon size={12} />
-                    </button>
-                  )}
-                </div>
-                <div className="entry-list">
-                  {visibleEntries.length === 0 && (
-                    <div className="entry-list-empty">
-                      {isSearching
-                        ? `No entries match "${trimmedQuery}".`
-                        : "No entries in this group."}
-                    </div>
-                  )}
-                  {visibleEntries.map(({ entry }) => (
-                    <button
-                      key={entry.id.toString()}
-                      type="button"
-                      className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}${
-                        entry.id.toString() === draggingEntryId ? " dragging" : ""
-                      }`}
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData(ENTRY_DRAG_TYPE, entry.id.toString());
-                        event.dataTransfer.effectAllowed = "move";
-                        setDraggingEntryId(entry.id.toString());
-                      }}
-                      onDragEnd={() => setDraggingEntryId(undefined)}
-                      onClick={() => selectEntry(entry.id.toString())}
-                    >
-                      <EntryAvatar entry={entry} />
-                      <div className="entry-row-text">
-                        <div className="entry-row-title">{entry.title || "(untitled)"}</div>
-                        <div className="entry-row-username">{entry.username}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              <div className="detail-pane">
-                {formMode.kind === "create" && (
-                  <EntryForm
-                    initialGroupId={newEntryGroupId}
-                    groupOptions={groupOptions}
-                    generatorPolicy={generatorPolicy}
-                    fieldVisibility={entryFieldVisibility}
-                    onSubmit={handleCreateEntry}
-                    onCancel={() => setFormMode({ kind: "none" })}
-                  />
-                )}
-                {formMode.kind === "edit" && selected && (
-                  <EntryForm
-                    initialEntry={selected.entry}
-                    initialGroupId={selected.group.id.toString()}
-                    groupOptions={groupOptions}
-                    generatorPolicy={generatorPolicy}
-                    fieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
-                    onSubmit={(entry, groupId) =>
-                      handleUpdateEntry(entry, groupId, selected.group.id)
-                    }
-                    onCancel={() => setFormMode({ kind: "none" })}
-                  />
-                )}
-                {formMode.kind === "none" && !selected && (
-                  <div className="detail-empty">Select an entry to view details</div>
-                )}
-                {formMode.kind === "none" && selected && (
-                  <EntryDetail
-                    entryWithGroup={selected}
-                    urlOpener={urlOpener}
-                    clipboardWriter={clipboardWriter}
-                    clipboardClearSeconds={clipboardClearSeconds}
-                    revealed={revealed}
-                    onToggleReveal={() => setRevealed((value) => !value)}
-                    onEdit={() => setFormMode({ kind: "edit" })}
-                    onDelete={() => handleDeleteEntry(selected.entry.id)}
-                  />
-                )}
-              </div>
-            </>
-          )}
-        </>
+            {isRecycleBinSelected && recycleBin ? (
+              <RecycleBinPanel
+                binGroup={recycleBin}
+                onRestoreEntry={handleRestoreEntry}
+                onDeleteEntryForever={handleDeleteEntryForever}
+                onRestoreGroup={handleRestoreGroup}
+                onDeleteGroupForever={handleDeleteGroupForever}
+                onEmptyRecycleBin={handleEmptyRecycleBin}
+              />
+            ) : (
+              <>
+                <div className="entry-list-panel">
+                  <div className="entry-list-header">
+                    <h2>{effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}</h2>
+                    <button type="button" className="btn-secondary" onClick={startCreateEntry}>
+                      <PlusIcon size={13} /> New Entry
+                    </button>
+                  </div>
+                  <div className="entry-search">
+                    <SearchIcon size={14} />
+                    <input
+                      type="text"
+                      className="entry-search-input"
+                      placeholder="Search entries…"
+                      aria-label="Search entries"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                    />
+                    {isSearching && (
+                      <button
+                        type="button"
+                        className="entry-search-clear"
+                        aria-label="Clear search"
+                        onClick={() => setSearchQuery("")}
+                      >
+                        <XIcon size={12} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="entry-list">
+                    {visibleEntries.length === 0 && (
+                      <div className="entry-list-empty">
+                        {isSearching
+                          ? `No entries match "${trimmedQuery}".`
+                          : "No entries in this group."}
+                      </div>
+                    )}
+                    {visibleEntries.map(({ entry }) => (
+                      <button
+                        key={entry.id.toString()}
+                        type="button"
+                        className={`entry-row${entry.id.toString() === selectedEntryId ? " active" : ""}${
+                          entry.id.toString() === draggingEntryId ? " dragging" : ""
+                        }`}
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData(ENTRY_DRAG_TYPE, entry.id.toString());
+                          event.dataTransfer.effectAllowed = "move";
+                          setDraggingEntryId(entry.id.toString());
+                        }}
+                        onDragEnd={() => setDraggingEntryId(undefined)}
+                        onClick={() => selectEntry(entry.id.toString())}
+                      >
+                        <EntryAvatar entry={entry} />
+                        <div className="entry-row-text">
+                          <div className="entry-row-title">{entry.title || "(untitled)"}</div>
+                          <div className="entry-row-username">{entry.username}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="detail-pane">
+                  {formMode.kind === "create" && (
+                    <EntryForm
+                      initialGroupId={newEntryGroupId}
+                      groupOptions={groupOptions}
+                      generatorPolicy={generatorPolicy}
+                      fieldVisibility={entryFieldVisibility}
+                      onSubmit={handleCreateEntry}
+                      onCancel={() => setFormMode({ kind: "none" })}
+                    />
+                  )}
+                  {formMode.kind === "edit" && selected && (
+                    <EntryForm
+                      initialEntry={selected.entry}
+                      initialGroupId={selected.group.id.toString()}
+                      groupOptions={groupOptions}
+                      generatorPolicy={generatorPolicy}
+                      fieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
+                      onSubmit={(entry, groupId) =>
+                        handleUpdateEntry(entry, groupId, selected.group.id)
+                      }
+                      onCancel={() => setFormMode({ kind: "none" })}
+                    />
+                  )}
+                  {formMode.kind === "none" && !selected && (
+                    <div className="detail-empty">Select an entry to view details</div>
+                  )}
+                  {formMode.kind === "none" && selected && (
+                    <EntryDetail
+                      entryWithGroup={selected}
+                      urlOpener={urlOpener}
+                      clipboardWriter={clipboardWriter}
+                      clipboardClearSeconds={clipboardClearSeconds}
+                      revealed={revealed}
+                      onToggleReveal={() => setRevealed((value) => !value)}
+                      onEdit={() => setFormMode({ kind: "edit" })}
+                      onDelete={() => handleDeleteEntry(selected.entry.id)}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {mergeFilePath !== undefined && mergeSourceVault === undefined && (
+        <MergeUnlockDialog
+          filePath={mergeFilePath}
+          mergeSource={mergeSource}
+          onUnlocked={openMergeWizard}
+          onCancel={() => setMergeFilePath(undefined)}
+        />
       )}
-    </div>
+    </>
   );
 }
 

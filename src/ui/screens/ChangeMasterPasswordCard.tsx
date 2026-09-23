@@ -48,10 +48,20 @@ export function ChangeMasterPasswordCard({
     }
   }
 
+  const heading = (
+    <div className="danger-zone-row-text">
+      <span className="danger-zone-row-title">Master password</span>
+      <span className="danger-zone-row-hint">
+        Re-encrypts the whole vault. Lose the new password and there is no way back in.
+      </span>
+    </div>
+  );
+
   if (!revealed) {
     return (
-      <div className="detail-card padded">
-        <button type="button" className="btn-secondary" onClick={() => setRevealed(true)}>
+      <div className="danger-zone-row">
+        {heading}
+        <button type="button" className="btn-danger-outline" onClick={() => setRevealed(true)}>
           Change master password
         </button>
       </div>
@@ -59,51 +69,54 @@ export function ChangeMasterPasswordCard({
   }
 
   return (
-    <form className="detail-card padded" onSubmit={(event) => void handleSubmit(event)}>
-      <div className="field-group">
-        <label className="field-label" htmlFor="change-password-current">
-          Current password
-        </label>
-        <input
-          id="change-password-current"
-          type="password"
-          className="field-input"
-          value={currentPassword}
-          onChange={(event) => setCurrentPassword(event.target.value)}
-          placeholder="Current password"
-        />
-      </div>
-      <div className="field-group">
-        <label className="field-label" htmlFor="change-password-new">
-          New password
-        </label>
-        <input
-          id="change-password-new"
-          type="password"
-          className="field-input"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          placeholder="New password"
-        />
-      </div>
-      <div className="field-group">
-        <label className="field-label" htmlFor="change-password-confirm">
-          Confirm new password
-        </label>
-        <input
-          id="change-password-confirm"
-          type="password"
-          className="field-input"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Confirm new password"
-        />
-      </div>
-      {error && <div className="field-error">{error}</div>}
-      {success && <div className="field-success">Master password changed.</div>}
-      <button type="submit" className="btn-primary" disabled={busy}>
-        Change master password
-      </button>
-    </form>
+    <div className="danger-zone-row expanded">
+      {heading}
+      <form className="danger-zone-form" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="field-group">
+          <label className="field-label" htmlFor="change-password-current">
+            Current password
+          </label>
+          <input
+            id="change-password-current"
+            type="password"
+            className="field-input"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            placeholder="Current password"
+          />
+        </div>
+        <div className="field-group">
+          <label className="field-label" htmlFor="change-password-new">
+            New password
+          </label>
+          <input
+            id="change-password-new"
+            type="password"
+            className="field-input"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            placeholder="New password"
+          />
+        </div>
+        <div className="field-group">
+          <label className="field-label" htmlFor="change-password-confirm">
+            Confirm new password
+          </label>
+          <input
+            id="change-password-confirm"
+            type="password"
+            className="field-input"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="Confirm new password"
+          />
+        </div>
+        {error && <div className="field-error">{error}</div>}
+        {success && <div className="field-success">Master password changed.</div>}
+        <button type="submit" className="btn-danger" disabled={busy}>
+          Change master password
+        </button>
+      </form>
+    </div>
   );
 }
