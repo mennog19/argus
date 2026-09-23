@@ -34,8 +34,6 @@ const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
   enabled: false,
   hotkey: "CommandOrControl+Shift+A",
-  detectFields: true,
-  sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
 };
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 const DEFAULT_THEME: Theme = "dark";

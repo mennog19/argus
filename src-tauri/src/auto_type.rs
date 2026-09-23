@@ -1,7 +1,7 @@
 //! Auto-type: typing an entry's credentials into another application.
 //!
-//! All the decisions -- which entry matches the focused window, what sequence
-//! to play, where the password comes from -- are made in TypeScript. This
+//! All the decisions -- which entry matches the focused window, which fields
+//! to fill, where the password comes from -- are made in TypeScript. This
 //! module is the OS shell for them: it remembers which window was in front
 //! when the hotkey fired, and later refocuses that window and replays a flat
 //! list of already-resolved steps into it.
@@ -14,25 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::Manager;
 
-/// A non-character key a sequence can press.
-#[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum AutoTypeKey {
-    Tab,
-    Enter,
-    Space,
-    Backspace,
-    Delete,
-    Escape,
-    Home,
-    End,
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-/// A login field `{FOCUS ...}` can move focus to.
+/// A login field a `Focus` step can move focus to.
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum FormField {
@@ -44,14 +26,19 @@ pub enum FormField {
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum AutoTypeStep {
-    Text { text: String },
-    Key { key: AutoTypeKey },
-    Focus { field: FormField },
-    Delay { milliseconds: u64 },
+    /// Puts the caret in the field, selecting whatever is already there.
+    Focus {
+        field: FormField,
+    },
+    Text {
+        text: String,
+    },
+    /// Presses Enter.
+    Submit,
 }
 
 /// Which login fields the target window has. Mirrors `FormLayout` in
-/// `src/domain/auto-type-form.ts`.
+/// `src/domain/auto-type.ts`.
 #[derive(Serialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct FormLayout {
@@ -185,7 +172,7 @@ pub async fn auto_type_inspect_target(
 
 /// Refocuses the captured window and plays `steps` into it.
 ///
-/// Runs on a blocking thread: a sequence with `{DELAY}` in it sleeps, and
+/// Runs on a blocking thread: it sleeps between steps, and
 /// driving synthetic input is not something to do on the UI thread.
 #[tauri::command]
 pub async fn auto_type_send(
@@ -201,9 +188,7 @@ pub async fn auto_type_send(
 
 #[cfg(windows)]
 mod platform {
-    use super::{
-        pick_fields, AutoTypeKey, AutoTypeStep, CapturedWindow, FieldInfo, FormField, FormLayout,
-    };
+    use super::{pick_fields, AutoTypeStep, CapturedWindow, FieldInfo, FormField, FormLayout};
     use std::thread::sleep;
     use std::time::Duration;
     use windows::core::PWSTR;
@@ -224,8 +209,7 @@ mod platform {
     };
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
-        KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_BACK, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE,
-        VK_HOME, VK_LEFT, VK_RETURN, VK_RIGHT, VK_SPACE, VK_TAB, VK_UP,
+        KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_CONTROL, VK_RETURN,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
@@ -453,13 +437,12 @@ mod platform {
         }
         sleep(FOCUS_SETTLE);
 
-        // Created on the first `Focus` step: sequences that only type never
-        // touch COM at all.
+        // Created on the first `Focus` step, so COM is only touched when
+        // there is a field to find.
         let mut uia: Option<Uia> = None;
 
         for step in steps {
             match step {
-                AutoTypeStep::Delay { milliseconds } => sleep(Duration::from_millis(*milliseconds)),
                 AutoTypeStep::Focus { field } => {
                     if uia.is_none() {
                         uia = Some(Uia::new()?);
@@ -469,7 +452,7 @@ mod platform {
                     }
                 }
                 AutoTypeStep::Text { text } => send(&unicode_inputs(text))?,
-                AutoTypeStep::Key { key } => send(&key_inputs(virtual_key(*key)))?,
+                AutoTypeStep::Submit => send(&enter_inputs())?,
             }
             sleep(STEP_PAUSE);
         }
@@ -552,11 +535,11 @@ mod platform {
         }
     }
 
-    /// Down+up for a virtual key.
-    fn key_inputs(vk: VIRTUAL_KEY) -> Vec<INPUT> {
+    /// Enter: down, up.
+    fn enter_inputs() -> Vec<INPUT> {
         vec![
-            keyboard_input(vk, 0, KEYBD_EVENT_FLAGS(0)),
-            keyboard_input(vk, 0, KEYEVENTF_KEYUP),
+            keyboard_input(VK_RETURN, 0, KEYBD_EVENT_FLAGS(0)),
+            keyboard_input(VK_RETURN, 0, KEYEVENTF_KEYUP),
         ]
     }
 
@@ -585,23 +568,6 @@ mod platform {
             })
             .collect()
     }
-
-    fn virtual_key(key: AutoTypeKey) -> VIRTUAL_KEY {
-        match key {
-            AutoTypeKey::Tab => VK_TAB,
-            AutoTypeKey::Enter => VK_RETURN,
-            AutoTypeKey::Space => VK_SPACE,
-            AutoTypeKey::Backspace => VK_BACK,
-            AutoTypeKey::Delete => VK_DELETE,
-            AutoTypeKey::Escape => VK_ESCAPE,
-            AutoTypeKey::Home => VK_HOME,
-            AutoTypeKey::End => VK_END,
-            AutoTypeKey::Up => VK_UP,
-            AutoTypeKey::Down => VK_DOWN,
-            AutoTypeKey::Left => VK_LEFT,
-            AutoTypeKey::Right => VK_RIGHT,
-        }
-    }
 }
 
 #[cfg(not(windows))]
@@ -623,16 +589,15 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        pick_fields, AutoTypeKey, AutoTypeStep, FieldInfo, FieldPicks, FormField, FormLayout,
-    };
+    use super::{pick_fields, AutoTypeStep, FieldInfo, FieldPicks, FormField, FormLayout};
 
     #[test]
     fn deserializes_the_step_shape_the_frontend_sends() {
         let json = r#"[
+            {"kind":"focus","field":"username"},
             {"kind":"text","text":"menno"},
-            {"kind":"key","key":"tab"},
-            {"kind":"delay","milliseconds":250}
+            {"kind":"focus","field":"password"},
+            {"kind":"submit"}
         ]"#;
 
         let steps: Vec<AutoTypeStep> = serde_json::from_str(json).expect("steps should parse");
@@ -640,28 +605,26 @@ mod tests {
         assert_eq!(
             steps,
             vec![
+                AutoTypeStep::Focus {
+                    field: FormField::Username
+                },
                 AutoTypeStep::Text {
                     text: "menno".into()
                 },
-                AutoTypeStep::Key {
-                    key: AutoTypeKey::Tab
+                AutoTypeStep::Focus {
+                    field: FormField::Password
                 },
-                AutoTypeStep::Delay { milliseconds: 250 },
+                AutoTypeStep::Submit,
             ]
         );
     }
 
     #[test]
-    fn deserializes_a_focus_step() {
-        let step: AutoTypeStep =
-            serde_json::from_str(r#"{"kind":"focus","field":"password"}"#).expect("should parse");
+    fn rejects_a_field_the_frontend_never_sends() {
+        let result: Result<AutoTypeStep, _> =
+            serde_json::from_str(r#"{"kind":"focus","field":"totp"}"#);
 
-        assert_eq!(
-            step,
-            AutoTypeStep::Focus {
-                field: FormField::Password
-            }
-        );
+        assert!(result.is_err());
     }
 
     #[test]
@@ -781,8 +744,8 @@ mod tests {
     }
 
     #[test]
-    fn rejects_a_key_the_frontend_never_sends() {
-        let result: Result<AutoTypeStep, _> = serde_json::from_str(r#"{"kind":"key","key":"f13"}"#);
+    fn rejects_a_step_kind_the_frontend_never_sends() {
+        let result: Result<AutoTypeStep, _> = serde_json::from_str(r#"{"kind":"key","key":"tab"}"#);
 
         assert!(result.is_err());
     }

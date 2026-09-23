@@ -1,15 +1,5 @@
-import {
-  AutoTypeMatch,
-  autoTypeMatches,
-  Entry,
-  generateTotpCode,
-  parseAutoTypeSequence,
-  resolveAutoTypeSequence,
-  sequenceForForm,
-  totpConfigFromCustomFields,
-} from "../domain";
+import { AutoTypeMatch, autoTypeMatches, autoTypeSteps, Entry } from "../domain";
 import { AutoTyper, ForegroundWindow } from "./auto-type";
-import { AutoTypeSettings } from "./settings";
 
 /** A pending auto-type: the window the user was in, and what might fit it. */
 export interface AutoTypeRequest {
@@ -20,8 +10,8 @@ export interface AutoTypeRequest {
 
 /**
  * Drives one auto-type press: work out where the keystrokes would go and
- * which entries fit, then — once the user has confirmed an entry — expand
- * that entry's sequence and play it into the remembered window.
+ * which entries fit, then — once the user has confirmed an entry — find the
+ * login fields in that window and fill them.
  *
  * The password is read out of the `Password` wrapper here and nowhere
  * earlier: `capture` deals only in entries, and the adapter only ever sees
@@ -44,50 +34,16 @@ export class AutoTypeService {
   }
 
   /**
-   * Types `entry` into the captured window. With `detectFields`, the window's
-   * form is inspected first and the fields it has are filled directly; the
-   * user's `sequence` is used as-is when detection is off, finds nothing, or
-   * can't run at all — a window UI Automation can't read still deserves an
-   * attempt, not an error.
+   * Fills `entry` into the login fields the captured window has. Rejects —
+   * without typing anything — when the window can't be inspected or has no
+   * login field to aim at.
    */
-  async perform(
-    entry: Entry,
-    { sequence: configured, detectFields }: Pick<AutoTypeSettings, "sequence" | "detectFields">,
-  ): Promise<void> {
-    const sequence = detectFields ? await this.sequenceForTarget(configured) : configured;
-    const steps = resolveAutoTypeSequence(sequence, {
+  async perform(entry: Entry): Promise<void> {
+    const layout = await this.autoTyper.inspectTarget();
+    const steps = autoTypeSteps(layout, {
       username: entry.username,
       password: entry.password.reveal(),
-      url: entry.url,
-      title: entry.title,
-      totp: await currentTotpCode(entry, sequence),
     });
     await this.autoTyper.typeIntoTarget(steps);
   }
-
-  private async sequenceForTarget(fallback: string): Promise<string> {
-    try {
-      return sequenceForForm(await this.autoTyper.inspectTarget(), fallback);
-    } catch {
-      return fallback;
-    }
-  }
-}
-
-/**
- * The entry's live TOTP code, but only when `sequence` actually asks for one
- * — there's no reason to run the HMAC for a sequence that will never type it.
- */
-async function currentTotpCode(entry: Entry, sequence: string): Promise<string | undefined> {
-  const wanted = parseAutoTypeSequence(sequence).some(
-    (token) => token.kind === "field" && token.field === "totp",
-  );
-  if (!wanted) {
-    return undefined;
-  }
-  const config = totpConfigFromCustomFields(entry.customFields);
-  if (!config) {
-    return undefined;
-  }
-  return (await generateTotpCode(config)).value;
 }

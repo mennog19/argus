@@ -29,7 +29,10 @@ describe("TauriAutoTyper", () => {
 
   it("sends the steps to the typing command", async () => {
     vi.mocked(invoke).mockResolvedValue(undefined);
-    const steps = [{ kind: "text", text: "menno" } as const, { kind: "key", key: "tab" } as const];
+    const steps = [
+      { kind: "focus", field: "username" } as const,
+      { kind: "text", text: "menno" } as const,
+    ];
 
     await new TauriAutoTyper().typeIntoTarget(steps);
 

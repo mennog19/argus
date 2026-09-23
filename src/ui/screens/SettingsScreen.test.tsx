@@ -17,8 +17,6 @@ const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
   enabled: false,
   hotkey: "CommandOrControl+Shift+A",
-  detectFields: true,
-  sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
 };
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 
@@ -508,14 +506,11 @@ describe("SettingsScreen", () => {
   });
 
   describe("auto-type", () => {
-    it("is off by default, with the default hotkey and sequence shown", () => {
+    it("is off by default, with the default hotkey shown", () => {
       renderSettings();
 
       expect(screen.getByRole("checkbox", { name: /hotkey/i })).not.toBeChecked();
       expect(screen.getByLabelText("Hotkey")).toHaveTextContent("Ctrl + Shift + A");
-      expect(screen.getByLabelText("Fallback sequence")).toHaveValue(
-        "{USERNAME}{TAB}{PASSWORD}{ENTER}",
-      );
     });
 
     it("reports being switched on", async () => {
@@ -545,51 +540,6 @@ describe("SettingsScreen", () => {
       fireEvent.keyDown(hotkey, { code: "Enter" });
 
       expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, hotkey: "Alt+Space" });
-    });
-
-    it("has field detection on by default", () => {
-      renderSettings();
-
-      expect(
-        screen.getByRole("checkbox", { name: /find the username and password/i }),
-      ).toBeChecked();
-    });
-
-    it("reports field detection being switched off", async () => {
-      const { onAutoTypeChange } = renderSettings();
-
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: /find the username and password/i }),
-      );
-
-      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, detectFields: false });
-    });
-
-    it("reports a new sequence", () => {
-      const { onAutoTypeChange } = renderSettings();
-
-      fireEvent.change(screen.getByLabelText("Fallback sequence"), {
-        target: { value: "{PASSWORD}{ENTER}" },
-      });
-
-      expect(onAutoTypeChange).toHaveBeenCalledWith({
-        ...DEFAULT_AUTO_TYPE,
-        sequence: "{PASSWORD}{ENTER}",
-      });
-    });
-
-    it("lists the available placeholders while the sequence is valid", () => {
-      renderSettings();
-
-      expect(screen.getByText("{TOTP}")).toBeInTheDocument();
-    });
-
-    it("explains an unusable sequence instead of the placeholder list", () => {
-      renderSettings({ autoType: { ...DEFAULT_AUTO_TYPE, sequence: "{NOPE}" } });
-
-      expect(screen.getByText(/not a known auto-type placeholder/)).toBeInTheDocument();
-      expect(screen.getByLabelText("Fallback sequence")).toHaveAttribute("aria-invalid", "true");
-      expect(screen.queryByText("{TOTP}")).not.toBeInTheDocument();
     });
   });
 });

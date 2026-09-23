@@ -137,15 +137,11 @@ describe("withAutoType", () => {
     const result = withAutoType(settings, {
       enabled: true,
       hotkey: "Alt+Space",
-      detectFields: false,
-      sequence: "{PASSWORD}{ENTER}",
     });
 
     expect(result.autoType).toEqual({
       enabled: true,
       hotkey: "Alt+Space",
-      detectFields: false,
-      sequence: "{PASSWORD}{ENTER}",
     });
     expect(result.recentVaults).toBe(settings.recentVaults);
   });

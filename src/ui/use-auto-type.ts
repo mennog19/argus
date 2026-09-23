@@ -85,10 +85,10 @@ export function useAutoType(
       // leaving the picker up would only obscure the result.
       setRequest(undefined);
       void service
-        .perform(entry, { sequence: settings.sequence, detectFields: settings.detectFields })
+        .perform(entry)
         .catch((cause) => setError(errorMessage(cause, "Auto-type failed.")));
     },
-    [service, settings.sequence, settings.detectFields],
+    [service],
   );
 
   return { request, error, typeInto, dismiss, dismissError };

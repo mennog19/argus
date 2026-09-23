@@ -1,21 +1,11 @@
 export {
-  autoTypeSequenceError,
-  AutoTypeSequenceError,
-  AUTO_TYPE_FIELDS,
-  AUTO_TYPE_FORM_FIELDS,
-  AUTO_TYPE_KEYS,
-  DEFAULT_AUTO_TYPE_SEQUENCE,
-  MAX_AUTO_TYPE_DELAY_MS,
-  parseAutoTypeSequence,
-  resolveAutoTypeSequence,
-  type AutoTypeField,
+  AutoTypeNoFieldsError,
+  autoTypeSteps,
+  type AutoTypeCredentials,
   type AutoTypeFormField,
-  type AutoTypeKey,
   type AutoTypeStep,
-  type AutoTypeToken,
-  type AutoTypeValues,
+  type FormLayout,
 } from "./auto-type";
-export { sequenceForForm, type FormLayout } from "./auto-type-form";
 export {
   autoTypeHost,
   autoTypeMatches,

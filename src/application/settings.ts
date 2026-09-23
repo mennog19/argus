@@ -1,4 +1,4 @@
-import { DEFAULT_AUTO_TYPE_SEQUENCE, PasswordPolicyOptions } from "../domain";
+import { PasswordPolicyOptions } from "../domain";
 
 /** One vault the user has previously opened or created, most-recent first. */
 export interface RecentVaultEntry {
@@ -26,21 +26,11 @@ export interface AutoTypeSettings {
   readonly enabled: boolean;
   /** A Tauri global-shortcut accelerator, e.g. `"CommandOrControl+Shift+A"`. */
   readonly hotkey: string;
-  /**
-   * Find the username and password fields in the target window and fill them
-   * directly, rather than typing `sequence` at whatever has focus. Only when
-   * this is off, or no field can be found, does `sequence` apply.
-   */
-  readonly detectFields: boolean;
-  /** The sequence typed when fields aren't detected. */
-  readonly sequence: string;
 }
 
 export const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
   enabled: false,
   hotkey: "CommandOrControl+Shift+A",
-  detectFields: true,
-  sequence: DEFAULT_AUTO_TYPE_SEQUENCE,
 };
 
 /**

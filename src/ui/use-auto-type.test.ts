@@ -9,8 +9,6 @@ import { useAutoType } from "./use-auto-type";
 const SETTINGS: AutoTypeSettings = {
   enabled: true,
   hotkey: "CommandOrControl+Shift+A",
-  detectFields: false,
-  sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
 };
 
 const WINDOW: ForegroundWindow = { title: "GitHub — Firefox", processName: "firefox.exe" };
@@ -25,7 +23,7 @@ const ENTRY = Entry.create({
 function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
   return {
     captureTarget: vi.fn().mockResolvedValue(WINDOW),
-    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: false, hasPasswordField: false }),
+    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: true, hasPasswordField: true }),
     typeIntoTarget: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -159,20 +157,25 @@ describe("useAutoType", () => {
       await Promise.resolve();
     });
 
-    expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
-      { kind: "text", text: "menno" },
-      { kind: "key", key: "tab" },
-      { kind: "text", text: "hunter2" },
-      { kind: "key", key: "enter" },
-    ]);
+    await waitFor(() =>
+      expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
+        { kind: "focus", field: "username" },
+        { kind: "text", text: "menno" },
+        { kind: "focus", field: "password" },
+        { kind: "text", text: "hunter2" },
+        { kind: "submit" },
+      ]),
+    );
     expect(result.current.request).toBeUndefined();
   });
 
-  it("fills the detected fields when detection is on", async () => {
+  it("says so, and types nothing, when the window has no login field", async () => {
     const autoTyper = fakeAutoTyper({
-      inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: true, hasPasswordField: true }),
+      inspectTarget: vi
+        .fn()
+        .mockResolvedValue({ hasUsernameField: false, hasPasswordField: false }),
     });
-    const { result, hotkey } = setup({ autoTyper, settings: { ...SETTINGS, detectFields: true } });
+    const { result, hotkey } = setup({ autoTyper });
     await press(hotkey);
 
     await act(async () => {
@@ -181,14 +184,11 @@ describe("useAutoType", () => {
     });
 
     await waitFor(() =>
-      expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
-        { kind: "focus", field: "username" },
-        { kind: "text", text: "menno" },
-        { kind: "focus", field: "password" },
-        { kind: "text", text: "hunter2" },
-        { kind: "key", key: "enter" },
-      ]),
+      expect(result.current.error).toBe(
+        "Couldn't find a username or password field in that window.",
+      ),
     );
+    expect(autoTyper.typeIntoTarget).not.toHaveBeenCalled();
   });
 
   it("closes the picker without typing when dismissed", async () => {

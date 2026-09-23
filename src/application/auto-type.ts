@@ -29,7 +29,7 @@ export interface AutoTyper {
   /**
    * Looks at the captured target's form and reports which login fields it
    * has, so the caller can aim at them instead of assuming a tab order. Rejects
-   * when the OS can't describe the window, which callers treat as "unknown".
+   * when the OS can't describe the window.
    */
   inspectTarget(): Promise<FormLayout>;
 

@@ -7,7 +7,7 @@ import {
   GroupDeleteMode,
   Theme,
 } from "../../application/settings";
-import { autoTypeSequenceError, DEFAULT_AUTO_TYPE_SEQUENCE } from "../../domain";
+
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
@@ -90,8 +90,6 @@ export function SettingsScreen({
   function updateAutoType(patch: Partial<AutoTypeSettings>) {
     onAutoTypeChange({ ...autoType, ...patch });
   }
-
-  const sequenceError = autoTypeSequenceError(autoType.sequence);
 
   function stepIdleTimeout(direction: 1 | -1) {
     const current = autoLock.idleTimeoutMinutes;
@@ -362,49 +360,13 @@ export function SettingsScreen({
                   onChange={(hotkey) => updateAutoType({ hotkey })}
                 />
               </div>
-              <label className="detail-field-row" htmlFor="settings-auto-type-detect">
-                <span className="detail-field-row-label">
-                  Find the username and password fields automatically
-                </span>
-                <input
-                  id="settings-auto-type-detect"
-                  type="checkbox"
-                  checked={autoType.detectFields}
-                  onChange={(event) => updateAutoType({ detectFields: event.target.checked })}
-                />
-              </label>
               <p className="detail-card-hint">
-                Argus looks at the page, clicks into the right fields, and types into them, so extra
-                fields or icons between them don&rsquo;t matter. On the first page of a two-step
-                login it fills the username; press the hotkey again on the next page for the
-                password.
+                Argus finds the username and password fields on the page and types into them
+                directly, so extra fields or icons between them don&rsquo;t matter. On the first
+                page of a two-step login it fills the username; press the hotkey again on the next
+                page for the password. It doesn&rsquo;t type into pages where it can&rsquo;t find a
+                login field.
               </p>
-              <div className="detail-field-row">
-                <label className="detail-field-row-label" htmlFor="settings-auto-type-sequence">
-                  Fallback sequence
-                </label>
-                <input
-                  id="settings-auto-type-sequence"
-                  type="text"
-                  className="field-input"
-                  value={autoType.sequence}
-                  spellCheck={false}
-                  aria-invalid={sequenceError !== undefined}
-                  onChange={(event) => updateAutoType({ sequence: event.target.value })}
-                />
-              </div>
-              {sequenceError ? (
-                <p className="field-error">{sequenceError}</p>
-              ) : (
-                <p className="detail-card-hint">
-                  Placeholders: <code>{"{USERNAME}"}</code> <code>{"{PASSWORD}"}</code>{" "}
-                  <code>{"{TOTP}"}</code> <code>{"{URL}"}</code> <code>{"{TITLE}"}</code>{" "}
-                  <code>{"{TAB}"}</code> <code>{"{ENTER}"}</code> <code>{"{DELAY 500}"}</code>{" "}
-                  <code>{"{FOCUS USERNAME}"}</code> <code>{"{FOCUS PASSWORD}"}</code>. Typed into
-                  whichever field has focus when fields aren&rsquo;t detected, or always when
-                  detection is off. Default is <code>{DEFAULT_AUTO_TYPE_SEQUENCE}</code>.
-                </p>
-              )}
             </div>
           </section>
 

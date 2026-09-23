@@ -71,7 +71,7 @@ function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeS
 function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
   return {
     captureTarget: vi.fn().mockResolvedValue(undefined),
-    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: false, hasPasswordField: false }),
+    inspectTarget: vi.fn().mockResolvedValue({ hasUsernameField: true, hasPasswordField: true }),
     typeIntoTarget: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -1647,9 +1647,9 @@ describe("App", () => {
       await user.click(await screen.findByRole("option", { name: /GitHub/ }));
 
       expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
+        { kind: "focus", field: "username" },
         { kind: "text", text: "menno" },
-        { kind: "key", key: "tab" },
-        { kind: "key", key: "enter" },
+        { kind: "submit" },
       ]);
       expect(screen.queryByRole("dialog", { name: "Auto-type" })).not.toBeInTheDocument();
     });
