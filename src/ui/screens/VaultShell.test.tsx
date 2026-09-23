@@ -19,6 +19,7 @@ import {
   AutoTypeSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_ENTRY_SORT,
+  EffectiveSettings,
   EntryFieldVisibility,
   EntrySortId,
   GroupDeleteMode,
@@ -38,6 +39,20 @@ const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 const DEFAULT_THEME: Theme = "dark";
 
+/** Everything at its default, for the renders that don't care about settings. */
+const TEST_SETTINGS: EffectiveSettings = {
+  generatorPolicy: {},
+  clipboardClearSeconds: 20,
+  autoLock: DEFAULT_AUTO_LOCK,
+  autoType: DEFAULT_AUTO_TYPE,
+  groupDeleteMode: "deleteContents",
+  accentColor: DEFAULT_ACCENT_COLOR,
+  theme: DEFAULT_THEME,
+  contentProtection: true,
+  entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
+  entrySort: DEFAULT_ENTRY_SORT,
+};
+
 function fakeUrlOpener(): UrlOpener {
   return { open: vi.fn() };
 }
@@ -56,26 +71,19 @@ function renderShell(
     onSave?: (vault: Vault) => Promise<void>;
     onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
     onLock?: () => void;
-    generatorPolicy?: PasswordPolicyOptions;
-    onGeneratorPolicyChange?: (policy: PasswordPolicyOptions) => void;
+    onSettingChange?: (key: string, value: unknown) => void;
     clipboardWriter?: ClipboardWriter;
+    generatorPolicy?: PasswordPolicyOptions;
     clipboardClearSeconds?: number;
-    onClipboardClearSecondsChange?: (seconds: number) => void;
     autoLock?: AutoLockSettings;
-    onAutoLockChange?: (autoLock: AutoLockSettings) => void;
     groupDeleteMode?: GroupDeleteMode;
     accentColor?: AccentColor;
-    onAccentColorChange?: (accentColor: AccentColor) => void;
     theme?: Theme;
-    onThemeChange?: (theme: Theme) => void;
     contentProtection?: boolean;
-    onContentProtectionChange?: (contentProtection: boolean) => void;
     entryFieldVisibility?: EntryFieldVisibility;
-    onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
+    entrySort?: EntrySortId;
     onExportSettings?: () => Promise<string | undefined>;
     onImportSettings?: () => Promise<string | undefined>;
-    entrySort?: EntrySortId;
-    onEntrySortChange?: (sort: EntrySortId) => void;
     onVaultChange?: (vault: Vault) => void;
     mergeSource?: VaultMergeSource;
   } = {},
@@ -84,28 +92,26 @@ function renderShell(
   const onChangeMasterPassword =
     overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
   const onLock = overrides.onLock ?? vi.fn();
-  const generatorPolicy = overrides.generatorPolicy ?? {};
-  const onGeneratorPolicyChange = overrides.onGeneratorPolicyChange ?? vi.fn();
+  const onSettingChange = overrides.onSettingChange ?? vi.fn();
   const clipboardWriter = overrides.clipboardWriter ?? fakeClipboardWriter();
-  const clipboardClearSeconds = overrides.clipboardClearSeconds ?? 20;
-  const onClipboardClearSecondsChange = overrides.onClipboardClearSecondsChange ?? vi.fn();
-  const autoLock = overrides.autoLock ?? DEFAULT_AUTO_LOCK;
-  const onAutoLockChange = overrides.onAutoLockChange ?? vi.fn();
-  const groupDeleteMode = overrides.groupDeleteMode ?? "deleteContents";
-  const accentColor = overrides.accentColor ?? DEFAULT_ACCENT_COLOR;
-  const onAccentColorChange = overrides.onAccentColorChange ?? vi.fn();
-  const theme = overrides.theme ?? DEFAULT_THEME;
-  const onThemeChange = overrides.onThemeChange ?? vi.fn();
-  const contentProtection = overrides.contentProtection ?? true;
-  const onContentProtectionChange = overrides.onContentProtectionChange ?? vi.fn();
-  const entryFieldVisibility = overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY;
-  const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
   const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
-  const entrySort = overrides.entrySort ?? DEFAULT_ENTRY_SORT;
-  const onEntrySortChange = overrides.onEntrySortChange ?? vi.fn();
   const onVaultChange = overrides.onVaultChange ?? vi.fn();
   const mergeSource = overrides.mergeSource ?? fakeMergeSource();
+  // Flat overrides are this helper's own convenience; the shell itself takes
+  // one resolved settings object.
+  const settings: EffectiveSettings = {
+    generatorPolicy: overrides.generatorPolicy ?? TEST_SETTINGS.generatorPolicy,
+    clipboardClearSeconds: overrides.clipboardClearSeconds ?? TEST_SETTINGS.clipboardClearSeconds,
+    autoLock: overrides.autoLock ?? TEST_SETTINGS.autoLock,
+    autoType: TEST_SETTINGS.autoType,
+    groupDeleteMode: overrides.groupDeleteMode ?? TEST_SETTINGS.groupDeleteMode,
+    accentColor: overrides.accentColor ?? TEST_SETTINGS.accentColor,
+    theme: overrides.theme ?? TEST_SETTINGS.theme,
+    contentProtection: overrides.contentProtection ?? TEST_SETTINGS.contentProtection,
+    entryFieldVisibility: overrides.entryFieldVisibility ?? TEST_SETTINGS.entryFieldVisibility,
+    entrySort: overrides.entrySort ?? TEST_SETTINGS.entrySort,
+  };
   render(
     <VaultShell
       vault={vault}
@@ -113,32 +119,14 @@ function renderShell(
       fileInfo={undefined}
       urlOpener={fakeUrlOpener()}
       clipboardWriter={clipboardWriter}
-      generatorPolicy={generatorPolicy}
-      clipboardClearSeconds={clipboardClearSeconds}
-      autoLock={autoLock}
-      autoType={DEFAULT_AUTO_TYPE}
-      groupDeleteMode={groupDeleteMode}
-      accentColor={accentColor}
-      theme={theme}
-      contentProtection={contentProtection}
-      entryFieldVisibility={entryFieldVisibility}
-      entrySort={entrySort}
       mergeSource={mergeSource}
+      settings={settings}
+      onSettingChange={onSettingChange}
       onLock={onLock}
       onSave={onSave}
       onChangeMasterPassword={onChangeMasterPassword}
-      onGeneratorPolicyChange={onGeneratorPolicyChange}
-      onClipboardClearSecondsChange={onClipboardClearSecondsChange}
-      onAutoLockChange={onAutoLockChange}
-      onAutoTypeChange={vi.fn()}
-      onGroupDeleteModeChange={vi.fn()}
-      onAccentColorChange={onAccentColorChange}
-      onThemeChange={onThemeChange}
-      onContentProtectionChange={onContentProtectionChange}
-      onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
       onExportSettings={onExportSettings}
       onImportSettings={onImportSettings}
-      onEntrySortChange={onEntrySortChange}
       onVaultChange={onVaultChange}
     />,
   );
@@ -146,15 +134,10 @@ function renderShell(
     onSave,
     onChangeMasterPassword,
     onLock,
-    onGeneratorPolicyChange,
+    onSettingChange,
     clipboardWriter,
-    onClipboardClearSecondsChange,
-    onAutoLockChange,
-    onAccentColorChange,
-    onThemeChange,
-    onContentProtectionChange,
-    onEntryFieldVisibilityChange,
-    onEntrySortChange,
+    onExportSettings,
+    onImportSettings,
     onVaultChange,
     mergeSource,
   };
@@ -332,33 +315,15 @@ describe("VaultShell", () => {
         filePath="C:/vaults/personal.kdbx"
         fileInfo={undefined}
         urlOpener={urlOpener}
-        generatorPolicy={{}}
         onLock={vi.fn()}
         onSave={vi.fn()}
         onChangeMasterPassword={vi.fn()}
-        onGeneratorPolicyChange={vi.fn()}
-        onClipboardClearSecondsChange={vi.fn()}
-        onAutoLockChange={vi.fn()}
-        onAutoTypeChange={vi.fn()}
+        settings={TEST_SETTINGS}
+        onSettingChange={vi.fn()}
         clipboardWriter={fakeClipboardWriter()}
-        clipboardClearSeconds={20}
-        autoLock={DEFAULT_AUTO_LOCK}
-        autoType={DEFAULT_AUTO_TYPE}
-        groupDeleteMode="deleteContents"
-        accentColor={DEFAULT_ACCENT_COLOR}
-        theme={DEFAULT_THEME}
-        contentProtection={true}
-        entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
-        entrySort={DEFAULT_ENTRY_SORT}
         mergeSource={fakeMergeSource()}
-        onGroupDeleteModeChange={vi.fn()}
-        onAccentColorChange={vi.fn()}
-        onThemeChange={vi.fn()}
-        onContentProtectionChange={vi.fn()}
-        onEntryFieldVisibilityChange={vi.fn()}
         onExportSettings={vi.fn().mockResolvedValue(undefined)}
         onImportSettings={vi.fn().mockResolvedValue(undefined)}
-        onEntrySortChange={vi.fn()}
         onVaultChange={vi.fn()}
       />,
     );
@@ -1018,33 +983,15 @@ describe("VaultShell", () => {
           filePath="C:/vaults/personal.kdbx"
           fileInfo={undefined}
           urlOpener={fakeUrlOpener()}
-          generatorPolicy={{}}
           onLock={vi.fn()}
           onSave={vi.fn()}
           onChangeMasterPassword={vi.fn()}
-          onGeneratorPolicyChange={vi.fn()}
-          onClipboardClearSecondsChange={vi.fn()}
-          onAutoLockChange={vi.fn()}
-          onAutoTypeChange={vi.fn()}
+          settings={TEST_SETTINGS}
+          onSettingChange={vi.fn()}
           clipboardWriter={fakeClipboardWriter()}
-          clipboardClearSeconds={20}
-          autoLock={DEFAULT_AUTO_LOCK}
-          autoType={DEFAULT_AUTO_TYPE}
-          groupDeleteMode="deleteContents"
-          accentColor={DEFAULT_ACCENT_COLOR}
-          theme={DEFAULT_THEME}
-          contentProtection={true}
-          entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
-          entrySort={DEFAULT_ENTRY_SORT}
           mergeSource={fakeMergeSource()}
-          onGroupDeleteModeChange={vi.fn()}
-          onAccentColorChange={vi.fn()}
-          onThemeChange={vi.fn()}
-          onContentProtectionChange={vi.fn()}
-          onEntryFieldVisibilityChange={vi.fn()}
           onExportSettings={vi.fn().mockResolvedValue(undefined)}
           onImportSettings={vi.fn().mockResolvedValue(undefined)}
-          onEntrySortChange={vi.fn()}
           onVaultChange={vi.fn()}
         />,
       );
@@ -1062,33 +1009,15 @@ describe("VaultShell", () => {
           filePath="C:/vaults/personal.kdbx"
           fileInfo={undefined}
           urlOpener={fakeUrlOpener()}
-          generatorPolicy={{}}
           onLock={vi.fn()}
           onSave={vi.fn()}
           onChangeMasterPassword={vi.fn()}
-          onGeneratorPolicyChange={vi.fn()}
-          onClipboardClearSecondsChange={vi.fn()}
-          onAutoLockChange={vi.fn()}
-          onAutoTypeChange={vi.fn()}
+          settings={TEST_SETTINGS}
+          onSettingChange={vi.fn()}
           clipboardWriter={fakeClipboardWriter()}
-          clipboardClearSeconds={20}
-          autoLock={DEFAULT_AUTO_LOCK}
-          autoType={DEFAULT_AUTO_TYPE}
-          groupDeleteMode="deleteContents"
-          accentColor={DEFAULT_ACCENT_COLOR}
-          theme={DEFAULT_THEME}
-          contentProtection={true}
-          entryFieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
-          entrySort={DEFAULT_ENTRY_SORT}
           mergeSource={fakeMergeSource()}
-          onGroupDeleteModeChange={vi.fn()}
-          onAccentColorChange={vi.fn()}
-          onThemeChange={vi.fn()}
-          onContentProtectionChange={vi.fn()}
-          onEntryFieldVisibilityChange={vi.fn()}
           onExportSettings={vi.fn().mockResolvedValue(undefined)}
           onImportSettings={vi.fn().mockResolvedValue(undefined)}
-          onEntrySortChange={vi.fn()}
           onVaultChange={vi.fn()}
         />,
       );
@@ -1289,14 +1218,15 @@ describe("VaultShell", () => {
       const user = userEvent.setup();
       const vault = Vault.create("Mine");
 
-      const { onGeneratorPolicyChange } = renderShell(vault, {
+      const { onSettingChange } = renderShell(vault, {
         generatorPolicy: { length: 16 },
       });
 
       await user.click(screen.getByRole("button", { name: "Password generator" }));
       await user.click(screen.getByRole("button", { name: "Passphrase" }));
 
-      expect(onGeneratorPolicyChange).toHaveBeenCalledWith(
+      expect(onSettingChange).toHaveBeenCalledWith(
+        "generatorPolicy",
         expect.objectContaining({ mode: "passphrase" }),
       );
     });
@@ -1370,12 +1300,13 @@ describe("VaultShell", () => {
       const user = userEvent.setup();
       const vault = Vault.create("Mine");
 
-      const { onEntryFieldVisibilityChange } = renderShell(vault);
+      const { onSettingChange } = renderShell(vault);
 
       await user.click(screen.getByRole("button", { name: "Settings" }));
       await user.click(screen.getByRole("checkbox", { name: "Notes" }));
 
-      expect(onEntryFieldVisibilityChange).toHaveBeenCalledWith(
+      expect(onSettingChange).toHaveBeenCalledWith(
+        "entryFieldVisibility",
         expect.objectContaining({ notes: false }),
       );
     });
@@ -1384,12 +1315,12 @@ describe("VaultShell", () => {
       const user = userEvent.setup();
       const vault = Vault.create("Mine");
 
-      const { onContentProtectionChange } = renderShell(vault, { contentProtection: true });
+      const { onSettingChange } = renderShell(vault, { contentProtection: true });
 
       await user.click(screen.getByRole("button", { name: "Settings" }));
       await user.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
-      expect(onContentProtectionChange).toHaveBeenCalledWith(false);
+      expect(onSettingChange).toHaveBeenCalledWith("contentProtection", false);
     });
 
     it("submits a master password change made in the settings screen", async () => {
@@ -1814,12 +1745,12 @@ describe("VaultShell entry sorting", () => {
   });
 
   it("reports the sort order the user picks from the search bar's sort menu", () => {
-    const { onEntrySortChange } = renderShell(vaultWith([]));
+    const { onSettingChange } = renderShell(vaultWith([]));
 
     fireEvent.click(screen.getByRole("button", { name: "Sort entries (Vault order)" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Recently opened" }));
 
-    expect(onEntrySortChange).toHaveBeenCalledWith("accessed-desc");
+    expect(onSettingChange).toHaveBeenCalledWith("entrySort", "accessed-desc");
   });
 
   it("names the active order on the sort trigger", () => {

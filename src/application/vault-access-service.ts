@@ -1,7 +1,7 @@
 import { Vault } from "../domain";
 import { FileStorage } from "./file-storage";
 import { VaultFileDialog } from "./vault-file-dialog";
-import { VaultRepository } from "./vault-repository";
+import { VaultRepository, VaultSession } from "./vault-repository";
 
 export interface OpenedVault {
   vault: Vault;
@@ -44,6 +44,8 @@ const BACKUP_SUFFIXES = [".bak1", ".bak2", ".bak3"];
  */
 export class VaultAccessService {
   private readonly lastKnownMtime = new Map<string, number>();
+  /** The vault currently open, if any. Argus shows one vault at a time. */
+  private session: VaultSession | undefined;
 
   constructor(
     private readonly repository: VaultRepository,
@@ -58,9 +60,9 @@ export class VaultAccessService {
     }
 
     const fileBytes = await this.fileStorage.readFile(filePath);
-    const vault = await this.repository.openVault(fileBytes, masterPassword);
+    this.session = await this.repository.openVault(fileBytes, masterPassword);
     await this.rememberMtime(filePath);
-    return { vault, filePath };
+    return { vault: this.session.vault, filePath };
   }
 
   async createNewVault(name: string, masterPassword: string): Promise<OpenedVault | undefined> {
@@ -69,11 +71,12 @@ export class VaultAccessService {
       return undefined;
     }
 
-    const vault = await this.repository.createVault(name, masterPassword);
-    const fileBytes = await this.repository.saveVault(vault);
+    const session = await this.repository.createVault(name, masterPassword);
+    const fileBytes = await session.save(session.vault);
     await this.fileStorage.writeFile(filePath, fileBytes);
+    this.session = session;
     await this.rememberMtime(filePath);
-    return { vault, filePath };
+    return { vault: session.vault, filePath };
   }
 
   /**
@@ -82,9 +85,21 @@ export class VaultAccessService {
    */
   async openVaultAtPath(filePath: string, masterPassword: string): Promise<Vault> {
     const fileBytes = await this.fileStorage.readFile(filePath);
-    const vault = await this.repository.openVault(fileBytes, masterPassword);
+    this.session = await this.repository.openVault(fileBytes, masterPassword);
     await this.rememberMtime(filePath);
-    return vault;
+    return this.session.vault;
+  }
+
+  /**
+   * The open vault's document. The lifecycle lives here rather than in the
+   * repository, so this is the one place that has to state the invariant —
+   * the repository itself is stateless and can't be called out of order.
+   */
+  private openSession(): VaultSession {
+    if (!this.session) {
+      throw new Error("No vault is open; open or create one before saving");
+    }
+    return this.session;
   }
 
   /**
@@ -110,7 +125,7 @@ export class VaultAccessService {
       await this.rotateBackups(filePath);
     }
 
-    const fileBytes = await this.repository.saveVault(vault);
+    const fileBytes = await this.openSession().save(vault);
     await this.fileStorage.writeFile(filePath, fileBytes);
     await this.rememberMtime(filePath);
   }
@@ -133,7 +148,7 @@ export class VaultAccessService {
     newMasterPassword: string,
   ): Promise<void> {
     await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
-    await this.repository.changeMasterPassword(currentMasterPassword, newMasterPassword);
+    await this.openSession().changeMasterPassword(currentMasterPassword, newMasterPassword);
     await this.saveVault(vault, filePath);
   }
 

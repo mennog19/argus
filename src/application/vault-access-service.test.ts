@@ -3,16 +3,69 @@ import { Vault } from "../domain";
 import { FileStorage } from "./file-storage";
 import { VaultFileDialog } from "./vault-file-dialog";
 import { VaultAccessService, VaultSaveConflictError } from "./vault-access-service";
-import { VaultRepository } from "./vault-repository";
+import { VaultRepository, VaultSession } from "./vault-repository";
 
-function fakeRepository(overrides: Partial<VaultRepository> = {}): VaultRepository {
-  return {
-    openVault: vi.fn(),
-    createVault: vi.fn(),
-    saveVault: vi.fn(),
-    changeMasterPassword: vi.fn(),
-    ...overrides,
-  };
+/**
+ * A repository whose sessions delegate to one shared pair of mocks, so tests
+ * can go on asserting "the repository saved" without assembling a session for
+ * every case. `openVault`/`createVault` overrides still resolve to a `Vault`;
+ * the wrapper puts it in a session.
+ */
+type OpenFake = (fileBytes: ArrayBuffer, masterPassword: string) => Promise<Vault>;
+type CreateFake = (name: string, masterPassword: string) => Promise<Vault>;
+type SaveFake = (vault: Vault) => Promise<ArrayBuffer>;
+type RekeyFake = (currentMasterPassword: string, newMasterPassword: string) => Promise<void>;
+
+function fakeRepository(
+  overrides: {
+    openVault?: OpenFake;
+    createVault?: CreateFake;
+    saveVault?: SaveFake;
+    changeMasterPassword?: RekeyFake;
+  } = {},
+) {
+  const saveVault = vi.fn<SaveFake>(overrides.saveVault ?? (() => Promise.resolve(emptyBytes())));
+  const changeMasterPassword = vi.fn<RekeyFake>(
+    overrides.changeMasterPassword ?? (() => Promise.resolve()),
+  );
+  const openVault = vi.fn<OpenFake>(overrides.openVault);
+  const createVault = vi.fn<CreateFake>(overrides.createVault);
+  const sessionFor = (vault: Vault): VaultSession => ({
+    vault,
+    save: saveVault,
+    changeMasterPassword,
+  });
+  const repository = {
+    openVault: vi.fn(async (fileBytes: ArrayBuffer, masterPassword: string) =>
+      sessionFor(await openVault(fileBytes, masterPassword)),
+    ),
+    createVault: vi.fn(async (name: string, masterPassword: string) =>
+      sessionFor(await createVault(name, masterPassword)),
+    ),
+  } satisfies VaultRepository;
+  // Only the session's mocks are merged in: overwriting `openVault` here with
+  // the raw override would bypass the wrapper that builds the session.
+  return Object.assign(repository, { saveVault, changeMasterPassword });
+}
+
+function emptyBytes(): ArrayBuffer {
+  return new ArrayBuffer(0);
+}
+
+/**
+ * A service with a vault already open — the only state in which saving means
+ * anything, since the save serializes the document the open produced.
+ * `openedPath` defaults to the path the save tests write back to; pass a
+ * different one to exercise "this service has never seen that file".
+ */
+async function serviceWithOpenVault(
+  repository: VaultRepository,
+  fileStorage: FileStorage,
+  openedPath = "C:/vaults/mine.kdbx",
+): Promise<VaultAccessService> {
+  const service = new VaultAccessService(repository, fakeDialog(), fileStorage);
+  await service.openVaultAtPath(openedPath, "master password");
+  return service;
 }
 
 function fakeDialog(overrides: Partial<VaultFileDialog> = {}): VaultFileDialog {
@@ -161,9 +214,8 @@ describe("VaultAccessService", () => {
       const vault = Vault.create("My Vault");
       const fileBytes = new ArrayBuffer(4);
       const repository = fakeRepository({ saveVault: vi.fn().mockResolvedValue(fileBytes) });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage();
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
@@ -176,9 +228,8 @@ describe("VaultAccessService", () => {
       const repository = fakeRepository({
         saveVault: vi.fn().mockRejectedValue(new Error("Save failed")),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage();
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await expect(service.saveVault(vault, "C:/vaults/mine.kdbx")).rejects.toThrow("Save failed");
       expect(fileStorage.writeFile).not.toHaveBeenCalled();
@@ -257,9 +308,14 @@ describe("VaultAccessService", () => {
       const repository = fakeRepository({
         saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
       });
-      const dialog = fakeDialog();
-      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const fileStorage = fakeFileStorage({
+        exists: vi.fn().mockResolvedValue(true),
+        // Would look like a conflict if this path had ever been read here.
+        lastModified: vi.fn().mockResolvedValueOnce(1000).mockResolvedValue(2000),
+      });
+      // The session came from a different file, so "mine.kdbx" is one this
+      // service has no recorded mtime for and has nothing to conflict with.
+      const service = await serviceWithOpenVault(repository, fileStorage, "C:/vaults/other.kdbx");
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
@@ -272,13 +328,12 @@ describe("VaultAccessService", () => {
       const repository = fakeRepository({
         saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({
         exists: vi
           .fn()
           .mockImplementation((path: string) => Promise.resolve(!path.endsWith(".bak3"))),
       });
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
@@ -304,13 +359,12 @@ describe("VaultAccessService", () => {
       const repository = fakeRepository({
         saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({
         exists: vi
           .fn()
           .mockImplementation((path: string) => Promise.resolve(!path.includes(".bak"))),
       });
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
@@ -326,9 +380,8 @@ describe("VaultAccessService", () => {
       const repository = fakeRepository({
         saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx", { force: true });
 
@@ -345,9 +398,8 @@ describe("VaultAccessService", () => {
       const repository = fakeRepository({
         saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(false) });
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx");
 
@@ -363,9 +415,8 @@ describe("VaultAccessService", () => {
         changeMasterPassword: vi.fn().mockResolvedValue(undefined),
         saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage();
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await service.changeMasterPassword(vault, "C:/vaults/mine.kdbx", "old pw", "new pw");
 
@@ -385,15 +436,22 @@ describe("VaultAccessService", () => {
           .mockRejectedValue(new Error("Current password is incorrect.")),
         saveVault: vi.fn(),
       });
-      const dialog = fakeDialog();
       const fileStorage = fakeFileStorage();
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       await expect(
         service.changeMasterPassword(vault, "C:/vaults/mine.kdbx", "wrong", "new pw"),
       ).rejects.toThrow("Current password is incorrect.");
       expect(repository.saveVault).not.toHaveBeenCalled();
       expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("refuses to re-key when no vault is open", async () => {
+      const service = new VaultAccessService(fakeRepository(), fakeDialog(), fakeFileStorage());
+
+      await expect(
+        service.changeMasterPassword(Vault.create("Unopened"), "C:/vaults/mine.kdbx", "a", "b"),
+      ).rejects.toThrow("No vault is open");
     });
 
     it("refuses to re-key at all when the file changed on disk", async () => {

@@ -13,21 +13,33 @@ export class IncorrectMasterPasswordError extends Error {
 }
 
 /**
- * Persists vaults to/from the KDBX file format. `openVault`, `saveVault`,
- * and `changeMasterPassword` operate on the same underlying file across a
- * session (see the `infrastructure` implementation) so that fields the
- * domain model doesn't expose yet (attachments, custom icons, entry
- * history, ...) round-trip untouched instead of being dropped on save.
+ * One opened vault document, live for as long as it stays open.
+ *
+ * Saving and re-keying hang off the session rather than off the repository
+ * so that "open it first" is a thing the types say, not a runtime check: you
+ * cannot call `save` without already holding the result of an open.
+ *
+ * The session keeps the parsed document alive between `open` and `save`,
+ * which is what lets fields the domain model doesn't expose (attachments,
+ * custom icons, entry history, ...) round-trip untouched instead of being
+ * dropped when the file is rebuilt from the intentionally lossy domain model.
  */
-export interface VaultRepository {
-  openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<Vault>;
-  createVault(name: string, masterPassword: string): Promise<Vault>;
-  saveVault(vault: Vault): Promise<ArrayBuffer>;
+export interface VaultSession {
+  /** The vault as parsed when it was opened. */
+  readonly vault: Vault;
+  /** Applies `vault`'s tree onto the open document and serializes it. */
+  save(vault: Vault): Promise<ArrayBuffer>;
   /**
-   * Re-keys the currently open vault with a new master password, after
-   * verifying `currentMasterPassword` against its existing credentials.
-   * Throws `IncorrectMasterPasswordError` if it doesn't match. Doesn't
-   * persist anything to disk by itself; follow with `saveVault`.
+   * Re-keys the open document with a new master password, after verifying
+   * `currentMasterPassword` against its existing credentials. Throws
+   * `IncorrectMasterPasswordError` if it doesn't match. Doesn't persist
+   * anything by itself; follow with `save`.
    */
   changeMasterPassword(currentMasterPassword: string, newMasterPassword: string): Promise<void>;
+}
+
+/** Opens and creates KDBX vault documents. Holds no state of its own. */
+export interface VaultRepository {
+  openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<VaultSession>;
+  createVault(name: string, masterPassword: string): Promise<VaultSession>;
 }

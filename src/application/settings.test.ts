@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   AppSettings,
+  ConfigurableSetting,
+  DEFAULT_ACCENT_COLOR,
+  DEFAULT_AUTO_LOCK,
+  DEFAULT_AUTO_TYPE,
+  DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+  DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
+  DEFAULT_ENTRY_SORT,
+  DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
+  DEFAULT_THEME,
   recordVaultOpened,
-  withAccentColor,
-  withAutoLock,
-  withAutoType,
-  withClipboardClearSeconds,
-  withContentProtection,
-  withEntryFieldVisibility,
-  withEntrySort,
-  withGeneratorPolicy,
-  withGroupDeleteMode,
-  withTheme,
+  resolveSettings,
+  withSetting,
 } from "./settings";
 
 describe("recordVaultOpened", () => {
@@ -73,161 +74,84 @@ describe("recordVaultOpened", () => {
   });
 });
 
-describe("withGeneratorPolicy", () => {
-  it("records the generator policy without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
+describe("withSetting", () => {
+  const settings: AppSettings = {
+    recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+  };
 
-    const result = withGeneratorPolicy(settings, { length: 24, useSymbols: true });
-
-    expect(result.generatorPolicy).toEqual({ length: 24, useSymbols: true });
+  /** The key's type ties `value` to it, so a mismatched pair won't compile. */
+  function expectRecorded<K extends ConfigurableSetting>(key: K, value: AppSettings[K]) {
+    const result = withSetting(settings, key, value);
+    expect(result[key]).toEqual(value);
     expect(result.recentVaults).toBe(settings.recentVaults);
+  }
+
+  it("records each setting without disturbing the others", () => {
+    expectRecorded("generatorPolicy", { length: 24, useSymbols: true });
+    expectRecorded("clipboardClearSeconds", 30);
+    expectRecorded("autoLock", {
+      idleTimeoutMinutes: 10,
+      lockOnMinimize: true,
+      lockOnSleep: false,
+    });
+    expectRecorded("autoType", { enabled: true, hotkey: "Alt+Space" });
+    expectRecorded("groupDeleteMode", "keepContents");
+    expectRecorded("accentColor", { kind: "preset", id: "teal" });
+    expectRecorded("theme", "light");
+    expectRecorded("contentProtection", false);
+    expectRecorded("entryFieldVisibility", {
+      ...DEFAULT_ENTRY_FIELD_VISIBILITY,
+      password: false,
+    });
+    expectRecorded("entrySort", "title-asc");
   });
 
-  it("overwrites a previously stored generator policy", () => {
-    const settings: AppSettings = { recentVaults: [], generatorPolicy: { length: 8 } };
+  it("overwrites a value that was already stored", () => {
+    const stored: AppSettings = { recentVaults: [], generatorPolicy: { length: 8 } };
 
-    const result = withGeneratorPolicy(settings, { mode: "passphrase", wordCount: 5 });
+    const result = withSetting(stored, "generatorPolicy", { mode: "passphrase", wordCount: 5 });
 
     expect(result.generatorPolicy).toEqual({ mode: "passphrase", wordCount: 5 });
   });
-});
-
-describe("withClipboardClearSeconds", () => {
-  it("records the clipboard clear delay without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withClipboardClearSeconds(settings, 30);
-
-    expect(result.clipboardClearSeconds).toBe(30);
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
-});
-
-describe("withAutoLock", () => {
-  it("records the auto-lock configuration without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withAutoLock(settings, {
-      idleTimeoutMinutes: 10,
-      lockOnMinimize: true,
-      lockOnSleep: false,
-    });
-
-    expect(result.autoLock).toEqual({
-      idleTimeoutMinutes: 10,
-      lockOnMinimize: true,
-      lockOnSleep: false,
-    });
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
-});
-
-describe("withAutoType", () => {
-  it("records the auto-type configuration without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withAutoType(settings, {
-      enabled: true,
-      hotkey: "Alt+Space",
-    });
-
-    expect(result.autoType).toEqual({
-      enabled: true,
-      hotkey: "Alt+Space",
-    });
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
-});
-
-describe("withGroupDeleteMode", () => {
-  it("records the group delete mode without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withGroupDeleteMode(settings, "keepContents");
-
-    expect(result.groupDeleteMode).toBe("keepContents");
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
-});
-
-describe("withAccentColor", () => {
-  it("records a preset accent color without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withAccentColor(settings, { kind: "preset", id: "teal" });
-
-    expect(result.accentColor).toEqual({ kind: "preset", id: "teal" });
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
 
   it("records a custom accent hue", () => {
-    const result = withAccentColor(DEFAULT_SETTINGS, { kind: "custom", hue: 210 });
+    const result = withSetting(DEFAULT_SETTINGS, "accentColor", { kind: "custom", hue: 210 });
 
     expect(result.accentColor).toEqual({ kind: "custom", hue: 210 });
   });
 });
 
-describe("withTheme", () => {
-  it("records the theme without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withTheme(settings, "light");
-
-    expect(result.theme).toBe("light");
-    expect(result.recentVaults).toBe(settings.recentVaults);
+describe("resolveSettings", () => {
+  it("fills every value the user has never set with its default", () => {
+    expect(resolveSettings(DEFAULT_SETTINGS)).toEqual({
+      // `PasswordPolicy` supplies its own defaults from an empty object.
+      generatorPolicy: {},
+      clipboardClearSeconds: DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+      autoLock: DEFAULT_AUTO_LOCK,
+      autoType: DEFAULT_AUTO_TYPE,
+      groupDeleteMode: DEFAULT_GROUP_DELETE_MODE,
+      accentColor: DEFAULT_ACCENT_COLOR,
+      theme: DEFAULT_THEME,
+      contentProtection: DEFAULT_CONTENT_PROTECTION,
+      entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
+      entrySort: DEFAULT_ENTRY_SORT,
+    });
   });
-});
 
-describe("withContentProtection", () => {
-  it("records the content protection setting without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
+  it("keeps every value the user has set", () => {
+    const chosen = {
+      generatorPolicy: { length: 24 },
+      clipboardClearSeconds: 45,
+      autoLock: { idleTimeoutMinutes: 5, lockOnMinimize: true, lockOnSleep: true },
+      autoType: { enabled: true, hotkey: "Alt+Space" },
+      groupDeleteMode: "keepContents",
+      accentColor: { kind: "custom", hue: 120 },
+      theme: "light",
+      contentProtection: false,
+      entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
+      entrySort: "title-desc",
+    } satisfies Omit<AppSettings, "recentVaults">;
 
-    const result = withContentProtection(settings, false);
-
-    expect(result.contentProtection).toBe(false);
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
-});
-
-describe("withEntryFieldVisibility", () => {
-  it("records the entry field visibility without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-    const visibility = { ...DEFAULT_ENTRY_FIELD_VISIBILITY, password: false };
-
-    const result = withEntryFieldVisibility(settings, visibility);
-
-    expect(result.entryFieldVisibility).toEqual(visibility);
-    expect(result.recentVaults).toBe(settings.recentVaults);
-  });
-});
-
-describe("withEntrySort", () => {
-  it("records the entry list sort order without disturbing other settings", () => {
-    const settings: AppSettings = {
-      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
-    };
-
-    const result = withEntrySort(settings, "title-asc");
-
-    expect(result.entrySort).toBe("title-asc");
-    expect(result.recentVaults).toBe(settings.recentVaults);
+    expect(resolveSettings({ recentVaults: [], ...chosen })).toEqual(chosen);
   });
 });

@@ -1,11 +1,11 @@
 import { CSSProperties } from "react";
 import {
-  AccentColor,
+  AppSettings,
   AutoLockSettings,
   AutoTypeSettings,
+  ConfigurableSetting,
+  EffectiveSettings,
   EntryFieldVisibility,
-  GroupDeleteMode,
-  Theme,
 } from "../../application/settings";
 
 import { VaultFileInfo } from "../../application/vault-access-service";
@@ -33,26 +33,12 @@ interface SettingsScreenProps {
   filePath: string;
   fileInfo: VaultFileInfo | undefined;
   entryCount: number;
-  clipboardClearSeconds: number;
-  autoLock: AutoLockSettings;
-  autoType: AutoTypeSettings;
-  groupDeleteMode: GroupDeleteMode;
-  accentColor: AccentColor;
-  theme: Theme;
-  contentProtection: boolean;
-  entryFieldVisibility: EntryFieldVisibility;
+  settings: EffectiveSettings;
+  onSettingChange: <K extends ConfigurableSetting>(key: K, value: AppSettings[K]) => void;
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   /** Why the last merge attempt never got started, e.g. the picked file is this vault. */
   mergeError: string | undefined;
   onOpenMergeWizard: () => void;
-  onClipboardClearSecondsChange: (seconds: number) => void;
-  onAutoLockChange: (autoLock: AutoLockSettings) => void;
-  onAutoTypeChange: (autoType: AutoTypeSettings) => void;
-  onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
-  onAccentColorChange: (accentColor: AccentColor) => void;
-  onThemeChange: (theme: Theme) => void;
-  onContentProtectionChange: (contentProtection: boolean) => void;
-  onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<string | undefined>;
 }
@@ -61,34 +47,31 @@ export function SettingsScreen({
   filePath,
   fileInfo,
   entryCount,
-  clipboardClearSeconds,
-  autoLock,
-  autoType,
-  groupDeleteMode,
-  accentColor,
-  theme,
-  contentProtection,
-  entryFieldVisibility,
+  settings,
+  onSettingChange,
   onChangeMasterPassword,
   mergeError,
   onOpenMergeWizard,
-  onClipboardClearSecondsChange,
-  onAutoLockChange,
-  onAutoTypeChange,
-  onGroupDeleteModeChange,
-  onAccentColorChange,
-  onThemeChange,
-  onContentProtectionChange,
-  onEntryFieldVisibilityChange,
   onExportSettings,
   onImportSettings,
 }: SettingsScreenProps) {
+  const {
+    accentColor,
+    autoLock,
+    autoType,
+    clipboardClearSeconds,
+    contentProtection,
+    entryFieldVisibility,
+    groupDeleteMode,
+    theme,
+  } = settings;
+
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
-    onAutoLockChange({ ...autoLock, ...patch });
+    onSettingChange("autoLock", { ...autoLock, ...patch });
   }
 
   function updateAutoType(patch: Partial<AutoTypeSettings>) {
-    onAutoTypeChange({ ...autoType, ...patch });
+    onSettingChange("autoType", { ...autoType, ...patch });
   }
 
   function stepIdleTimeout(direction: 1 | -1) {
@@ -105,7 +88,7 @@ export function SettingsScreen({
 
   function stepClipboardClearSeconds(direction: 1 | -1) {
     const next = clipboardClearSeconds + direction;
-    onClipboardClearSecondsChange(Math.max(1, next));
+    onSettingChange("clipboardClearSeconds", Math.max(1, next));
   }
 
   return (
@@ -153,7 +136,7 @@ export function SettingsScreen({
                     role="radio"
                     aria-checked={theme === "dark"}
                     className={`btn-secondary${theme === "dark" ? " active" : ""}`}
-                    onClick={() => onThemeChange("dark")}
+                    onClick={() => onSettingChange("theme", "dark")}
                   >
                     Dark
                   </button>
@@ -162,7 +145,7 @@ export function SettingsScreen({
                     role="radio"
                     aria-checked={theme === "light"}
                     className={`btn-secondary${theme === "light" ? " active" : ""}`}
-                    onClick={() => onThemeChange("light")}
+                    onClick={() => onSettingChange("theme", "light")}
                   >
                     Light
                   </button>
@@ -180,7 +163,9 @@ export function SettingsScreen({
                       style={{ "--swatch-hue": preset.hue } as CSSProperties}
                       aria-label={preset.label}
                       aria-checked={accentColor.kind === "preset" && accentColor.id === preset.id}
-                      onClick={() => onAccentColorChange({ kind: "preset", id: preset.id })}
+                      onClick={() =>
+                        onSettingChange("accentColor", { kind: "preset", id: preset.id })
+                      }
                     />
                   ))}
                   <button
@@ -190,7 +175,10 @@ export function SettingsScreen({
                     aria-label="Custom"
                     aria-checked={accentColor.kind === "custom"}
                     onClick={() =>
-                      onAccentColorChange({ kind: "custom", hue: accentColorHue(accentColor) })
+                      onSettingChange("accentColor", {
+                        kind: "custom",
+                        hue: accentColorHue(accentColor),
+                      })
                     }
                   />
                 </div>
@@ -208,7 +196,10 @@ export function SettingsScreen({
                     className="accent-hue-slider"
                     value={accentColor.hue}
                     onChange={(event) =>
-                      onAccentColorChange({ kind: "custom", hue: Number(event.target.value) })
+                      onSettingChange("accentColor", {
+                        kind: "custom",
+                        hue: Number(event.target.value),
+                      })
                     }
                   />
                 </div>
@@ -277,7 +268,7 @@ export function SettingsScreen({
                     onChange={(event) => {
                       const seconds = Number(event.target.value);
                       if (Number.isInteger(seconds) && seconds >= 1) {
-                        onClipboardClearSecondsChange(seconds);
+                        onSettingChange("clipboardClearSeconds", seconds);
                       }
                     }}
                   />
@@ -325,7 +316,7 @@ export function SettingsScreen({
                   id="settings-content-protection"
                   type="checkbox"
                   checked={contentProtection}
-                  onChange={(event) => onContentProtectionChange(event.target.checked)}
+                  onChange={(event) => onSettingChange("contentProtection", event.target.checked)}
                 />
               </label>
             </div>
@@ -386,7 +377,7 @@ export function SettingsScreen({
                     type="radio"
                     name="settings-group-delete"
                     checked={groupDeleteMode === "deleteContents"}
-                    onChange={() => onGroupDeleteModeChange("deleteContents")}
+                    onChange={() => onSettingChange("groupDeleteMode", "deleteContents")}
                   />
                   Delete its entries and subgroups too
                 </label>
@@ -395,7 +386,7 @@ export function SettingsScreen({
                     type="radio"
                     name="settings-group-delete"
                     checked={groupDeleteMode === "keepContents"}
-                    onChange={() => onGroupDeleteModeChange("keepContents")}
+                    onChange={() => onSettingChange("groupDeleteMode", "keepContents")}
                   />
                   Keep its entries and subgroups (move them to the parent group)
                 </label>
@@ -418,7 +409,7 @@ export function SettingsScreen({
                     type="checkbox"
                     checked={entryFieldVisibility[key]}
                     onChange={(event) =>
-                      onEntryFieldVisibilityChange({
+                      onSettingChange("entryFieldVisibility", {
                         ...entryFieldVisibility,
                         [key]: event.target.checked,
                       })

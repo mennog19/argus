@@ -5,20 +5,15 @@ import {
   Group,
   GroupId,
   Icon,
-  PasswordPolicyOptions,
   TOTP_FIELD_KEYS,
   totpConfigFromCustomFields,
   Vault,
 } from "../../domain";
 import {
-  AccentColor,
-  AutoLockSettings,
-  AutoTypeSettings,
+  AppSettings,
+  ConfigurableSetting,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
-  EntryFieldVisibility,
-  EntrySortId,
-  GroupDeleteMode,
-  Theme,
+  EffectiveSettings,
 } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
@@ -70,32 +65,20 @@ interface VaultShellProps {
   fileInfo: VaultFileInfo | undefined;
   urlOpener: UrlOpener;
   clipboardWriter: ClipboardWriter;
-  generatorPolicy: PasswordPolicyOptions;
-  clipboardClearSeconds: number;
-  autoLock: AutoLockSettings;
-  autoType: AutoTypeSettings;
-  groupDeleteMode: GroupDeleteMode;
-  accentColor: AccentColor;
-  theme: Theme;
-  contentProtection: boolean;
-  entryFieldVisibility: EntryFieldVisibility;
-  entrySort: EntrySortId;
   mergeSource: VaultMergeSource;
+  /**
+   * Passed whole rather than one prop per setting. The shell reads three of
+   * these itself and forwards the rest to the settings screen; enumerating
+   * them here meant every new setting changed this file twice — once for the
+   * value, once for its setter — without the shell ever caring what it was.
+   */
+  settings: EffectiveSettings;
+  onSettingChange: <K extends ConfigurableSetting>(key: K, value: AppSettings[K]) => void;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
-  onClipboardClearSecondsChange: (seconds: number) => void;
-  onAutoLockChange: (autoLock: AutoLockSettings) => void;
-  onAutoTypeChange: (autoType: AutoTypeSettings) => void;
-  onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
-  onAccentColorChange: (accentColor: AccentColor) => void;
-  onThemeChange: (theme: Theme) => void;
-  onContentProtectionChange: (contentProtection: boolean) => void;
-  onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<string | undefined>;
-  onEntrySortChange: (sort: EntrySortId) => void;
   /** Replaces the in-memory vault without writing the file — used for the
    * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
   onVaultChange: (vault: Vault) => void;
@@ -112,34 +95,23 @@ export function VaultShell({
   fileInfo,
   urlOpener,
   clipboardWriter,
-  generatorPolicy,
-  clipboardClearSeconds,
-  autoLock,
-  autoType,
-  groupDeleteMode,
-  accentColor,
-  theme,
-  contentProtection,
-  entryFieldVisibility,
-  entrySort,
   mergeSource,
+  settings,
+  onSettingChange,
   onLock,
   onSave,
   onChangeMasterPassword,
-  onGeneratorPolicyChange,
-  onClipboardClearSecondsChange,
-  onAutoLockChange,
-  onAutoTypeChange,
-  onGroupDeleteModeChange,
-  onAccentColorChange,
-  onThemeChange,
-  onContentProtectionChange,
-  onEntryFieldVisibilityChange,
   onExportSettings,
   onImportSettings,
-  onEntrySortChange,
   onVaultChange,
 }: VaultShellProps) {
+  const {
+    clipboardClearSeconds,
+    entryFieldVisibility,
+    entrySort,
+    generatorPolicy,
+    groupDeleteMode,
+  } = settings;
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
   const [selectedEntryId, setSelectedEntryId] = useState<string | undefined>(undefined);
@@ -156,8 +128,15 @@ export function VaultShell({
   const clipboard = useClipboardCopy(clipboardWriter, clipboardClearSeconds);
 
   const rootGroup = vault.rootGroup;
-  const recycleBin = vault.recycleBin;
-  const excludeFromBrowsing = recycleBin ? [recycleBin.id] : [];
+  // Both walk the tree, and both were being recomputed several times per
+  // render — the entry list, the health screen, and two sidebar counts each
+  // asked for the same walk.
+  const recycleBin = useMemo(() => vault.recycleBin, [vault]);
+  const excludeFromBrowsing = useMemo(() => (recycleBin ? [recycleBin.id] : []), [recycleBin]);
+  const allEntries = useMemo(
+    () => collectAllEntries(rootGroup, excludeFromBrowsing),
+    [rootGroup, excludeFromBrowsing],
+  );
 
   // Falls back to "All Items" if the selected group no longer exists (e.g.
   // it, or an ancestor of it, was just deleted).
@@ -175,14 +154,22 @@ export function VaultShell({
   const trimmedQuery = searchQuery.trim();
   const isSearching = trimmedQuery !== "";
 
-  const matchingEntries: EntryWithGroup[] = isRecycleBinSelected
-    ? []
-    : isSearching
-      ? searchEntries(collectAllEntries(rootGroup, excludeFromBrowsing), trimmedQuery)
-      : effectiveGroupId === ALL_ITEMS
-        ? collectAllEntries(rootGroup, excludeFromBrowsing)
-        : entriesOf(selectedGroup!);
-  const visibleEntries = sortEntries(matchingEntries, entrySort);
+  /**
+   * What the entry list shows. Written as early returns rather than nested
+   * ternaries so the "a group is selected, so it exists" step can narrow
+   * `selectedGroup` instead of asserting it away.
+   */
+  function entriesInScope(): EntryWithGroup[] {
+    if (isRecycleBinSelected) {
+      return [];
+    }
+    if (isSearching) {
+      return searchEntries(allEntries, trimmedQuery);
+    }
+    return selectedGroup ? entriesOf(selectedGroup) : allEntries;
+  }
+
+  const visibleEntries = sortEntries(entriesInScope(), entrySort);
 
   const selected = visibleEntries.find((item) => item.entry.id.toString() === selectedEntryId);
   const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing).map((option) =>
@@ -412,37 +399,20 @@ export function VaultShell({
         ) : view === "generator" ? (
           <GeneratorScreen
             policyOptions={generatorPolicy}
-            onPolicyChange={onGeneratorPolicyChange}
+            onPolicyChange={(policy) => onSettingChange("generatorPolicy", policy)}
           />
         ) : view === "health" ? (
-          <HealthScreen
-            entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
-            onSelectEntry={handleSelectHealthEntry}
-          />
+          <HealthScreen entries={allEntries} onSelectEntry={handleSelectHealthEntry} />
         ) : view === "settings" ? (
           <SettingsScreen
             filePath={filePath}
             fileInfo={fileInfo}
-            entryCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
-            clipboardClearSeconds={clipboardClearSeconds}
-            autoLock={autoLock}
-            autoType={autoType}
-            groupDeleteMode={groupDeleteMode}
-            accentColor={accentColor}
-            theme={theme}
-            contentProtection={contentProtection}
-            entryFieldVisibility={entryFieldVisibility}
+            entryCount={allEntries.length}
+            settings={settings}
+            onSettingChange={onSettingChange}
             onChangeMasterPassword={onChangeMasterPassword}
             mergeError={mergeError}
             onOpenMergeWizard={() => void startMerge()}
-            onClipboardClearSecondsChange={onClipboardClearSecondsChange}
-            onAutoLockChange={onAutoLockChange}
-            onAutoTypeChange={onAutoTypeChange}
-            onGroupDeleteModeChange={onGroupDeleteModeChange}
-            onAccentColorChange={onAccentColorChange}
-            onThemeChange={onThemeChange}
-            onContentProtectionChange={onContentProtectionChange}
-            onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
             onExportSettings={onExportSettings}
             onImportSettings={onImportSettings}
           />
@@ -453,7 +423,7 @@ export function VaultShell({
               recycleBin={recycleBin}
               selectedGroupId={effectiveGroupId}
               allItemsId={ALL_ITEMS}
-              allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
+              allItemsCount={allEntries.length}
               onSelect={selectGroup}
               onCreateGroup={handleCreateGroup}
               onRenameGroup={handleRenameGroup}
@@ -504,7 +474,10 @@ export function VaultShell({
                         <XIcon size={12} />
                       </button>
                     )}
-                    <EntrySortMenu value={entrySort} onChange={onEntrySortChange} />
+                    <EntrySortMenu
+                      value={entrySort}
+                      onChange={(sort) => onSettingChange("entrySort", sort)}
+                    />
                   </div>
                   <div className="entry-list">
                     {visibleEntries.length === 0 && (

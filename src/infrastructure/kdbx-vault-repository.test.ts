@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
-import { CustomField, CustomFields, Password, Vault } from "../domain";
+import { CustomField, CustomFields, Password } from "../domain";
 import { configureKdbxCrypto } from "./kdbx-crypto";
 import { KdbxVaultRepository } from "./kdbx-vault-repository";
 
@@ -38,14 +38,14 @@ describe("KdbxVaultRepository", () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
 
-    const vault = await repository.openVault(bytes, MASTER_PASSWORD);
+    const session = await repository.openVault(bytes, MASTER_PASSWORD);
 
-    expect(vault.name).toBe("Fixture Vault");
-    expect(vault.rootGroup.entries.map((e) => e.title).sort()).toEqual([
+    expect(session.vault.name).toBe("Fixture Vault");
+    expect(session.vault.rootGroup.entries.map((e) => e.title).sort()).toEqual([
       "Untouched Site",
       "Will Change",
     ]);
-    const subGroup = vault.rootGroup.groups.find((g) => g.name === "Sub Group");
+    const subGroup = session.vault.rootGroup.groups.find((g) => g.name === "Sub Group");
     expect(subGroup?.entries[0].title).toBe("Nested Entry");
   });
 
@@ -56,30 +56,22 @@ describe("KdbxVaultRepository", () => {
     await expect(repository.openVault(bytes, "wrong password")).rejects.toThrow();
   });
 
-  it("throws when saveVault is called before openVault", async () => {
-    const repository = new KdbxVaultRepository();
-
-    await expect(repository.saveVault(Vault.create("Unopened"))).rejects.toThrow(
-      "No vault is open; call openVault before saveVault",
-    );
-  });
-
   it("round-trips edits while preserving untouched fields the domain model doesn't expose", async () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
-    const vault = await repository.openVault(bytes, MASTER_PASSWORD);
+    const session = await repository.openVault(bytes, MASTER_PASSWORD);
 
-    const willChange = vault.rootGroup.entries.find((e) => e.title === "Will Change")!;
+    const willChange = session.vault.rootGroup.entries.find((e) => e.title === "Will Change")!;
 
     const updated = willChange.update({
       password: new Password("new-password"),
       customFields: new CustomFields([new CustomField("2FA", "enabled", true)]),
     });
-    const updatedVault = vault.updateEntry(updated);
+    const updatedVault = session.vault.updateEntry(updated);
 
-    const savedBytes = await repository.saveVault(updatedVault);
+    const savedBytes = await session.save(updatedVault);
 
-    const reopened = await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD);
+    const reopened = (await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD)).vault;
 
     const reopenedUntouched = reopened.rootGroup.entries.find((e) => e.title === "Untouched Site")!;
     expect(reopenedUntouched.username).toBe("someone");
@@ -105,13 +97,13 @@ describe("KdbxVaultRepository", () => {
   it("creates a brand-new vault that can be saved and reopened", async () => {
     const repository = new KdbxVaultRepository();
 
-    const vault = await repository.createVault("Brand New Vault", MASTER_PASSWORD);
+    const session = await repository.createVault("Brand New Vault", MASTER_PASSWORD);
 
-    expect(vault.name).toBe("Brand New Vault");
-    expect(vault.rootGroup.entries).toEqual([]);
+    expect(session.vault.name).toBe("Brand New Vault");
+    expect(session.vault.rootGroup.entries).toEqual([]);
 
-    const savedBytes = await repository.saveVault(vault);
-    const reopened = await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD);
+    const savedBytes = await session.save(session.vault);
+    const reopened = (await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD)).vault;
     expect(reopened.name).toBe("Brand New Vault");
   });
 
@@ -119,34 +111,28 @@ describe("KdbxVaultRepository", () => {
     it("re-keys the vault so it can only be reopened with the new password", async () => {
       const bytes = await createFixtureBytes();
       const repository = new KdbxVaultRepository();
-      const vault = await repository.openVault(bytes, MASTER_PASSWORD);
+      const session = await repository.openVault(bytes, MASTER_PASSWORD);
 
-      await repository.changeMasterPassword(MASTER_PASSWORD, "new master password");
-      const savedBytes = await repository.saveVault(vault);
+      await session.changeMasterPassword(MASTER_PASSWORD, "new master password");
+      const savedBytes = await session.save(session.vault);
 
       await expect(
         new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD),
       ).rejects.toThrow();
-      const reopened = await new KdbxVaultRepository().openVault(savedBytes, "new master password");
+      const reopened = (
+        await new KdbxVaultRepository().openVault(savedBytes, "new master password")
+      ).vault;
       expect(reopened.name).toBe("Fixture Vault");
     });
 
     it("rejects with IncorrectMasterPasswordError when the current password is wrong", async () => {
       const bytes = await createFixtureBytes();
       const repository = new KdbxVaultRepository();
-      await repository.openVault(bytes, MASTER_PASSWORD);
+      const session = await repository.openVault(bytes, MASTER_PASSWORD);
 
       await expect(
-        repository.changeMasterPassword("wrong password", "new master password"),
+        session.changeMasterPassword("wrong password", "new master password"),
       ).rejects.toThrow("Current password is incorrect.");
-    });
-
-    it("throws when called before openVault", async () => {
-      const repository = new KdbxVaultRepository();
-
-      await expect(
-        repository.changeMasterPassword(MASTER_PASSWORD, "new master password"),
-      ).rejects.toThrow("No vault is open; call openVault before changeMasterPassword");
     });
   });
 });

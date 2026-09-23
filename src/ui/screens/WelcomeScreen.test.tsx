@@ -217,7 +217,10 @@ describe("WelcomeScreen", () => {
 
     it("creates the vault and calls onOpened on success", async () => {
       const user = userEvent.setup();
-      const opened: OpenedVault = { vault: Vault.create("Personal"), filePath: "C:/vaults/personal.kdbx" };
+      const opened: OpenedVault = {
+        vault: Vault.create("Personal"),
+        filePath: "C:/vaults/personal.kdbx",
+      };
       const onOpened = vi.fn();
       const service = fakeService({ createNewVault: vi.fn().mockResolvedValue(opened) });
 

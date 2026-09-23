@@ -22,6 +22,9 @@ export class KdbxVaultMergeSource implements VaultMergeSource {
 
   async openFile(filePath: string, masterPassword: string): Promise<Vault> {
     const fileBytes = await this.fileStorage.readFile(filePath);
-    return new KdbxVaultRepository().openVault(fileBytes, masterPassword);
+    const session = await new KdbxVaultRepository().openVault(fileBytes, masterPassword);
+    // The merge only reads the incoming vault, so its session is dropped here
+    // rather than kept open — nothing is ever written back to that file.
+    return session.vault;
   }
 }

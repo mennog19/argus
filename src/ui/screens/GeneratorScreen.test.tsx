@@ -74,7 +74,9 @@ describe("GeneratorScreen", () => {
     });
 
     await user.click(screen.getByRole("checkbox", { name: /lowercase/i }));
-    expect(onPolicyChange).toHaveBeenLastCalledWith(expect.objectContaining({ useLowercase: false }));
+    expect(onPolicyChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ useLowercase: false }),
+    );
 
     await user.click(screen.getByRole("checkbox", { name: /digits/i }));
     expect(onPolicyChange).toHaveBeenLastCalledWith(expect.objectContaining({ useDigits: false }));
@@ -104,7 +106,9 @@ describe("GeneratorScreen", () => {
 
     await user.click(screen.getByRole("checkbox", { name: /exclude ambiguous/i }));
 
-    expect(onPolicyChange).toHaveBeenCalledWith(expect.objectContaining({ excludeAmbiguous: true }));
+    expect(onPolicyChange).toHaveBeenCalledWith(
+      expect.objectContaining({ excludeAmbiguous: true }),
+    );
   });
 
   it("reports switching to passphrase mode via the mode toggle", async () => {
@@ -126,7 +130,11 @@ describe("GeneratorScreen", () => {
   });
 
   it("changes the passphrase word count and separator", () => {
-    const { onPolicyChange } = renderGenerator({ mode: "passphrase", wordCount: 4, separator: "-" });
+    const { onPolicyChange } = renderGenerator({
+      mode: "passphrase",
+      wordCount: 4,
+      separator: "-",
+    });
 
     fireEvent.change(screen.getByLabelText("Separator"), { target: { value: "." } });
 

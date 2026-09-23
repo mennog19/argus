@@ -162,7 +162,9 @@ export function GeneratorScreen({ policyOptions, onPolicyChange }: GeneratorScre
                 id="generator-separator"
                 className="field-select"
                 value={policy.separator}
-                onChange={(event) => applyPolicy({ separator: event.target.value as PassphraseSeparator })}
+                onChange={(event) =>
+                  applyPolicy({ separator: event.target.value as PassphraseSeparator })
+                }
               >
                 {SEPARATORS.map((option) => (
                   <option key={option.value} value={option.value}>
