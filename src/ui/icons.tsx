@@ -201,6 +201,21 @@ export function ChevronIcon({ size = 12, color = "currentColor" }: IconProps) {
   );
 }
 
+export function CheckIcon({ size = 14, color = "currentColor", strokeWidth = 2.5 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 12.5l4.5 4.5L19 7"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function VaultIcon({ size = 20, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">

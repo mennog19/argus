@@ -53,7 +53,8 @@ import { EntryForm } from "./EntryForm";
 import { GeneratorScreen } from "./GeneratorScreen";
 import { GroupTree } from "./GroupTree";
 import { HealthScreen } from "./HealthScreen";
-import { MergeVaultWizard } from "./MergeVaultWizard";
+import { MergeUnlockDialog } from "./MergeUnlockDialog";
+import { MergeWizardScreen } from "./MergeWizardScreen";
 import { RecycleBinPanel } from "./RecycleBinPanel";
 import { SettingsScreen } from "./SettingsScreen";
 import { ArgusMark } from "../ArgusMark";
@@ -89,7 +90,7 @@ interface VaultShellProps {
 const ALL_ITEMS = "__all__";
 
 type FormMode = { kind: "none" } | { kind: "create" } | { kind: "edit" };
-type View = "vault" | "generator" | "health" | "settings";
+type View = "vault" | "generator" | "health" | "settings" | "merge";
 
 export function VaultShell({
   vault,
@@ -125,7 +126,8 @@ export function VaultShell({
   const [formMode, setFormMode] = useState<FormMode>({ kind: "none" });
   const [searchQuery, setSearchQuery] = useState("");
   const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
-  const [showMergeWizard, setShowMergeWizard] = useState(false);
+  const [mergeFilePath, setMergeFilePath] = useState<string | undefined>(undefined);
+  const [mergeSourceVault, setMergeSourceVault] = useState<Vault | undefined>(undefined);
 
   const rootGroup = vault.rootGroup;
   const recycleBin = vault.recycleBin;
@@ -254,6 +256,33 @@ export function VaultShell({
     await persist(vault.emptyRecycleBin());
   }
 
+  async function startMerge() {
+    const picked = await mergeSource.pickFile();
+    if (!picked) {
+      return;
+    }
+    setMergeFilePath(picked);
+  }
+
+  /** The wizard only opens once the incoming vault is actually unlocked. */
+  function openMergeWizard(sourceVault: Vault) {
+    setMergeSourceVault(sourceVault);
+    setView("merge");
+  }
+
+  function closeMerge() {
+    setMergeFilePath(undefined);
+    setMergeSourceVault(undefined);
+    setView("settings");
+  }
+
+  /** Leaving via the nav rail abandons any in-progress merge. */
+  function goToView(next: View) {
+    setMergeFilePath(undefined);
+    setMergeSourceVault(undefined);
+    setView(next);
+  }
+
   function startCreateEntry() {
     setSelectedEntryId(undefined);
     setFormMode({ kind: "create" });
@@ -274,7 +303,7 @@ export function VaultShell({
               type="button"
               className={`icon-button${view === "vault" ? " active" : ""}`}
               aria-label="Vault"
-              onClick={() => setView("vault")}
+              onClick={() => goToView("vault")}
             >
               <VaultIcon />
             </button>
@@ -282,7 +311,7 @@ export function VaultShell({
               type="button"
               className={`icon-button${view === "generator" ? " active" : ""}`}
               aria-label="Password generator"
-              onClick={() => setView("generator")}
+              onClick={() => goToView("generator")}
             >
               <GeneratorIcon />
             </button>
@@ -290,15 +319,15 @@ export function VaultShell({
               type="button"
               className={`icon-button${view === "health" ? " active" : ""}`}
               aria-label="Password health"
-              onClick={() => setView("health")}
+              onClick={() => goToView("health")}
             >
               <HealthIcon />
             </button>
             <button
               type="button"
-              className={`icon-button${view === "settings" ? " active" : ""}`}
+              className={`icon-button${view === "settings" || view === "merge" ? " active" : ""}`}
               aria-label="Settings"
-              onClick={() => setView("settings")}
+              onClick={() => goToView("settings")}
             >
               <SettingsIcon />
             </button>
@@ -308,7 +337,15 @@ export function VaultShell({
           </button>
         </nav>
 
-        {view === "generator" ? (
+        {view === "merge" && mergeFilePath !== undefined && mergeSourceVault !== undefined ? (
+          <MergeWizardScreen
+            vault={vault}
+            filePath={mergeFilePath}
+            sourceVault={mergeSourceVault}
+            onApply={persist}
+            onClose={closeMerge}
+          />
+        ) : view === "generator" ? (
           <GeneratorScreen
             policyOptions={generatorPolicy}
             onPolicyChange={onGeneratorPolicyChange}
@@ -331,7 +368,7 @@ export function VaultShell({
             contentProtection={contentProtection}
             entryFieldVisibility={entryFieldVisibility}
             onChangeMasterPassword={onChangeMasterPassword}
-            onOpenMergeWizard={() => setShowMergeWizard(true)}
+            onOpenMergeWizard={() => void startMerge()}
             onClipboardClearSecondsChange={onClipboardClearSecondsChange}
             onAutoLockChange={onAutoLockChange}
             onGroupDeleteModeChange={onGroupDeleteModeChange}
@@ -476,12 +513,13 @@ export function VaultShell({
           </>
         )}
       </div>
-      {showMergeWizard && (
-        <MergeVaultWizard
-          vault={vault}
+
+      {mergeFilePath !== undefined && mergeSourceVault === undefined && (
+        <MergeUnlockDialog
+          filePath={mergeFilePath}
           mergeSource={mergeSource}
-          onApply={persist}
-          onClose={() => setShowMergeWizard(false)}
+          onUnlocked={openMergeWizard}
+          onCancel={() => setMergeFilePath(undefined)}
         />
       )}
     </>

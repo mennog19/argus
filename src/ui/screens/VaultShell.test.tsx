@@ -39,7 +39,7 @@ function fakeClipboardWriter(overrides: Partial<ClipboardWriter> = {}): Clipboar
 }
 
 function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
-  return { pickAndOpen: vi.fn(), ...overrides };
+  return { pickFile: vi.fn(), openFile: vi.fn(), ...overrides };
 }
 
 function renderShell(
@@ -1246,22 +1246,85 @@ describe("VaultShell", () => {
       expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-pw");
     });
 
-    it("opens the merge wizard from the settings screen", async () => {
+    it("picks a file first, then asks for its password in a dialog over the settings screen", async () => {
       const user = userEvent.setup();
-      const vault = Vault.create("Mine");
+      const mergeSource = fakeMergeSource({
+        pickFile: vi.fn().mockResolvedValue("C:/vaults/other.kdbx"),
+      });
 
-      renderShell(vault);
+      renderShell(Vault.create("Mine"), { mergeSource });
 
       await user.click(screen.getByRole("button", { name: "Settings" }));
       await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
 
-      expect(screen.getByRole("heading", { name: /merge another vault in/i })).toBeInTheDocument();
+      expect(mergeSource.pickFile).toHaveBeenCalled();
+      expect(screen.getByRole("dialog", { name: /merge another vault in/i })).toBeInTheDocument();
+      expect(screen.getByText("other.kdbx")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-      expect(
-        screen.queryByRole("heading", { name: /merge another vault in/i }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    });
+
+    it("opens the wizard once the picked file is unlocked", async () => {
+      const user = userEvent.setup();
+      const mergeSource = fakeMergeSource({
+        pickFile: vi.fn().mockResolvedValue("C:/vaults/other.kdbx"),
+        openFile: vi.fn().mockResolvedValue(Vault.create("Theirs")),
+      });
+
+      renderShell(Vault.create("Mine"), { mergeSource });
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+      await user.type(screen.getByLabelText("Its master password"), "pw");
+      await user.click(screen.getByRole("button", { name: /unlock & compare/i }));
+
+      expect(mergeSource.openFile).toHaveBeenCalledWith("C:/vaults/other.kdbx", "pw");
+      expect(await screen.findByRole("heading", { name: "Merge vault" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Settings" })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByRole("heading", { name: "Merge vault" })).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    });
+
+    it("stays on the settings screen when the file dialog is cancelled", async () => {
+      const user = userEvent.setup();
+      const mergeSource = fakeMergeSource({ pickFile: vi.fn().mockResolvedValue(undefined) });
+
+      renderShell(Vault.create("Mine"), { mergeSource });
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    });
+
+    it("abandons an in-progress merge when navigating away via the nav rail", async () => {
+      const user = userEvent.setup();
+      const mergeSource = fakeMergeSource({
+        pickFile: vi.fn().mockResolvedValue("C:/vaults/other.kdbx"),
+        openFile: vi.fn().mockResolvedValue(Vault.create("Theirs")),
+      });
+
+      renderShell(Vault.create("Mine"), { mergeSource });
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+      await user.type(screen.getByLabelText("Its master password"), "pw");
+      await user.click(screen.getByRole("button", { name: /unlock & compare/i }));
+      await screen.findByRole("heading", { name: "Merge vault" });
+
+      await user.click(screen.getByRole("button", { name: "Vault" }));
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+
+      expect(screen.queryByRole("heading", { name: "Merge vault" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 

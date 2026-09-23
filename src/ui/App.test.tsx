@@ -52,7 +52,7 @@ function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): Window
 }
 
 function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
-  return { pickAndOpen: vi.fn(), ...overrides };
+  return { pickFile: vi.fn(), openFile: vi.fn(), ...overrides };
 }
 
 describe("App", () => {

@@ -41,7 +41,7 @@ function renderSettings(
   const onThemeChange = vi.fn();
   const onContentProtectionChange = vi.fn();
   const onEntryFieldVisibilityChange = vi.fn();
-  render(
+  const { container } = render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
       fileInfo={overrides.fileInfo}
@@ -65,6 +65,7 @@ function renderSettings(
     />,
   );
   return {
+    container,
     onChangeMasterPassword,
     onOpenMergeWizard,
     onClipboardClearSecondsChange,
@@ -293,13 +294,23 @@ describe("SettingsScreen", () => {
     expect(onContentProtectionChange).toHaveBeenCalledWith(false);
   });
 
-  describe("merge", () => {
+  describe("danger zone", () => {
     it("reports a request to open the merge wizard", () => {
       const { onOpenMergeWizard } = renderSettings();
 
       fireEvent.click(screen.getByRole("button", { name: /merge another vault in/i }));
 
       expect(onOpenMergeWizard).toHaveBeenCalled();
+    });
+
+    it("groups merging and changing the master password under one danger zone", () => {
+      const { container } = renderSettings();
+
+      const dangerZone = container.querySelector(".danger-zone");
+      expect(dangerZone).not.toBeNull();
+      expect(dangerZone).toHaveTextContent("Danger zone");
+      expect(dangerZone).toHaveTextContent(/merge another vault in/i);
+      expect(dangerZone).toHaveTextContent(/change master password/i);
     });
   });
 

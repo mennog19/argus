@@ -371,18 +371,28 @@ export function SettingsScreen({
             </div>
           </section>
 
-          <section className="detail-section">
-            <div className="detail-section-label">Merge</div>
-            <div className="detail-card padded">
-              <button type="button" className="btn-secondary" onClick={onOpenMergeWizard}>
-                Merge another vault in…
-              </button>
-            </div>
-          </section>
+          <section className="detail-section danger-zone">
+            <div className="detail-section-label danger-zone-label">Danger zone</div>
+            <p className="danger-zone-lead">
+              These change the vault itself. Both are applied straight to the file on disk — make
+              sure you have a backup first.
+            </p>
 
-          <section className="detail-section">
-            <div className="detail-section-label">Master password</div>
-            <ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />
+            <div className="danger-zone-rows">
+              <div className="danger-zone-row">
+                <div className="danger-zone-row-text">
+                  <span className="danger-zone-row-title">Merge another vault</span>
+                  <span className="danger-zone-row-hint">
+                    Compare a second .kdbx file against this one and choose what to bring over.
+                  </span>
+                </div>
+                <button type="button" className="btn-danger-outline" onClick={onOpenMergeWizard}>
+                  Merge another vault in…
+                </button>
+              </div>
+
+              <ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />
+            </div>
           </section>
         </div>
       </div>

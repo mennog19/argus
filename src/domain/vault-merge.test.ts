@@ -7,7 +7,9 @@ import { Password } from "./password";
 import { Tag } from "./tag";
 import { Tags } from "./tags";
 import { Vault } from "./vault";
-import { diffVaults } from "./vault-merge";
+import { diffVaults, mergeFieldValue } from "./vault-merge";
+
+const TOTP_SECRET = "JBSWY3DPEHPK3PXP";
 
 function vaultWithEntries(name: string, entries: readonly Entry[]): Vault {
   let root = Group.create(name);
@@ -17,10 +19,40 @@ function vaultWithEntries(name: string, entries: readonly Entry[]): Vault {
   return new Vault(name, root);
 }
 
+function totpFields(secret: string): CustomFields {
+  return new CustomFields([new CustomField("otp", `otpauth://totp/Bank?secret=${secret}`)]);
+}
+
+describe("mergeFieldValue", () => {
+  it("reads each plain field straight off the entry", () => {
+    const entry = Entry.create({
+      title: "Bank",
+      username: "alice",
+      password: new Password("secret"),
+      url: "https://bank.example",
+    });
+
+    expect(mergeFieldValue(entry, "title")).toBe("Bank");
+    expect(mergeFieldValue(entry, "username")).toBe("alice");
+    expect(mergeFieldValue(entry, "password")).toBe("secret");
+    expect(mergeFieldValue(entry, "url")).toBe("https://bank.example");
+  });
+
+  it("folds a TOTP configuration into one canonical string", () => {
+    const entry = Entry.create({ title: "Bank", customFields: totpFields(TOTP_SECRET) });
+
+    expect(mergeFieldValue(entry, "totp")).toBe(`${TOTP_SECRET}:SHA1:6:30`);
+  });
+
+  it("reads an entry with no authenticator as an empty TOTP value", () => {
+    expect(mergeFieldValue(Entry.create({ title: "Bank" }), "totp")).toBe("");
+  });
+});
+
 describe("diffVaults", () => {
-  it("treats an entry with no matching title/url as new", () => {
-    const target = vaultWithEntries("Target", []);
-    const source = vaultWithEntries("Source", [Entry.create({ title: "Bank", username: "alice" })]);
+  it("treats an entry sharing no field with anything as new", () => {
+    const target = vaultWithEntries("Target", [Entry.create({ title: "Bank", username: "alice" })]);
+    const source = vaultWithEntries("Source", [Entry.create({ title: "Forum", username: "bob" })]);
 
     const plan = diffVaults(target, source);
 
@@ -29,7 +61,7 @@ describe("diffVaults", () => {
     expect(plan.identical).toEqual([]);
   });
 
-  it("matches entries by title + username, case-insensitively and ignoring whitespace", () => {
+  it("matches on title + username, case-insensitively and ignoring whitespace", () => {
     const targetEntry = Entry.create({ title: "  Bank  ", username: "Alice" });
     const target = vaultWithEntries("Target", [targetEntry]);
     const source = vaultWithEntries("Source", [Entry.create({ title: "bank", username: "alice" })]);
@@ -43,27 +75,58 @@ describe("diffVaults", () => {
     expect(plan.conflicts[0].targetEntry.equals(targetEntry)).toBe(true);
   });
 
-  it("matches entries by url + username when titles differ", () => {
-    const targetEntry = Entry.create({
-      title: "Old Name",
-      username: "alice",
-      url: "https://example.com",
-    });
-    const target = vaultWithEntries("Target", [targetEntry]);
+  it("matches on url + username when the titles differ", () => {
+    const target = vaultWithEntries("Target", [
+      Entry.create({ title: "Old Name", username: "alice", url: "https://example.com" }),
+    ]);
     const source = vaultWithEntries("Source", [
       Entry.create({ title: "New Name", username: "alice", url: "https://example.com" }),
     ]);
 
-    const plan = diffVaults(target, source);
-
-    expect(plan.newEntries).toEqual([]);
-    expect(plan.conflicts).toHaveLength(1);
-    expect(plan.conflicts[0].targetEntry.equals(targetEntry)).toBe(true);
+    expect(diffVaults(target, source).conflicts).toHaveLength(1);
   });
 
-  it("does not match on title alone when usernames differ", () => {
-    const target = vaultWithEntries("Target", [Entry.create({ title: "Bank", username: "alice" })]);
-    const source = vaultWithEntries("Source", [Entry.create({ title: "Bank", username: "bob" })]);
+  it("matches two entries on the same site that both have no username", () => {
+    const target = vaultWithEntries("Target", [
+      Entry.create({ title: "Home Wi-Fi", password: new Password("old-key") }),
+    ]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({ title: "Home Wi-Fi", password: new Password("new-key") }),
+    ]);
+
+    expect(diffVaults(target, source).conflicts).toHaveLength(1);
+  });
+
+  it("keeps two accounts on the same site separate", () => {
+    const target = vaultWithEntries("Target", [Entry.create({ title: "GitHub", username: "me" })]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({ title: "GitHub", username: "work" }),
+    ]);
+
+    expect(diffVaults(target, source).newEntries).toHaveLength(1);
+  });
+
+  it("does not match a filled username against a blank one on the same site", () => {
+    const target = vaultWithEntries("Target", [Entry.create({ title: "GitHub" })]);
+    const source = vaultWithEntries("Source", [Entry.create({ title: "GitHub", username: "me" })]);
+
+    expect(diffVaults(target, source).newEntries).toHaveLength(1);
+  });
+
+  it("does not match unrelated sites that only share a username", () => {
+    // The real-world case this rule exists for: one reused username must not
+    // pair an Airbnb login with a Netflix login.
+    const target = vaultWithEntries("Target", [
+      Entry.create({ title: "Airbnb", username: "menno", password: new Password("test111") }),
+    ]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({
+        title: "Netflix",
+        username: "menno",
+        password: new Password("test123"),
+        url: "netflix.com",
+      }),
+    ]);
 
     const plan = diffVaults(target, source);
 
@@ -71,33 +134,43 @@ describe("diffVaults", () => {
     expect(plan.conflicts).toEqual([]);
   });
 
-  it("does not match when usernames match but both title and url are blank", () => {
-    const target = vaultWithEntries("Target", [Entry.create({ username: "alice" })]);
-    const source = vaultWithEntries("Source", [Entry.create({ username: "alice" })]);
+  it("does not match unrelated sites that only share a reused password", () => {
+    const target = vaultWithEntries("Target", [
+      Entry.create({ title: "Airbnb", username: "menno", password: new Password("reused") }),
+    ]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({ title: "Netflix", username: "other", password: new Password("reused") }),
+    ]);
 
-    const plan = diffVaults(target, source);
-
-    expect(plan.newEntries).toHaveLength(1);
+    expect(diffVaults(target, source).newEntries).toHaveLength(1);
   });
 
-  it("does not match when usernames are both blank", () => {
+  it("does not match unrelated sites that only share an authenticator", () => {
+    const target = vaultWithEntries("Target", [
+      Entry.create({ title: "Airbnb", username: "menno", customFields: totpFields(TOTP_SECRET) }),
+    ]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({ title: "Netflix", username: "other", customFields: totpFields(TOTP_SECRET) }),
+    ]);
+
+    expect(diffVaults(target, source).newEntries).toHaveLength(1);
+  });
+
+  it("does not treat two blank fields as a shared field", () => {
     const target = vaultWithEntries("Target", [Entry.create({ title: "Bank" })]);
-    const source = vaultWithEntries("Source", [Entry.create({ title: "Bank" })]);
+    const source = vaultWithEntries("Source", [Entry.create({ title: "Forum" })]);
 
-    const plan = diffVaults(target, source);
-
-    expect(plan.newEntries).toHaveLength(1);
+    // Both have blank username, password, url and totp; none of that counts.
+    expect(diffVaults(target, source).newEntries).toHaveLength(1);
   });
 
-  it("reports no differences for a pair that matches on every diffed field", () => {
+  it("reports no differences for a pair that matches on every compared field", () => {
     const shared = {
       title: "Bank",
       username: "alice",
       password: new Password("secret"),
       url: "https://bank.example",
-      notes: "note",
-      tags: new Tags([new Tag("finance")]),
-      customFields: new CustomFields([new CustomField("PIN", "1234")]),
+      customFields: totpFields(TOTP_SECRET),
     };
     const target = vaultWithEntries("Target", [Entry.create(shared)]);
     const source = vaultWithEntries("Source", [Entry.create(shared)]);
@@ -109,13 +182,11 @@ describe("diffVaults", () => {
     expect(plan.conflicts).toEqual([]);
   });
 
-  it("reports a difference per diffed field that doesn't match", () => {
+  it("ignores notes, tags and non-TOTP custom fields entirely", () => {
     const target = vaultWithEntries("Target", [
       Entry.create({
         title: "Bank",
         username: "alice",
-        password: new Password("old-secret"),
-        url: "https://bank.example",
         notes: "old note",
         tags: new Tags([new Tag("finance")]),
         customFields: new CustomFields([new CustomField("PIN", "1111")]),
@@ -125,8 +196,6 @@ describe("diffVaults", () => {
       Entry.create({
         title: "Bank",
         username: "alice",
-        password: new Password("new-secret"),
-        url: "https://bank.example/login",
         notes: "new note",
         tags: new Tags([new Tag("work")]),
         customFields: new CustomFields([new CustomField("PIN", "2222")]),
@@ -135,18 +204,90 @@ describe("diffVaults", () => {
 
     const plan = diffVaults(target, source);
 
+    expect(plan.conflicts).toEqual([]);
+    expect(plan.identical).toHaveLength(1);
+  });
+
+  it("reports a difference per compared field that doesn't match", () => {
+    const target = vaultWithEntries("Target", [
+      Entry.create({
+        title: "Bank",
+        username: "alice",
+        password: new Password("old-secret"),
+        url: "https://bank.example",
+        customFields: totpFields(TOTP_SECRET),
+      }),
+    ]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({
+        title: "Bank",
+        username: "alice",
+        password: new Password("new-secret"),
+        url: "https://bank.example/login",
+      }),
+    ]);
+
+    const plan = diffVaults(target, source);
+
     expect(plan.conflicts).toHaveLength(1);
-    const fields = plan.conflicts[0].differences.map((d) => d.field).sort();
-    expect(fields).toEqual(["customFields", "notes", "password", "tags", "url"]);
-    const passwordDiff = plan.conflicts[0].differences.find((d) => d.field === "password");
-    expect(passwordDiff).toEqual({
+    const fields = plan.conflicts[0].differences.map((difference) => difference.field).sort();
+    expect(fields).toEqual(["password", "totp", "url"]);
+    expect(plan.conflicts[0].differences.find((d) => d.field === "password")).toEqual({
       field: "password",
       targetValue: "old-secret",
       sourceValue: "new-secret",
     });
   });
 
-  it("pairs each target entry with at most one source entry, greedily in source order", () => {
+  it("pairs a source entry with the target entry it shares the most fields with", () => {
+    // Both candidates match on title + username; the first also shares a URL,
+    // so it stays the winner even though the looser one is checked afterwards.
+    const closest = Entry.create({
+      title: "Bank",
+      username: "alice",
+      url: "https://bank.example",
+    });
+    const looser = Entry.create({ title: "Bank", username: "alice" });
+    const target = vaultWithEntries("Target", [closest, looser]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({
+        title: "Bank",
+        username: "alice",
+        url: "https://bank.example",
+        password: new Password("added"),
+      }),
+    ]);
+
+    const plan = diffVaults(target, source);
+
+    expect(plan.conflicts).toHaveLength(1);
+    expect(plan.conflicts[0].targetEntry.equals(closest)).toBe(true);
+  });
+
+  it("upgrades to a closer match found later in the vault", () => {
+    const looser = Entry.create({ title: "Bank", username: "alice" });
+    const closest = Entry.create({
+      title: "Bank",
+      username: "alice",
+      url: "https://bank.example",
+    });
+    const target = vaultWithEntries("Target", [looser, closest]);
+    const source = vaultWithEntries("Source", [
+      Entry.create({
+        title: "Bank",
+        username: "alice",
+        url: "https://bank.example",
+        password: new Password("added"),
+      }),
+    ]);
+
+    const plan = diffVaults(target, source);
+
+    expect(plan.conflicts).toHaveLength(1);
+    expect(plan.conflicts[0].targetEntry.equals(closest)).toBe(true);
+  });
+
+  it("claims each target entry at most once, in source order", () => {
     const targetEntry = Entry.create({ title: "Bank", username: "alice" });
     const target = vaultWithEntries("Target", [targetEntry]);
     const firstSource = Entry.create({ title: "Bank", username: "alice", notes: "first" });
@@ -155,8 +296,10 @@ describe("diffVaults", () => {
 
     const plan = diffVaults(target, source);
 
-    expect(plan.conflicts).toHaveLength(1);
-    expect(plan.conflicts[0].sourceEntry.equals(firstSource)).toBe(true);
+    // The first source entry consumes the only target entry; notes are ignored,
+    // so that pair is identical and the second source entry is left over.
+    expect(plan.identical).toHaveLength(1);
+    expect(plan.identical[0].sourceEntry.equals(firstSource)).toBe(true);
     expect(plan.newEntries).toHaveLength(1);
     expect(plan.newEntries[0].equals(secondSource)).toBe(true);
   });
@@ -170,7 +313,6 @@ describe("diffVaults", () => {
     const nestedSourceEntry = Entry.create({
       title: "nested",
       username: "alice",
-      notes: "changed",
     });
     const source = new Vault(
       "Source",

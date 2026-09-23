@@ -1,5 +1,6 @@
+import { Vault } from "../domain";
 import { FileStorage } from "../application/file-storage";
-import { OpenedMergeSource, VaultMergeSource } from "../application/vault-merge-source";
+import { VaultMergeSource } from "../application/vault-merge-source";
 import { VaultFileDialog } from "../application/vault-file-dialog";
 import { KdbxVaultRepository } from "./kdbx-vault-repository";
 
@@ -15,13 +16,12 @@ export class KdbxVaultMergeSource implements VaultMergeSource {
     private readonly fileStorage: FileStorage,
   ) {}
 
-  async pickAndOpen(masterPassword: string): Promise<OpenedMergeSource | undefined> {
-    const filePath = await this.dialog.pickVaultToOpen();
-    if (!filePath) {
-      return undefined;
-    }
+  pickFile(): Promise<string | undefined> {
+    return this.dialog.pickVaultToOpen();
+  }
+
+  async openFile(filePath: string, masterPassword: string): Promise<Vault> {
     const fileBytes = await this.fileStorage.readFile(filePath);
-    const vault = await new KdbxVaultRepository().openVault(fileBytes, masterPassword);
-    return { vault, filePath };
+    return new KdbxVaultRepository().openVault(fileBytes, masterPassword);
   }
 }

@@ -1,9 +1,9 @@
 import { Entry } from "./entry";
 import { Group } from "./group";
+import { totpConfigFromCustomFields } from "./totp";
 import { Vault } from "./vault";
 
-export type MergeFieldKey =
-  "title" | "username" | "password" | "url" | "notes" | "tags" | "customFields";
+export type MergeFieldKey = "title" | "username" | "password" | "url" | "totp";
 
 export interface FieldDifference {
   readonly field: MergeFieldKey;
@@ -29,21 +29,29 @@ export interface VaultMergePlan {
   readonly identical: readonly MatchedEntryPair[];
 }
 
-const DIFFED_FIELDS: readonly MergeFieldKey[] = [
+/**
+ * The only fields a merge looks at. Notes, tags and non-TOTP custom fields are
+ * deliberately excluded: they don't take part in matching, and a difference in
+ * one of them doesn't make two otherwise-equal entries a conflict.
+ */
+export const MERGE_FIELDS: readonly MergeFieldKey[] = [
   "title",
   "username",
   "password",
   "url",
-  "notes",
-  "tags",
-  "customFields",
+  "totp",
 ];
 
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function fieldValue(entry: Entry, field: MergeFieldKey): string {
+/**
+ * The comparable value of `field`. TOTP is folded into a single canonical
+ * string so two entries only count as sharing an authenticator when the whole
+ * configuration matches, not just the secret.
+ */
+export function mergeFieldValue(entry: Entry, field: MergeFieldKey): string {
   switch (field) {
     case "title":
       return entry.title;
@@ -53,26 +61,18 @@ function fieldValue(entry: Entry, field: MergeFieldKey): string {
       return entry.password.reveal();
     case "url":
       return entry.url;
-    case "notes":
-      return entry.notes;
-    case "tags":
-      return entry.tags.values
-        .map((tag) => tag.toString())
-        .sort()
-        .join(", ");
-    case "customFields":
-      return entry.customFields.values
-        .map((field) => `${field.key}=${field.value}`)
-        .sort()
-        .join("; ");
+    case "totp": {
+      const config = totpConfigFromCustomFields(entry.customFields);
+      return config ? `${config.secret}:${config.algorithm}:${config.digits}:${config.period}` : "";
+    }
   }
 }
 
 function diffEntries(target: Entry, source: Entry): FieldDifference[] {
   const differences: FieldDifference[] = [];
-  for (const field of DIFFED_FIELDS) {
-    const targetValue = fieldValue(target, field);
-    const sourceValue = fieldValue(source, field);
+  for (const field of MERGE_FIELDS) {
+    const targetValue = mergeFieldValue(target, field);
+    const sourceValue = mergeFieldValue(source, field);
     if (targetValue !== sourceValue) {
       differences.push({ field, targetValue, sourceValue });
     }
@@ -95,33 +95,48 @@ function collectMergeableEntries(vault: Vault): Entry[] {
   return entries;
 }
 
-/**
- * Two entries are considered "the same" for merge purposes when their
- * usernames match and either their titles or their URLs also match
- * (case-insensitively, ignoring surrounding whitespace). There's no shared
- * identity across two independently-created KDBX files to key off instead,
- * and a blank field never counts as a match on its own.
- */
-function entriesMatch(a: Entry, b: Entry): boolean {
-  const username = normalize(a.username);
-  if (username === "" || username !== normalize(b.username)) {
-    return false;
-  }
-  const title = normalize(a.title);
-  if (title !== "" && title === normalize(b.title)) {
-    return true;
-  }
-  const url = normalize(a.url);
-  return url !== "" && url === normalize(b.url);
+/** Whether both entries have the same non-blank value for `field`. */
+function sharesField(a: Entry, b: Entry, field: MergeFieldKey): boolean {
+  const value = normalize(mergeFieldValue(a, field));
+  return value !== "" && value === normalize(mergeFieldValue(b, field));
 }
 
 /**
- * Compares `source` against `target` for a merge: every source entry is
- * greedily matched (in source order) against the first not-yet-matched
- * target entry `entriesMatch` accepts, so each target entry is claimed by at
- * most one source entry. Unmatched source entries are `newEntries`; matched
- * pairs land in `identical` or `conflicts` depending on whether their fields
- * differ.
+ * Whether two entries describe the same account, which takes agreement on two
+ * separate questions:
+ *
+ * - *Which site?* — the title or the URL has to match. A blank field never
+ *   counts, so two entries aren't related by both lacking a URL.
+ * - *Which account on that site?* — the usernames have to match. Two blank
+ *   usernames count as agreement here (a shared Wi-Fi password has no
+ *   username), but a filled one never matches a blank one.
+ *
+ * Password and TOTP deliberately take no part. Sharing a password across two
+ * sites means the password was reused — that's a job for the health screen,
+ * not a reason to treat an Airbnb login and a Netflix login as the same entry.
+ */
+function entriesMatch(a: Entry, b: Entry): boolean {
+  if (!sharesField(a, b, "title") && !sharesField(a, b, "url")) {
+    return false;
+  }
+  return normalize(a.username) === normalize(b.username);
+}
+
+/**
+ * How many of the merge fields two entries share, used only to pick the best
+ * candidate among several that already matched.
+ */
+function matchScore(a: Entry, b: Entry): number {
+  return MERGE_FIELDS.filter((field) => sharesField(a, b, field)).length;
+}
+
+/**
+ * Compares `source` against `target` for a merge: each source entry (in source
+ * order) claims the not-yet-claimed target entry `entriesMatch` accepts that it
+ * shares the most fields with, so every target entry is matched at most once
+ * and the closest pairing wins. Source entries that match nothing are
+ * `newEntries`; matched pairs land in `identical` or `conflicts` depending on
+ * whether any of `MERGE_FIELDS` differ.
  */
 export function diffVaults(target: Vault, source: Vault): VaultMergePlan {
   const targetEntries = collectMergeableEntries(target);
@@ -133,10 +148,21 @@ export function diffVaults(target: Vault, source: Vault): VaultMergePlan {
   const identical: MatchedEntryPair[] = [];
 
   for (const sourceEntry of sourceEntries) {
-    const match = targetEntries.find(
-      (candidate) =>
-        !consumedTargetIds.has(candidate.id.toString()) && entriesMatch(candidate, sourceEntry),
-    );
+    let match: Entry | undefined;
+    let bestScore = 0;
+    for (const candidate of targetEntries) {
+      if (consumedTargetIds.has(candidate.id.toString())) {
+        continue;
+      }
+      if (!entriesMatch(candidate, sourceEntry)) {
+        continue;
+      }
+      const score = matchScore(candidate, sourceEntry);
+      if (score > bestScore) {
+        match = candidate;
+        bestScore = score;
+      }
+    }
     if (!match) {
       newEntries.push(sourceEntry);
       continue;

@@ -38,6 +38,8 @@ export {
 export { Vault } from "./vault";
 export {
   diffVaults,
+  mergeFieldValue,
+  MERGE_FIELDS,
   type FieldDifference,
   type MatchedEntryPair,
   type MergeFieldKey,
