@@ -1328,6 +1328,7 @@ describe("VaultShell", () => {
       renderShell(vault);
 
       await user.click(screen.getByRole("button", { name: "Password health" }));
+      await user.click(screen.getByText("Weak").closest("button")!);
       await user.click(screen.getByText("Weak Site"));
 
       expect(screen.getByRole("heading", { name: "Weak Site" })).toBeInTheDocument();
