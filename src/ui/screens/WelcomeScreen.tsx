@@ -102,7 +102,7 @@ export function WelcomeScreen({
       )}
 
       {mode === "open" && (
-        <form className="screen-panel" onSubmit={handleOpenSubmit}>
+        <form className="screen-panel" onSubmit={(event) => void handleOpenSubmit(event)}>
           <div className="field-group">
             <label className="field-label" htmlFor="open-master-password">
               Master password
@@ -127,7 +127,7 @@ export function WelcomeScreen({
       )}
 
       {mode === "create" && (
-        <form className="screen-panel" onSubmit={handleCreateSubmit}>
+        <form className="screen-panel" onSubmit={(event) => void handleCreateSubmit(event)}>
           <div className="field-group">
             <label className="field-label" htmlFor="create-name">
               Vault name

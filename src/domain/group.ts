@@ -44,72 +44,57 @@ export class Group {
     return other.id.equals(this.id);
   }
 
+  /**
+   * This group with `changes` applied. Identity (`id`) is never part of
+   * `changes`: a modified group is still the same group.
+   */
+  private with(changes: {
+    name?: string;
+    groups?: readonly Group[];
+    entries?: readonly Entry[];
+    icon?: Icon;
+  }): Group {
+    return new Group(
+      this.id,
+      changes.name ?? this.name,
+      changes.groups ?? this.childGroups,
+      changes.entries ?? this.groupEntries,
+      changes.icon ?? this.icon,
+    );
+  }
+
   rename(name: string): Group {
-    return new Group(this.id, name, this.childGroups, this.groupEntries, this.icon);
+    return this.with({ name });
   }
 
   changeIcon(icon: Icon): Group {
-    return new Group(this.id, this.name, this.childGroups, this.groupEntries, icon);
+    return this.with({ icon });
   }
 
   addEntry(entry: Entry): Group {
-    return new Group(
-      this.id,
-      this.name,
-      this.childGroups,
-      [...this.groupEntries, entry],
-      this.icon,
-    );
+    return this.with({ entries: [...this.groupEntries, entry] });
   }
 
   replaceEntry(entry: Entry): Group {
-    return new Group(
-      this.id,
-      this.name,
-      this.childGroups,
-      this.groupEntries.map((e) => (e.id.equals(entry.id) ? entry : e)),
-      this.icon,
-    );
+    return this.with({
+      entries: this.groupEntries.map((e) => (e.id.equals(entry.id) ? entry : e)),
+    });
   }
 
   removeEntry(entryId: EntryId): Group {
-    return new Group(
-      this.id,
-      this.name,
-      this.childGroups,
-      this.groupEntries.filter((e) => !e.id.equals(entryId)),
-      this.icon,
-    );
+    return this.with({ entries: this.groupEntries.filter((e) => !e.id.equals(entryId)) });
   }
 
   addGroup(group: Group): Group {
-    return new Group(
-      this.id,
-      this.name,
-      [...this.childGroups, group],
-      this.groupEntries,
-      this.icon,
-    );
+    return this.with({ groups: [...this.childGroups, group] });
   }
 
   replaceGroup(group: Group): Group {
-    return new Group(
-      this.id,
-      this.name,
-      this.childGroups.map((g) => (g.id.equals(group.id) ? group : g)),
-      this.groupEntries,
-      this.icon,
-    );
+    return this.with({ groups: this.childGroups.map((g) => (g.id.equals(group.id) ? group : g)) });
   }
 
   removeGroup(groupId: GroupId): Group {
-    return new Group(
-      this.id,
-      this.name,
-      this.childGroups.filter((g) => !g.id.equals(groupId)),
-      this.groupEntries,
-      this.icon,
-    );
+    return this.with({ groups: this.childGroups.filter((g) => !g.id.equals(groupId)) });
   }
 
   /**
@@ -144,12 +129,8 @@ export class Group {
       beforeId === undefined
         ? withoutMoving.length
         : withoutMoving.findIndex((g) => g.id.equals(beforeId));
-    const reordered = [
-      ...withoutMoving.slice(0, insertAt),
-      moving,
-      ...withoutMoving.slice(insertAt),
-    ];
-
-    return new Group(this.id, this.name, reordered, this.groupEntries, this.icon);
+    return this.with({
+      groups: [...withoutMoving.slice(0, insertAt), moving, ...withoutMoving.slice(insertAt)],
+    });
   }
 }

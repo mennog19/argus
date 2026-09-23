@@ -55,6 +55,35 @@ describe("TauriGlobalHotkey", () => {
     expect(unregister).toHaveBeenCalledWith("Alt+Space");
   });
 
+  it("waits for a pending release before claiming the next accelerator", async () => {
+    const hotkey = new TauriGlobalHotkey();
+    await hotkey.register("Alt+Space", vi.fn());
+    vi.mocked(register).mockClear();
+
+    let finishRelease!: () => void;
+    vi.mocked(unregister).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishRelease = resolve;
+      }),
+    );
+
+    // What re-binding looks like from a React effect: the cleanup releases
+    // without awaiting, and the next effect immediately re-claims the same
+    // combination. Run concurrently, the release lands last and hands back a
+    // shortcut Argus has just re-taken.
+    const released = hotkey.unregister();
+    const reclaimed = hotkey.register("Alt+Space", vi.fn());
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(register).not.toHaveBeenCalled();
+
+    finishRelease();
+    await Promise.all([released, reclaimed]);
+
+    expect(register).toHaveBeenCalledWith("Alt+Space", expect.any(Function));
+    expect(unregister).toHaveBeenCalledTimes(1);
+  });
+
   it("forgets the binding even when the plugin fails to release it", async () => {
     const hotkey = new TauriGlobalHotkey();
     await hotkey.register("Alt+Space", vi.fn());

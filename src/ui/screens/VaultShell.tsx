@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Entry,
   EntryId,
@@ -44,6 +44,7 @@ import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
+import { ClipboardCopy, useClipboardCopy } from "../use-clipboard-copy";
 import { sortEntries } from "../entry-sort";
 import {
   collectAllEntries,
@@ -149,6 +150,10 @@ export function VaultShell({
   const [mergeFilePath, setMergeFilePath] = useState<string | undefined>(undefined);
   const [mergeSourceVault, setMergeSourceVault] = useState<Vault | undefined>(undefined);
   const [mergeError, setMergeError] = useState<string | undefined>(undefined);
+
+  // Owned at the shell rather than in the detail pane so a pending clipboard
+  // wipe survives the user selecting another entry or opening the editor.
+  const clipboard = useClipboardCopy(clipboardWriter, clipboardClearSeconds);
 
   const rootGroup = vault.rootGroup;
   const recycleBin = vault.recycleBin;
@@ -566,7 +571,7 @@ export function VaultShell({
                     <EntryDetail
                       entryWithGroup={selected}
                       urlOpener={urlOpener}
-                      clipboardWriter={clipboardWriter}
+                      clipboard={clipboard}
                       clipboardClearSeconds={clipboardClearSeconds}
                       revealed={revealed}
                       onToggleReveal={() => setRevealed((value) => !value)}
@@ -596,7 +601,7 @@ export function VaultShell({
 interface EntryDetailProps {
   entryWithGroup: EntryWithGroup;
   urlOpener: UrlOpener;
-  clipboardWriter: ClipboardWriter;
+  clipboard: ClipboardCopy;
   clipboardClearSeconds: number;
   revealed: boolean;
   onToggleReveal: () => void;
@@ -604,12 +609,10 @@ interface EntryDetailProps {
   onDelete: () => Promise<void>;
 }
 
-type CopiedField = "username" | "password" | "totp" | undefined;
-
 function EntryDetail({
   entryWithGroup,
   urlOpener,
-  clipboardWriter,
+  clipboard,
   clipboardClearSeconds,
   revealed,
   onToggleReveal,
@@ -628,28 +631,7 @@ function EntryDetail({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [copiedField, setCopiedField] = useState<CopiedField>(undefined);
-  const [clearingField, setClearingField] = useState<CopiedField>(undefined);
-  const [clearingToken, setClearingToken] = useState(0);
-  const copyToken = useRef(0);
-
-  async function handleCopy(value: string, field: "username" | "password" | "totp") {
-    copyToken.current += 1;
-    const thisToken = copyToken.current;
-    await clipboardWriter.writeText(value);
-    setCopiedField(field);
-    setClearingField(field);
-    setClearingToken(thisToken);
-    setTimeout(() => {
-      setCopiedField((current) => (current === field ? undefined : current));
-    }, 1500);
-    setTimeout(() => {
-      if (copyToken.current === thisToken) {
-        void clipboardWriter.writeText("");
-      }
-      setClearingField((current) => (current === field ? undefined : current));
-    }, clipboardClearSeconds * 1000);
-  }
+  const { copiedField, clearingField, clearingToken, copy } = clipboard;
 
   async function handleConfirmDelete() {
     setBusy(true);
@@ -730,7 +712,7 @@ function EntryDetail({
                 type="button"
                 className="icon-button-small"
                 aria-label="Copy username"
-                onClick={() => void handleCopy(entry.username, "username")}
+                onClick={() => void copy(entry.username, "username")}
               >
                 <CopyIcon size={17} strokeWidth={2.25} />
               </button>
@@ -752,7 +734,7 @@ function EntryDetail({
                 type="button"
                 className="icon-button-small"
                 aria-label="Copy password"
-                onClick={() => void handleCopy(entry.password.reveal(), "password")}
+                onClick={() => void copy(entry.password.reveal(), "password")}
               >
                 <CopyIcon size={17} strokeWidth={2.25} />
               </button>
@@ -792,7 +774,7 @@ function EntryDetail({
                   className="icon-button-small"
                   aria-label="Copy authenticator code"
                   disabled={!totpCode}
-                  onClick={() => totpCode && void handleCopy(totpCode.value, "totp")}
+                  onClick={() => totpCode && void copy(totpCode.value, "totp")}
                 >
                   <CopyIcon size={17} strokeWidth={2.25} />
                 </button>
