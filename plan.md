@@ -29,7 +29,8 @@ A feature branch isn't done until:
 ## Todo
 
 - Opt-in, off-by-default online breach-check (HIBP-style).
-- import en export functionaliteit voor settings
 - sort between entries, e.g. last used, alfabetical
 - autofill
 - stats schermpje?
+- maak main oog muis volgen
+health check folder laat zien hoeveel items terug

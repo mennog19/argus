@@ -11,6 +11,7 @@ import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
 import { ChevronIcon } from "../icons";
 import { ChangeMasterPasswordCard } from "./ChangeMasterPasswordCard";
+import { SettingsTransferCard } from "./SettingsTransferCard";
 
 const ENTRY_FIELD_TOGGLES: ReadonlyArray<{
   key: keyof EntryFieldVisibility;
@@ -47,6 +48,8 @@ interface SettingsScreenProps {
   onThemeChange: (theme: Theme) => void;
   onContentProtectionChange: (contentProtection: boolean) => void;
   onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
+  onExportSettings: () => Promise<string | undefined>;
+  onImportSettings: () => Promise<string | undefined>;
 }
 
 export function SettingsScreen({
@@ -70,6 +73,8 @@ export function SettingsScreen({
   onThemeChange,
   onContentProtectionChange,
   onEntryFieldVisibilityChange,
+  onExportSettings,
+  onImportSettings,
 }: SettingsScreenProps) {
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
@@ -372,6 +377,14 @@ export function SettingsScreen({
                 </label>
               ))}
             </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Settings file</div>
+            <SettingsTransferCard
+              onExportSettings={onExportSettings}
+              onImportSettings={onImportSettings}
+            />
           </section>
 
           <section className="detail-section danger-zone">

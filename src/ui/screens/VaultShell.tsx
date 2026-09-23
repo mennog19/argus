@@ -85,6 +85,8 @@ interface VaultShellProps {
   onThemeChange: (theme: Theme) => void;
   onContentProtectionChange: (contentProtection: boolean) => void;
   onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
+  onExportSettings: () => Promise<string | undefined>;
+  onImportSettings: () => Promise<string | undefined>;
 }
 
 const ALL_ITEMS = "__all__";
@@ -118,6 +120,8 @@ export function VaultShell({
   onThemeChange,
   onContentProtectionChange,
   onEntryFieldVisibilityChange,
+  onExportSettings,
+  onImportSettings,
 }: VaultShellProps) {
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -408,6 +412,8 @@ export function VaultShell({
             onThemeChange={onThemeChange}
             onContentProtectionChange={onContentProtectionChange}
             onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
+            onExportSettings={onExportSettings}
+            onImportSettings={onImportSettings}
           />
         ) : (
           <>

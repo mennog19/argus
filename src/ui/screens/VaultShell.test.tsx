@@ -65,6 +65,8 @@ function renderShell(
     onContentProtectionChange?: (contentProtection: boolean) => void;
     entryFieldVisibility?: EntryFieldVisibility;
     onEntryFieldVisibilityChange?: (visibility: EntryFieldVisibility) => void;
+    onExportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<string | undefined>;
     mergeSource?: VaultMergeSource;
   } = {},
 ) {
@@ -88,6 +90,8 @@ function renderShell(
   const onContentProtectionChange = overrides.onContentProtectionChange ?? vi.fn();
   const entryFieldVisibility = overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY;
   const onEntryFieldVisibilityChange = overrides.onEntryFieldVisibilityChange ?? vi.fn();
+  const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
+  const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
   const mergeSource = overrides.mergeSource ?? fakeMergeSource();
   render(
     <VaultShell
@@ -116,6 +120,8 @@ function renderShell(
       onThemeChange={onThemeChange}
       onContentProtectionChange={onContentProtectionChange}
       onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
+      onExportSettings={onExportSettings}
+      onImportSettings={onImportSettings}
     />,
   );
   return {
@@ -327,6 +333,8 @@ describe("VaultShell", () => {
         onThemeChange={vi.fn()}
         onContentProtectionChange={vi.fn()}
         onEntryFieldVisibilityChange={vi.fn()}
+        onExportSettings={vi.fn().mockResolvedValue(undefined)}
+        onImportSettings={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -1006,6 +1014,8 @@ describe("VaultShell", () => {
           onThemeChange={vi.fn()}
           onContentProtectionChange={vi.fn()}
           onEntryFieldVisibilityChange={vi.fn()}
+          onExportSettings={vi.fn().mockResolvedValue(undefined)}
+          onImportSettings={vi.fn().mockResolvedValue(undefined)}
         />,
       );
 
@@ -1043,6 +1053,8 @@ describe("VaultShell", () => {
           onThemeChange={vi.fn()}
           onContentProtectionChange={vi.fn()}
           onEntryFieldVisibilityChange={vi.fn()}
+          onExportSettings={vi.fn().mockResolvedValue(undefined)}
+          onImportSettings={vi.fn().mockResolvedValue(undefined)}
         />,
       );
 

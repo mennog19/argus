@@ -6,6 +6,8 @@ import { KdbxVaultMergeSource } from "./infrastructure/kdbx-vault-merge-source";
 import { KdbxVaultRepository } from "./infrastructure/kdbx-vault-repository";
 import { TauriFileStorage } from "./infrastructure/tauri-file-storage";
 import { TauriVaultFileDialog } from "./infrastructure/tauri-vault-file-dialog";
+import { TauriSettingsFileDialog } from "./infrastructure/tauri-settings-file-dialog";
+import { SettingsTransferService } from "./application/settings-transfer-service";
 import { JsonSettingsStore } from "./infrastructure/json-settings-store";
 import { TauriUrlOpener } from "./infrastructure/tauri-url-opener";
 import { TauriClipboard } from "./infrastructure/tauri-clipboard";
@@ -21,6 +23,10 @@ const vaultAccessService = new VaultAccessService(
 );
 const mergeSource = new KdbxVaultMergeSource(vaultFileDialog, fileStorage);
 const settingsStore = new JsonSettingsStore();
+const settingsTransferService = new SettingsTransferService(
+  new TauriSettingsFileDialog(),
+  fileStorage,
+);
 const urlOpener = new TauriUrlOpener();
 const clipboardWriter = new TauriClipboard();
 const windowEvents = new TauriWindowEvents();
@@ -31,6 +37,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <App
       vaultAccessService={vaultAccessService}
       settingsStore={settingsStore}
+      settingsTransferService={settingsTransferService}
       urlOpener={urlOpener}
       clipboardWriter={clipboardWriter}
       windowEvents={windowEvents}
