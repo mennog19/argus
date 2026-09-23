@@ -9,6 +9,7 @@ import {
   withClipboardClearSeconds,
   withContentProtection,
   withEntryFieldVisibility,
+  withEntrySort,
   withGeneratorPolicy,
   withGroupDeleteMode,
   withTheme,
@@ -194,6 +195,19 @@ describe("withEntryFieldVisibility", () => {
     const result = withEntryFieldVisibility(settings, visibility);
 
     expect(result.entryFieldVisibility).toEqual(visibility);
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+});
+
+describe("withEntrySort", () => {
+  it("records the entry list sort order without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withEntrySort(settings, "title-asc");
+
+    expect(result.entrySort).toBe("title-asc");
     expect(result.recentVaults).toBe(settings.recentVaults);
   });
 });

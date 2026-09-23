@@ -1113,6 +1113,27 @@ input[type="radio"]:checked::after {
   margin: 0;
 }
 
+.entry-list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-sort-select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-input);
+  color: var(--color-text-dim);
+  font-size: 12px;
+  outline: none;
+  max-width: 150px;
+}
+
+.entry-sort-select:focus {
+  border-color: var(--color-accent);
+}
+
 .entry-list-header .btn-secondary {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";
-export { Entry, type EntryFields } from "./entry";
+export { Entry, type EntryFields, type EntryTimes } from "./entry";
 export { Icon, type IconKind } from "./icon";
 export { EntryId } from "./entry-id";
 export { matchesSearchQuery } from "./entry-search";

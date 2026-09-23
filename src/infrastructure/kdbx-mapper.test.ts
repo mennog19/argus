@@ -473,3 +473,94 @@ describe("applyVaultToKdbx", () => {
     expect(kdbxEntry.fields.get("Title")).toBe("plain");
   });
 });
+
+describe("entry times", () => {
+  it("maps a KDBX entry's timestamps onto the domain entry", () => {
+    const db = createDb();
+    const kdbxEntry = db.createEntry(db.getDefaultGroup());
+    kdbxEntry.fields.set("Title", "Mail");
+    kdbxEntry.times.creationTime = new Date("2026-01-01T00:00:00Z");
+    kdbxEntry.times.lastModTime = new Date("2026-02-01T00:00:00Z");
+    kdbxEntry.times.lastAccessTime = new Date("2026-03-01T00:00:00Z");
+
+    const [entry] = vaultFromKdbx(db).rootGroup.entries;
+
+    expect(entry.times.createdAt).toEqual(new Date("2026-01-01T00:00:00Z"));
+    expect(entry.times.modifiedAt).toEqual(new Date("2026-02-01T00:00:00Z"));
+    expect(entry.times.accessedAt).toEqual(new Date("2026-03-01T00:00:00Z"));
+  });
+
+  it("writes a newer access time back without touching the entry's content or history", () => {
+    const db = createDb();
+    const kdbxEntry = db.createEntry(db.getDefaultGroup());
+    kdbxEntry.fields.set("Title", "Mail");
+    kdbxEntry.times.lastAccessTime = new Date("2026-01-01T00:00:00Z");
+    const vault = vaultFromKdbx(db);
+    const [entry] = vault.rootGroup.entries;
+    const openedAt = new Date("2026-04-01T12:00:00Z");
+
+    applyVaultToKdbx(db, vault.updateEntry(entry.markAccessed(openedAt)));
+
+    expect(kdbxEntry.times.lastAccessTime).toEqual(openedAt);
+    expect(kdbxEntry.history).toHaveLength(0);
+  });
+
+  it("stamps the access time on an entry that's new to the KDBX document", () => {
+    const db = createDb();
+    let vault = vaultFromKdbx(db);
+    // Later than "now", because `db.createEntry` stamps the fresh KDBX entry
+    // with the current time and the write below only moves it forward.
+    const openedAt = new Date(Date.now() + 60_000);
+    vault = vault.addEntry(
+      vault.rootGroup.id,
+      Entry.create({ title: "New", times: { accessedAt: openedAt } }),
+    );
+
+    applyVaultToKdbx(db, vault);
+
+    expect(db.getDefaultGroup().entries[0].times.lastAccessTime).toEqual(openedAt);
+  });
+
+  it("stamps the access time on an entry the KDBX document has no access time for", () => {
+    const db = createDb();
+    const kdbxEntry = db.createEntry(db.getDefaultGroup());
+    kdbxEntry.fields.set("Title", "Mail");
+    kdbxEntry.times.lastAccessTime = undefined;
+    const vault = vaultFromKdbx(db);
+    const openedAt = new Date("2026-04-01T12:00:00Z");
+
+    applyVaultToKdbx(db, vault.updateEntry(vault.rootGroup.entries[0].markAccessed(openedAt)));
+
+    expect(kdbxEntry.times.lastAccessTime).toEqual(openedAt);
+  });
+
+  it("never rolls the access time backwards", () => {
+    const db = createDb();
+    const kdbxEntry = db.createEntry(db.getDefaultGroup());
+    kdbxEntry.fields.set("Title", "Mail");
+    const newest = new Date("2026-05-01T00:00:00Z");
+    kdbxEntry.times.lastAccessTime = newest;
+    const vault = vaultFromKdbx(db);
+
+    applyVaultToKdbx(
+      db,
+      vault.updateEntry(vault.rootGroup.entries[0].markAccessed(new Date("2026-01-01T00:00:00Z"))),
+    );
+
+    expect(kdbxEntry.times.lastAccessTime).toEqual(newest);
+  });
+
+  it("leaves the access time alone for an entry that was never opened", () => {
+    const db = createDb();
+    const kdbxEntry = db.createEntry(db.getDefaultGroup());
+    kdbxEntry.fields.set("Title", "Mail");
+    const vault = vaultFromKdbx(db);
+    const untouched = vault.updateEntry(
+      new Entry(vault.rootGroup.entries[0].id, { title: "Renamed" }),
+    );
+
+    applyVaultToKdbx(db, untouched);
+
+    expect(kdbxEntry.fields.get("Title")).toBe("Renamed");
+  });
+});
