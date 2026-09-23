@@ -37,6 +37,8 @@ interface SettingsScreenProps {
   contentProtection: boolean;
   entryFieldVisibility: EntryFieldVisibility;
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Why the last merge attempt never got started, e.g. the picked file is this vault. */
+  mergeError: string | undefined;
   onOpenMergeWizard: () => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
@@ -59,6 +61,7 @@ export function SettingsScreen({
   contentProtection,
   entryFieldVisibility,
   onChangeMasterPassword,
+  mergeError,
   onOpenMergeWizard,
   onClipboardClearSecondsChange,
   onAutoLockChange,
@@ -385,6 +388,7 @@ export function SettingsScreen({
                   <span className="danger-zone-row-hint">
                     Compare a second .kdbx file against this one and choose what to bring over.
                   </span>
+                  {mergeError && <span className="field-error">{mergeError}</span>}
                 </div>
                 <button type="button" className="btn-danger-outline" onClick={onOpenMergeWizard}>
                   Merge another vault in…

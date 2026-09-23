@@ -29,6 +29,7 @@ function renderSettings(
     entryFieldVisibility?: EntryFieldVisibility;
     onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
     onOpenMergeWizard?: () => void;
+    mergeError?: string;
   } = {},
 ) {
   const onChangeMasterPassword =
@@ -41,7 +42,7 @@ function renderSettings(
   const onThemeChange = vi.fn();
   const onContentProtectionChange = vi.fn();
   const onEntryFieldVisibilityChange = vi.fn();
-  const { container } = render(
+  const { container, unmount } = render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
       fileInfo={overrides.fileInfo}
@@ -54,6 +55,7 @@ function renderSettings(
       contentProtection={overrides.contentProtection ?? true}
       entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
       onChangeMasterPassword={onChangeMasterPassword}
+      mergeError={overrides.mergeError}
       onOpenMergeWizard={onOpenMergeWizard}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
@@ -66,6 +68,7 @@ function renderSettings(
   );
   return {
     container,
+    unmount,
     onChangeMasterPassword,
     onOpenMergeWizard,
     onClipboardClearSecondsChange,
@@ -301,6 +304,17 @@ describe("SettingsScreen", () => {
       fireEvent.click(screen.getByRole("button", { name: /merge another vault in/i }));
 
       expect(onOpenMergeWizard).toHaveBeenCalled();
+    });
+
+    it("shows why a merge could not be started, and nothing when there's no reason", () => {
+      const { unmount } = renderSettings({ mergeError: "That's the vault you already have open." });
+
+      expect(screen.getByText("That's the vault you already have open.")).toBeInTheDocument();
+
+      unmount();
+      renderSettings();
+
+      expect(screen.queryByText("That's the vault you already have open.")).not.toBeInTheDocument();
     });
 
     it("groups merging and changing the master password under one danger zone", () => {

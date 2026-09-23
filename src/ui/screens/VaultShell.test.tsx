@@ -1292,6 +1292,47 @@ describe("VaultShell", () => {
       expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
     });
 
+    it("refuses to merge the vault that's already open, without asking for a password", async () => {
+      const user = userEvent.setup();
+      const mergeSource = fakeMergeSource({
+        // Same file as `renderShell`'s `filePath`, spelled the way Windows'
+        // file dialog would hand it back.
+        pickFile: vi.fn().mockResolvedValue("C:\\Vaults\\Personal.kdbx"),
+      });
+
+      renderShell(Vault.create("Mine"), { mergeSource });
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      expect(await screen.findByText(/vault you already have open/i)).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(mergeSource.openFile).not.toHaveBeenCalled();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    });
+
+    it("clears the refusal once a different file is picked", async () => {
+      const user = userEvent.setup();
+      const pickFile = vi
+        .fn()
+        .mockResolvedValueOnce("C:/vaults/personal.kdbx")
+        .mockResolvedValueOnce("C:/vaults/other.kdbx");
+      const mergeSource = fakeMergeSource({ pickFile });
+
+      renderShell(Vault.create("Mine"), { mergeSource });
+
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+      await screen.findByText(/vault you already have open/i);
+
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      expect(
+        await screen.findByRole("dialog", { name: /merge another vault in/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/vault you already have open/i)).not.toBeInTheDocument();
+    });
+
     it("stays on the settings screen when the file dialog is cancelled", async () => {
       const user = userEvent.setup();
       const mergeSource = fakeMergeSource({ pickFile: vi.fn().mockResolvedValue(undefined) });

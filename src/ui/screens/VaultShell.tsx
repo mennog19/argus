@@ -40,7 +40,7 @@ import {
 import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
-import { formatTotpCode } from "../format";
+import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
 import {
   collectAllEntries,
@@ -128,6 +128,7 @@ export function VaultShell({
   const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
   const [mergeFilePath, setMergeFilePath] = useState<string | undefined>(undefined);
   const [mergeSourceVault, setMergeSourceVault] = useState<Vault | undefined>(undefined);
+  const [mergeError, setMergeError] = useState<string | undefined>(undefined);
 
   const rootGroup = vault.rootGroup;
   const recycleBin = vault.recycleBin;
@@ -257,8 +258,18 @@ export function VaultShell({
   }
 
   async function startMerge() {
+    setMergeError(undefined);
     const picked = await mergeSource.pickFile();
     if (!picked) {
+      return;
+    }
+    // Merging a vault into itself would compare every entry against its own
+    // twin and, entry by entry, offer to overwrite it with itself — nothing
+    // useful, and plenty to get wrong. Refuse it before asking for a password.
+    if (isSamePath(picked, filePath)) {
+      setMergeError(
+        "That's the vault you already have open. Pick a different .kdbx file to merge in.",
+      );
       return;
     }
     setMergeFilePath(picked);
@@ -273,6 +284,7 @@ export function VaultShell({
   function closeMerge() {
     setMergeFilePath(undefined);
     setMergeSourceVault(undefined);
+    setMergeError(undefined);
     setView("settings");
   }
 
@@ -280,6 +292,7 @@ export function VaultShell({
   function goToView(next: View) {
     setMergeFilePath(undefined);
     setMergeSourceVault(undefined);
+    setMergeError(undefined);
     setView(next);
   }
 
@@ -368,6 +381,7 @@ export function VaultShell({
             contentProtection={contentProtection}
             entryFieldVisibility={entryFieldVisibility}
             onChangeMasterPassword={onChangeMasterPassword}
+            mergeError={mergeError}
             onOpenMergeWizard={() => void startMerge()}
             onClipboardClearSecondsChange={onClipboardClearSecondsChange}
             onAutoLockChange={onAutoLockChange}
