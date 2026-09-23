@@ -111,4 +111,45 @@ export class Group {
       this.icon,
     );
   }
+
+  /**
+   * Reorders a child group to sit immediately before `beforeId` among its
+   * siblings, or at the end when `beforeId` is `undefined`. Both ids must
+   * belong to this group's direct children.
+   */
+  moveGroupBefore(groupId: GroupId, beforeId: GroupId | undefined): Group {
+    const movingIndex = this.childGroups.findIndex((g) => g.id.equals(groupId));
+    if (movingIndex === -1) {
+      throw new Error(`Group not found: ${groupId.toString()}`);
+    }
+    if (beforeId !== undefined && !beforeId.equals(groupId)) {
+      const targetExists = this.childGroups.some((g) => g.id.equals(beforeId));
+      if (!targetExists) {
+        throw new Error(`Group not found: ${beforeId.toString()}`);
+      }
+    }
+    if (beforeId === undefined && movingIndex === this.childGroups.length - 1) {
+      return this;
+    }
+    if (
+      beforeId !== undefined &&
+      (beforeId.equals(groupId) || this.childGroups[movingIndex + 1]?.id.equals(beforeId))
+    ) {
+      return this;
+    }
+
+    const moving = this.childGroups[movingIndex];
+    const withoutMoving = this.childGroups.filter((g) => !g.id.equals(groupId));
+    const insertAt =
+      beforeId === undefined
+        ? withoutMoving.length
+        : withoutMoving.findIndex((g) => g.id.equals(beforeId));
+    const reordered = [
+      ...withoutMoving.slice(0, insertAt),
+      moving,
+      ...withoutMoving.slice(insertAt),
+    ];
+
+    return new Group(this.id, this.name, reordered, this.groupEntries, this.icon);
+  }
 }

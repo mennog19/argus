@@ -135,6 +135,54 @@ describe("Vault", () => {
     });
   });
 
+  describe("reorderGroup", () => {
+    it("reorders top-level groups", () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      const vault = new Vault("Root", Group.create("Root").addGroup(personal).addGroup(work));
+
+      const updated = vault.reorderGroup(work.id, personal.id);
+
+      expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work", "Personal"]);
+    });
+
+    it("reorders subgroups nested two levels deep", () => {
+      const a = Group.create("A");
+      const b = Group.create("B");
+      const parent = Group.create("Parent").addGroup(a).addGroup(b);
+      const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+      const updated = vault.reorderGroup(b.id, a.id);
+
+      expect(updated.findGroup(parent.id)?.groups.map((g) => g.name)).toEqual(["B", "A"]);
+    });
+
+    it("moves a group to the end of its siblings when beforeId is undefined", () => {
+      const work = Group.create("Work");
+      const personal = Group.create("Personal");
+      const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+      const updated = vault.reorderGroup(work.id, undefined);
+
+      expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
+    });
+
+    it("throws when the group doesn't exist", () => {
+      const vault = new Vault("Root", Group.create("Root").addGroup(Group.create("Sibling")));
+
+      expect(() => vault.reorderGroup(GroupId.create(), undefined)).toThrow("Group not found");
+    });
+
+    it("throws when beforeId belongs to a different parent", () => {
+      const inOtherParent = Group.create("Elsewhere");
+      const otherParent = Group.create("OtherParent").addGroup(inOtherParent);
+      const work = Group.create("Work");
+      const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(otherParent));
+
+      expect(() => vault.reorderGroup(work.id, inOtherParent.id)).toThrow("Group not found");
+    });
+  });
+
   describe("renameGroup", () => {
     it("renames the root group", () => {
       const vault = Vault.create("Root");
@@ -522,6 +570,135 @@ describe("Vault", () => {
 
         expect(() => vault.restoreGroup(recycledDeleted.id, recycledGrandchild.id)).toThrow(
           "Cannot restore a group into itself or one of its own subgroups",
+        );
+      });
+    });
+
+    describe("moveGroupToParent", () => {
+      it("reparents a group into another group (drag-and-drop into a folder)", () => {
+        const work = Group.create("Work");
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToParent(personal.id, work.id);
+
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work"]);
+        expect(updated.findGroup(work.id)?.groups.map((g) => g.name)).toEqual(["Personal"]);
+      });
+
+      it("reparents a group out from a nested subgroup up to a sibling of its former parent", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToParent(nested.id, personal.id);
+
+        expect(updated.findGroup(work.id)?.groups).toEqual([]);
+        expect(updated.findGroup(personal.id)?.groups.map((g) => g.name)).toEqual(["Nested"]);
+      });
+
+      it("returns this vault unchanged when the group is already a direct child of the target", () => {
+        const work = Group.create("Work");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work));
+
+        const updated = vault.moveGroupToParent(work.id, vault.rootGroup.id);
+
+        expect(updated).toBe(vault);
+      });
+
+      it("throws when the group doesn't exist", () => {
+        const vault = Vault.create("Root");
+
+        expect(() => vault.moveGroupToParent(GroupId.create(), vault.rootGroup.id)).toThrow(
+          "Group not found",
+        );
+      });
+
+      it("throws when the target group doesn't exist", () => {
+        const work = Group.create("Work");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work));
+
+        expect(() => vault.moveGroupToParent(work.id, GroupId.create())).toThrow("Group not found");
+      });
+
+      it("throws when moving a group into itself", () => {
+        const work = Group.create("Work");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work));
+
+        expect(() => vault.moveGroupToParent(work.id, work.id)).toThrow(
+          "Cannot move a group into itself or one of its own subgroups",
+        );
+      });
+
+      it("throws when moving a group into its own subgroup", () => {
+        const grandchild = Group.create("Grandchild");
+        const parent = Group.create("Parent").addGroup(grandchild);
+        const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+        expect(() => vault.moveGroupToParent(parent.id, grandchild.id)).toThrow(
+          "Cannot move a group into itself or one of its own subgroups",
+        );
+      });
+    });
+
+    describe("moveGroupToPosition", () => {
+      it("moves a group out of a nested parent, positioned before a top-level sibling", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(nested.id, vault.rootGroup.id, personal.id);
+
+        expect(updated.findGroup(work.id)?.groups).toEqual([]);
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work", "Nested", "Personal"]);
+      });
+
+      it("moves a top-level group in, positioned among a nested group's siblings", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(personal.id, work.id, nested.id);
+
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work"]);
+        expect(updated.findGroup(work.id)?.groups.map((g) => g.name)).toEqual([
+          "Personal",
+          "Nested",
+        ]);
+      });
+
+      it("moves a group to the end of the target's children when beforeId is undefined", () => {
+        const nested = Group.create("Nested");
+        const work = Group.create("Work").addGroup(nested);
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(nested.id, vault.rootGroup.id, undefined);
+
+        expect(updated.findGroup(work.id)?.groups).toEqual([]);
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Work", "Personal", "Nested"]);
+      });
+
+      it("reduces to a plain same-parent reorder when the target parent doesn't change", () => {
+        const work = Group.create("Work");
+        const personal = Group.create("Personal");
+        const vault = new Vault("Root", Group.create("Root").addGroup(work).addGroup(personal));
+
+        const updated = vault.moveGroupToPosition(personal.id, vault.rootGroup.id, work.id);
+
+        expect(updated.rootGroup.groups.map((g) => g.name)).toEqual(["Personal", "Work"]);
+      });
+
+      it("throws when moving a group into itself or one of its own subgroups", () => {
+        const grandchild = Group.create("Grandchild");
+        const parent = Group.create("Parent").addGroup(grandchild);
+        const vault = new Vault("Root", Group.create("Root").addGroup(parent));
+
+        expect(() => vault.moveGroupToPosition(parent.id, grandchild.id, undefined)).toThrow(
+          "Cannot move a group into itself or one of its own subgroups",
         );
       });
     });

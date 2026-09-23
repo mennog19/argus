@@ -186,6 +186,7 @@ function syncGroup(
     syncEntry(entry, kdbxGroup, db, existingEntries, visitedEntries);
   }
 
+  const childKdbxGroupsById = new Map<string, KdbxGroup>();
   for (const childGroup of group.groups) {
     const id = childGroup.id.toString();
     const existing = existingGroups.get(id);
@@ -199,6 +200,7 @@ function syncGroup(
       childKdbxGroup = db.createGroup(kdbxGroup, childGroup.name);
       childKdbxGroup.uuid = domainIdToKdbxUuid(id);
     }
+    childKdbxGroupsById.set(id, childKdbxGroup);
     syncGroup(
       childGroup,
       childKdbxGroup,
@@ -209,6 +211,22 @@ function syncGroup(
       visitedEntries,
     );
   }
+  // The array order is what kdbxweb serializes and what KeePass/KeePassXC
+  // display, so the domain's group order must be written back explicitly —
+  // the loop above only appends new groups and relocates moved ones. Any
+  // existing child no longer in the domain tree (deleted, or moved to a
+  // different parent elsewhere in this same sync pass) is kept, appended
+  // after the ordered ones, rather than dropped here: the deferred
+  // deletion/move logic below and in later `syncGroup` calls still needs to
+  // find it by walking this exact array.
+  const domainChildIds = new Set(group.groups.map((childGroup) => childGroup.id.toString()));
+  const keptExisting = kdbxGroup.groups.filter(
+    (existingChild) => !domainChildIds.has(kdbxUuidToDomainId(existingChild.uuid)),
+  );
+  kdbxGroup.groups = [
+    ...group.groups.map((childGroup) => childKdbxGroupsById.get(childGroup.id.toString())!),
+    ...keptExisting,
+  ];
 }
 
 /**
