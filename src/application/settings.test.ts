@@ -6,6 +6,7 @@ import {
   recordVaultOpened,
   withAccentColor,
   withAutoLock,
+  withAutoType,
   withClipboardClearSeconds,
   withContentProtection,
   withEntryFieldVisibility,
@@ -122,6 +123,27 @@ describe("withAutoLock", () => {
       idleTimeoutMinutes: 10,
       lockOnMinimize: true,
       lockOnSleep: false,
+    });
+    expect(result.recentVaults).toBe(settings.recentVaults);
+  });
+});
+
+describe("withAutoType", () => {
+  it("records the auto-type configuration without disturbing other settings", () => {
+    const settings: AppSettings = {
+      recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+    };
+
+    const result = withAutoType(settings, {
+      enabled: true,
+      hotkey: "Alt+Space",
+      sequence: "{PASSWORD}{ENTER}",
+    });
+
+    expect(result.autoType).toEqual({
+      enabled: true,
+      hotkey: "Alt+Space",
+      sequence: "{PASSWORD}{ENTER}",
     });
     expect(result.recentVaults).toBe(settings.recentVaults);
   });

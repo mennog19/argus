@@ -1,4 +1,4 @@
-import { PasswordPolicyOptions } from "../domain";
+import { DEFAULT_AUTO_TYPE_SEQUENCE, PasswordPolicyOptions } from "../domain";
 
 /** One vault the user has previously opened or created, most-recent first. */
 export interface RecentVaultEntry {
@@ -15,6 +15,26 @@ export interface AutoLockSettings {
 }
 
 export const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+
+/**
+ * Auto-type: an OS-wide hotkey that types the credentials of a matching entry
+ * into whatever application is focused. Off by default — it simulates
+ * keyboard input into other programs, so it's opt-in like the auto-lock
+ * triggers.
+ */
+export interface AutoTypeSettings {
+  readonly enabled: boolean;
+  /** A Tauri global-shortcut accelerator, e.g. `"CommandOrControl+Shift+A"`. */
+  readonly hotkey: string;
+  /** The sequence typed when an entry doesn't specify its own. */
+  readonly sequence: string;
+}
+
+export const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
+  enabled: false,
+  hotkey: "CommandOrControl+Shift+A",
+  sequence: DEFAULT_AUTO_TYPE_SEQUENCE,
+};
 
 /**
  * What deleting a group does with what's inside it: `"deleteContents"` moves
@@ -114,6 +134,10 @@ export interface AppSettings {
   readonly clipboardClearSeconds?: number;
   /** Undefined until the user changes it, at which point `DEFAULT_AUTO_LOCK` applies. */
   readonly autoLock?: AutoLockSettings;
+  /** Undefined until the user changes it, at which point `DEFAULT_AUTO_TYPE` applies.
+   * Deliberately left out of the portable settings file: which hotkey is free
+   * is a property of one machine, not of a user's preferences. */
+  readonly autoType?: AutoTypeSettings;
   /** Undefined until the user changes it, at which point `DEFAULT_GROUP_DELETE_MODE` applies. */
   readonly groupDeleteMode?: GroupDeleteMode;
   /** Undefined until the user changes it, at which point `DEFAULT_ACCENT_COLOR` applies. */
@@ -181,6 +205,11 @@ export function withClipboardClearSeconds(settings: AppSettings, seconds: number
 /** Returns settings with `autoLock` recorded as the auto-lock configuration. */
 export function withAutoLock(settings: AppSettings, autoLock: AutoLockSettings): AppSettings {
   return { ...settings, autoLock };
+}
+
+/** Returns settings with `autoType` recorded as the auto-type configuration. */
+export function withAutoType(settings: AppSettings, autoType: AutoTypeSettings): AppSettings {
+  return { ...settings, autoType };
 }
 
 /** Returns settings with `mode` recorded as the group delete behaviour. */

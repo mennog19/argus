@@ -13,6 +13,7 @@ import {
 import {
   AccentColor,
   AutoLockSettings,
+  AutoTypeSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   EntryFieldVisibility,
   EntrySortId,
@@ -71,6 +72,7 @@ interface VaultShellProps {
   generatorPolicy: PasswordPolicyOptions;
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
+  autoType: AutoTypeSettings;
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
@@ -84,6 +86,7 @@ interface VaultShellProps {
   onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
+  onAutoTypeChange: (autoType: AutoTypeSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
@@ -111,6 +114,7 @@ export function VaultShell({
   generatorPolicy,
   clipboardClearSeconds,
   autoLock,
+  autoType,
   groupDeleteMode,
   accentColor,
   theme,
@@ -124,6 +128,7 @@ export function VaultShell({
   onGeneratorPolicyChange,
   onClipboardClearSecondsChange,
   onAutoLockChange,
+  onAutoTypeChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
@@ -416,6 +421,7 @@ export function VaultShell({
             entryCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
             clipboardClearSeconds={clipboardClearSeconds}
             autoLock={autoLock}
+            autoType={autoType}
             groupDeleteMode={groupDeleteMode}
             accentColor={accentColor}
             theme={theme}
@@ -426,6 +432,7 @@ export function VaultShell({
             onOpenMergeWizard={() => void startMerge()}
             onClipboardClearSecondsChange={onClipboardClearSecondsChange}
             onAutoLockChange={onAutoLockChange}
+            onAutoTypeChange={onAutoTypeChange}
             onGroupDeleteModeChange={onGroupDeleteModeChange}
             onAccentColorChange={onAccentColorChange}
             onThemeChange={onThemeChange}

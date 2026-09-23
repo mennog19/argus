@@ -2,10 +2,12 @@ import { CSSProperties } from "react";
 import {
   AccentColor,
   AutoLockSettings,
+  AutoTypeSettings,
   EntryFieldVisibility,
   GroupDeleteMode,
   Theme,
 } from "../../application/settings";
+import { autoTypeSequenceError, DEFAULT_AUTO_TYPE_SEQUENCE } from "../../domain";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { ACCENT_COLOR_PRESETS, accentColorHue } from "../accent-color";
 import { basename, formatFileSize, formatRelativeTime } from "../format";
@@ -32,6 +34,7 @@ interface SettingsScreenProps {
   entryCount: number;
   clipboardClearSeconds: number;
   autoLock: AutoLockSettings;
+  autoType: AutoTypeSettings;
   groupDeleteMode: GroupDeleteMode;
   accentColor: AccentColor;
   theme: Theme;
@@ -43,6 +46,7 @@ interface SettingsScreenProps {
   onOpenMergeWizard: () => void;
   onClipboardClearSecondsChange: (seconds: number) => void;
   onAutoLockChange: (autoLock: AutoLockSettings) => void;
+  onAutoTypeChange: (autoType: AutoTypeSettings) => void;
   onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
   onAccentColorChange: (accentColor: AccentColor) => void;
   onThemeChange: (theme: Theme) => void;
@@ -58,6 +62,7 @@ export function SettingsScreen({
   entryCount,
   clipboardClearSeconds,
   autoLock,
+  autoType,
   groupDeleteMode,
   accentColor,
   theme,
@@ -68,6 +73,7 @@ export function SettingsScreen({
   onOpenMergeWizard,
   onClipboardClearSecondsChange,
   onAutoLockChange,
+  onAutoTypeChange,
   onGroupDeleteModeChange,
   onAccentColorChange,
   onThemeChange,
@@ -79,6 +85,12 @@ export function SettingsScreen({
   function updateAutoLock(patch: Partial<AutoLockSettings>) {
     onAutoLockChange({ ...autoLock, ...patch });
   }
+
+  function updateAutoType(patch: Partial<AutoTypeSettings>) {
+    onAutoTypeChange({ ...autoType, ...patch });
+  }
+
+  const sequenceError = autoTypeSequenceError(autoType.sequence);
 
   function stepIdleTimeout(direction: 1 | -1) {
     const current = autoLock.idleTimeoutMinutes;
@@ -317,6 +329,65 @@ export function SettingsScreen({
                   onChange={(event) => onContentProtectionChange(event.target.checked)}
                 />
               </label>
+            </div>
+          </section>
+
+          <section className="detail-section">
+            <div className="detail-section-label">Auto-type</div>
+            <div className="detail-card">
+              <label className="detail-field-row" htmlFor="settings-auto-type-enabled">
+                <span className="detail-field-row-label">
+                  Type credentials into other apps with a hotkey
+                </span>
+                <input
+                  id="settings-auto-type-enabled"
+                  type="checkbox"
+                  checked={autoType.enabled}
+                  onChange={(event) => updateAutoType({ enabled: event.target.checked })}
+                />
+              </label>
+              <p className="detail-card-hint">
+                Press the hotkey while another window is focused and Argus offers the entries
+                matching that window&rsquo;s title, then types the chosen one into it. Only works
+                while the vault is unlocked.
+              </p>
+              <div className="detail-field-row">
+                <label className="detail-field-row-label" htmlFor="settings-auto-type-hotkey">
+                  Hotkey
+                </label>
+                <input
+                  id="settings-auto-type-hotkey"
+                  type="text"
+                  className="field-input"
+                  value={autoType.hotkey}
+                  spellCheck={false}
+                  onChange={(event) => updateAutoType({ hotkey: event.target.value })}
+                />
+              </div>
+              <div className="detail-field-row">
+                <label className="detail-field-row-label" htmlFor="settings-auto-type-sequence">
+                  What to type
+                </label>
+                <input
+                  id="settings-auto-type-sequence"
+                  type="text"
+                  className="field-input"
+                  value={autoType.sequence}
+                  spellCheck={false}
+                  aria-invalid={sequenceError !== undefined}
+                  onChange={(event) => updateAutoType({ sequence: event.target.value })}
+                />
+              </div>
+              {sequenceError ? (
+                <p className="field-error">{sequenceError}</p>
+              ) : (
+                <p className="detail-card-hint">
+                  Placeholders: <code>{"{USERNAME}"}</code> <code>{"{PASSWORD}"}</code>{" "}
+                  <code>{"{TOTP}"}</code> <code>{"{URL}"}</code> <code>{"{TITLE}"}</code>{" "}
+                  <code>{"{TAB}"}</code> <code>{"{ENTER}"}</code> <code>{"{DELAY 500}"}</code>.
+                  Default is <code>{DEFAULT_AUTO_TYPE_SEQUENCE}</code>.
+                </p>
+              )}
             </div>
           </section>
 

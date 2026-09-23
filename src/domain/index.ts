@@ -1,3 +1,26 @@
+export {
+  autoTypeSequenceError,
+  AutoTypeSequenceError,
+  AUTO_TYPE_FIELDS,
+  AUTO_TYPE_KEYS,
+  DEFAULT_AUTO_TYPE_SEQUENCE,
+  MAX_AUTO_TYPE_DELAY_MS,
+  parseAutoTypeSequence,
+  resolveAutoTypeSequence,
+  type AutoTypeField,
+  type AutoTypeKey,
+  type AutoTypeStep,
+  type AutoTypeToken,
+  type AutoTypeValues,
+} from "./auto-type";
+export {
+  autoTypeHost,
+  autoTypeMatches,
+  autoTypeMatchScore,
+  autoTypeSiteName,
+  AUTO_TYPE_MATCH_SCORES,
+  type AutoTypeMatch,
+} from "./auto-type-match";
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";
 export { Entry, type EntryFields, type EntryTimes } from "./entry";

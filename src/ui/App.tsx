@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PasswordPolicyOptions, Vault } from "../domain";
 import { hasClockJumped, hasIdleTimedOut } from "./auto-lock";
 import { ClipboardWriter } from "../application/clipboard";
@@ -8,14 +8,18 @@ import {
   VaultFileInfo,
   VaultSaveConflictError,
 } from "../application/vault-access-service";
+import { GlobalHotkey } from "../application/auto-type";
+import { AutoTypeService } from "../application/auto-type-service";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
 import {
   AccentColor,
   AppSettings,
   AutoLockSettings,
+  AutoTypeSettings,
   DEFAULT_ACCENT_COLOR,
   DEFAULT_AUTO_LOCK,
+  DEFAULT_AUTO_TYPE,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
   DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
@@ -31,6 +35,7 @@ import {
   Theme,
   withAccentColor,
   withAutoLock,
+  withAutoType,
   withClipboardClearSeconds,
   withContentProtection,
   withEntryFieldVisibility,
@@ -43,6 +48,9 @@ import { SettingsTransferService } from "../application/settings-transfer-servic
 import { UrlOpener } from "../application/url-opener";
 import { VaultMergeSource } from "../application/vault-merge-source";
 import { accentColorCssVars, accentColorHue } from "./accent-color";
+import { collectAllEntries } from "./vault-browsing";
+import { useAutoType } from "./use-auto-type";
+import { AutoTypePicker } from "./screens/AutoTypePicker";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { LockedScreen } from "./screens/LockedScreen";
 import { VaultShell } from "./screens/VaultShell";
@@ -58,6 +66,8 @@ interface AppProps {
   windowEvents: WindowEvents;
   windowProtection: WindowProtection;
   mergeSource: VaultMergeSource;
+  autoTypeService: AutoTypeService;
+  globalHotkey: GlobalHotkey;
 }
 
 const IDLE_CHECK_INTERVAL_MS = 10_000;
@@ -84,11 +94,38 @@ function App({
   windowEvents,
   windowProtection,
   mergeSource,
+  autoTypeService,
+  globalHotkey,
 }: AppProps) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
   const [fileInfo, setFileInfo] = useState<VaultFileInfo | undefined>(undefined);
+
+  const autoTypeSettings = settings.autoType ?? DEFAULT_AUTO_TYPE;
+
+  // Everything auto-type is allowed to offer: the whole vault minus the
+  // recycle bin, so a deleted login can't be typed back into a live site.
+  const autoTypeEntries = useMemo(
+    () =>
+      screen.kind === "unlocked"
+        ? collectAllEntries(
+            screen.vault.rootGroup,
+            screen.vault.recycleBin ? [screen.vault.recycleBin.id] : [],
+          ).map(({ entry }) => entry)
+        : [],
+    [screen],
+  );
+
+  // The hotkey is only bound while a vault is open. A locked Argus has no
+  // credentials to type, and leaving the accelerator claimed would keep it
+  // away from whatever else the user has bound it to.
+  const autoType = useAutoType(
+    autoTypeService,
+    globalHotkey,
+    { ...autoTypeSettings, enabled: autoTypeSettings.enabled && screen.kind === "unlocked" },
+    autoTypeEntries,
+  );
 
   useEffect(() => {
     if (screen.kind !== "unlocked") {
@@ -312,6 +349,16 @@ function App({
     }
   }
 
+  async function handleAutoTypeChange(autoTypeNext: AutoTypeSettings) {
+    const updated = withAutoType(settings, autoTypeNext);
+    setSettings(updated);
+    try {
+      await settingsStore.save(updated);
+    } catch {
+      // Best-effort; a settings save failure shouldn't interrupt the UI.
+    }
+  }
+
   async function handleGroupDeleteModeChange(mode: GroupDeleteMode) {
     const updated = withGroupDeleteMode(settings, mode);
     setSettings(updated);
@@ -424,6 +471,7 @@ function App({
         generatorPolicy={settings.generatorPolicy ?? {}}
         clipboardClearSeconds={settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS}
         autoLock={settings.autoLock ?? DEFAULT_AUTO_LOCK}
+        autoType={autoTypeSettings}
         groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
         accentColor={settings.accentColor ?? DEFAULT_ACCENT_COLOR}
         theme={settings.theme ?? DEFAULT_THEME}
@@ -438,6 +486,7 @@ function App({
         onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
         onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
         onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
+        onAutoTypeChange={(next) => void handleAutoTypeChange(next)}
         onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
         onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
         onThemeChange={(theme) => void handleThemeChange(theme)}
@@ -451,6 +500,26 @@ function App({
         onExportSettings={handleExportSettings}
         onImportSettings={handleImportSettings}
       />
+      {autoType.request && (
+        <AutoTypePicker
+          request={autoType.request}
+          onTypeInto={autoType.typeInto}
+          onCancel={autoType.dismiss}
+        />
+      )}
+      {autoType.error && (
+        <div className="auto-type-toast" role="alert">
+          <span>{autoType.error}</span>
+          <button
+            type="button"
+            className="auto-type-toast-dismiss"
+            aria-label="Dismiss auto-type error"
+            onClick={autoType.dismissError}
+          >
+            &times;
+          </button>
+        </div>
+      )}
       {conflict && (
         <div className="modal-overlay">
           <div className="modal-card">

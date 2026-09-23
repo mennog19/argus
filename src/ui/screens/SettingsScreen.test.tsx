@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import {
   AccentColor,
   AutoLockSettings,
+  AutoTypeSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   EntryFieldVisibility,
   GroupDeleteMode,
@@ -13,6 +14,11 @@ import { VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsScreen } from "./SettingsScreen";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
+  enabled: false,
+  hotkey: "CommandOrControl+Shift+A",
+  sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
+};
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 
 function renderSettings(
@@ -22,6 +28,7 @@ function renderSettings(
     entryCount?: number;
     clipboardClearSeconds?: number;
     autoLock?: AutoLockSettings;
+    autoType?: AutoTypeSettings;
     groupDeleteMode?: GroupDeleteMode;
     accentColor?: AccentColor;
     theme?: Theme;
@@ -39,6 +46,7 @@ function renderSettings(
   const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
   const onClipboardClearSecondsChange = vi.fn();
   const onAutoLockChange = vi.fn();
+  const onAutoTypeChange = vi.fn();
   const onGroupDeleteModeChange = vi.fn();
   const onAccentColorChange = vi.fn();
   const onThemeChange = vi.fn();
@@ -53,6 +61,7 @@ function renderSettings(
       entryCount={overrides.entryCount ?? 0}
       clipboardClearSeconds={overrides.clipboardClearSeconds ?? 20}
       autoLock={overrides.autoLock ?? DEFAULT_AUTO_LOCK}
+      autoType={overrides.autoType ?? DEFAULT_AUTO_TYPE}
       groupDeleteMode={overrides.groupDeleteMode ?? "deleteContents"}
       accentColor={overrides.accentColor ?? DEFAULT_ACCENT_COLOR}
       theme={overrides.theme ?? "dark"}
@@ -63,6 +72,7 @@ function renderSettings(
       onOpenMergeWizard={onOpenMergeWizard}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
+      onAutoTypeChange={onAutoTypeChange}
       onGroupDeleteModeChange={onGroupDeleteModeChange}
       onAccentColorChange={onAccentColorChange}
       onThemeChange={onThemeChange}
@@ -79,6 +89,7 @@ function renderSettings(
     onOpenMergeWizard,
     onClipboardClearSecondsChange,
     onAutoLockChange,
+    onAutoTypeChange,
     onGroupDeleteModeChange,
     onAccentColorChange,
     onThemeChange,
@@ -492,6 +503,69 @@ describe("SettingsScreen", () => {
       fireEvent.click(screen.getByRole("button", { name: /import settings/i }));
 
       expect(onImportSettings).toHaveBeenCalled();
+    });
+  });
+
+  describe("auto-type", () => {
+    it("is off by default, with the default hotkey and sequence shown", () => {
+      renderSettings();
+
+      expect(screen.getByRole("checkbox", { name: /hotkey/i })).not.toBeChecked();
+      expect(screen.getByLabelText("Hotkey")).toHaveValue("CommandOrControl+Shift+A");
+      expect(screen.getByLabelText("What to type")).toHaveValue("{USERNAME}{TAB}{PASSWORD}{ENTER}");
+    });
+
+    it("reports being switched on", async () => {
+      const { onAutoTypeChange } = renderSettings();
+
+      await userEvent.click(screen.getByRole("checkbox", { name: /hotkey/i }));
+
+      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, enabled: true });
+    });
+
+    it("reports being switched off again", async () => {
+      const { onAutoTypeChange } = renderSettings({
+        autoType: { ...DEFAULT_AUTO_TYPE, enabled: true },
+      });
+
+      await userEvent.click(screen.getByRole("checkbox", { name: /hotkey/i }));
+
+      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, enabled: false });
+    });
+
+    it("reports a new hotkey", () => {
+      const { onAutoTypeChange } = renderSettings();
+
+      fireEvent.change(screen.getByLabelText("Hotkey"), { target: { value: "Alt+Space" } });
+
+      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, hotkey: "Alt+Space" });
+    });
+
+    it("reports a new sequence", () => {
+      const { onAutoTypeChange } = renderSettings();
+
+      fireEvent.change(screen.getByLabelText("What to type"), {
+        target: { value: "{PASSWORD}{ENTER}" },
+      });
+
+      expect(onAutoTypeChange).toHaveBeenCalledWith({
+        ...DEFAULT_AUTO_TYPE,
+        sequence: "{PASSWORD}{ENTER}",
+      });
+    });
+
+    it("lists the available placeholders while the sequence is valid", () => {
+      renderSettings();
+
+      expect(screen.getByText("{TOTP}")).toBeInTheDocument();
+    });
+
+    it("explains an unusable sequence instead of the placeholder list", () => {
+      renderSettings({ autoType: { ...DEFAULT_AUTO_TYPE, sequence: "{NOPE}" } });
+
+      expect(screen.getByText(/not a known auto-type placeholder/)).toBeInTheDocument();
+      expect(screen.getByLabelText("What to type")).toHaveAttribute("aria-invalid", "true");
+      expect(screen.queryByText("{TOTP}")).not.toBeInTheDocument();
     });
   });
 });

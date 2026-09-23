@@ -12,7 +12,8 @@ This plan is the checklist from empty repo to v1.0.0. It assumes the decisions b
 - **Auth**: master password only for v1. No keyfile, no biometric unlock.
 - **v1 feature scope**: vault open/create/edit/save, groups, tags, custom fields, recycle bin, password generator (shared settings + quick-generate), full-text search (title/username/URL/notes/tags/custom fields), local-only password health check (reused/weak/fair/strong, no age tracking).
 - **Explicitly deferred** (own feature branches, post-v1): TOTP, attachments UI, entry history UI, keyfile/biometric unlock, opt-in online breach-check.
-- **Explicitly out of scope, period**: browser extension/autofill, auto-type/global input simulation, import from non-KDBX sources, export to non-KDBX formats.
+- **Auto-type** (reversed 2026-09-23): an opt-in, off-by-default global hotkey types a matching entry's credentials into whatever window is focused. Windows-only (`SendInput`), always confirmed through a picker that names the target window. This is the auto-type half of what was previously out of scope; a **browser extension remains out of scope, permanently**.
+- **Explicitly out of scope, period**: browser extension / in-page autofill, import from non-KDBX sources, export to non-KDBX formats.
 - **Testing**: TDD in spirit; **100% code coverage is the hard, CI-enforced gate**. Vitest for unit + component tests (mandatory), Playwright E2E + `cargo test` at a lighter smoke level.
 - **Distribution**: Tauri bundler → unsigned Windows `.exe`/`.msi` (NSIS), published via GitHub Releases. No code signing, no Windows/Mac stores for now.
 - **Process**: `feature/<name>` branches → PR (even solo) → squash-merge to `main`, GitHub Actions required check runs the full suite + coverage gate.
@@ -29,7 +30,4 @@ A feature branch isn't done until:
 ## Todo
 
 - Opt-in, off-by-default online breach-check (HIBP-style).
-- autofill
-- stats schermpje?
-- maak main oog muis volgen
-health check folder laat zien hoeveel items terug
+

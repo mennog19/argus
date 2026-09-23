@@ -16,6 +16,7 @@ import {
 import {
   AccentColor,
   AutoLockSettings,
+  AutoTypeSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_ENTRY_SORT,
   EntryFieldVisibility,
@@ -30,6 +31,11 @@ import { GROUP_DRAG_TYPE } from "../group-drag";
 import { VaultShell } from "./VaultShell";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
+  enabled: false,
+  hotkey: "CommandOrControl+Shift+A",
+  sequence: "{USERNAME}{TAB}{PASSWORD}{ENTER}",
+};
 const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 const DEFAULT_THEME: Theme = "dark";
 
@@ -111,6 +117,7 @@ function renderShell(
       generatorPolicy={generatorPolicy}
       clipboardClearSeconds={clipboardClearSeconds}
       autoLock={autoLock}
+      autoType={DEFAULT_AUTO_TYPE}
       groupDeleteMode={groupDeleteMode}
       accentColor={accentColor}
       theme={theme}
@@ -124,6 +131,7 @@ function renderShell(
       onGeneratorPolicyChange={onGeneratorPolicyChange}
       onClipboardClearSecondsChange={onClipboardClearSecondsChange}
       onAutoLockChange={onAutoLockChange}
+      onAutoTypeChange={vi.fn()}
       onGroupDeleteModeChange={vi.fn()}
       onAccentColorChange={onAccentColorChange}
       onThemeChange={onThemeChange}
@@ -332,9 +340,11 @@ describe("VaultShell", () => {
         onGeneratorPolicyChange={vi.fn()}
         onClipboardClearSecondsChange={vi.fn()}
         onAutoLockChange={vi.fn()}
+        onAutoTypeChange={vi.fn()}
         clipboardWriter={fakeClipboardWriter()}
         clipboardClearSeconds={20}
         autoLock={DEFAULT_AUTO_LOCK}
+        autoType={DEFAULT_AUTO_TYPE}
         groupDeleteMode="deleteContents"
         accentColor={DEFAULT_ACCENT_COLOR}
         theme={DEFAULT_THEME}
@@ -1016,9 +1026,11 @@ describe("VaultShell", () => {
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
           onAutoLockChange={vi.fn()}
+          onAutoTypeChange={vi.fn()}
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
           autoLock={DEFAULT_AUTO_LOCK}
+          autoType={DEFAULT_AUTO_TYPE}
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
           theme={DEFAULT_THEME}
@@ -1058,9 +1070,11 @@ describe("VaultShell", () => {
           onGeneratorPolicyChange={vi.fn()}
           onClipboardClearSecondsChange={vi.fn()}
           onAutoLockChange={vi.fn()}
+          onAutoTypeChange={vi.fn()}
           clipboardWriter={fakeClipboardWriter()}
           clipboardClearSeconds={20}
           autoLock={DEFAULT_AUTO_LOCK}
+          autoType={DEFAULT_AUTO_TYPE}
           groupDeleteMode="deleteContents"
           accentColor={DEFAULT_ACCENT_COLOR}
           theme={DEFAULT_THEME}
@@ -1609,14 +1623,25 @@ describe("VaultShell", () => {
       vi.useRealTimers();
     });
 
-    // The Web Crypto HMAC chain resolves over several real event-loop turns,
-    // not just one microtask, so flush a handful of turns to let it settle.
-    async function flushCrypto(): Promise<void> {
-      for (let i = 0; i < 10; i++) {
+    // The Web Crypto HMAC chain (importKey then sign) resolves over several
+    // real event-loop turns, not just one microtask, and how many it needs
+    // varies with machine load — a fixed handful flakes once the suite runs
+    // wide. Pump turns until `settled` holds instead, capped so a genuine
+    // failure still fails rather than hangs. Cases that assert nothing
+    // arrives pass no predicate and simply burn the budget.
+    const MAX_CRYPTO_TURNS = 100;
+
+    async function flushCrypto(settled: () => boolean = () => false): Promise<void> {
+      for (let turn = 0; turn < MAX_CRYPTO_TURNS && !settled(); turn++) {
         await act(async () => {
           await vi.advanceTimersByTimeAsync(0);
         });
       }
+    }
+
+    /** True once a formatted TOTP code ("123 456") is on screen. */
+    function codeShown(): boolean {
+      return screen.queryByText(/^\d{3} \d{3}$/) !== null;
     }
 
     it("does not show an authenticator code card for an entry without TOTP data", async () => {
@@ -1646,7 +1671,7 @@ describe("VaultShell", () => {
 
       renderShell(vault);
       fireEvent.click(screen.getByText("GitHub"));
-      await flushCrypto();
+      await flushCrypto(codeShown);
 
       expect(screen.getByText("Authenticator code")).toBeInTheDocument();
       const value = screen.getByText(/^\d{3} \d{3}$/);
@@ -1666,7 +1691,7 @@ describe("VaultShell", () => {
 
       renderShell(vault);
       fireEvent.click(screen.getByText("Legacy"));
-      await flushCrypto();
+      await flushCrypto(codeShown);
 
       expect(screen.getByText(/^\d{3} \d{3}$/)).toBeInTheDocument();
     });
@@ -1684,7 +1709,7 @@ describe("VaultShell", () => {
 
       renderShell(vault);
       fireEvent.click(screen.getByText("GitHub"));
-      await flushCrypto();
+      await flushCrypto(codeShown);
 
       expect(screen.getByText("Custom fields")).toBeInTheDocument();
       expect(screen.queryByText("otp")).not.toBeInTheDocument();
@@ -1719,7 +1744,7 @@ describe("VaultShell", () => {
 
       renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }) });
       fireEvent.click(screen.getByText("GitHub"));
-      await flushCrypto();
+      await flushCrypto(codeShown);
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "Copy authenticator code" }));
