@@ -20,6 +20,11 @@ interface Category {
   readonly count: number;
 }
 
+/** Whole-percent share of `total`, for the KPI tiles and overview rows. */
+function percentage(count: number, total: number): number {
+  return Math.round((count / total) * 100);
+}
+
 function healthEntryRow(
   entry: Entry,
   groupByEntryId: Map<string, Group>,
@@ -42,6 +47,59 @@ function healthEntryRow(
       </div>
       <span className="health-entry-action">View →</span>
     </button>
+  );
+}
+
+/**
+ * At-a-glance breakdown shown until a category is picked: how the vault's
+ * passwords split across every category, rather than dropping the user
+ * straight into one category's list.
+ */
+function HealthOverview({
+  categories,
+  total,
+  healthyCount,
+}: {
+  categories: readonly Category[];
+  total: number;
+  healthyCount: number;
+}) {
+  const attentionCount = total - healthyCount;
+
+  return (
+    <div className="health-overview">
+      <div className="health-overview-bar" aria-hidden="true">
+        {categories
+          .filter((category) => category.count > 0)
+          .map((category) => (
+            <div
+              key={category.key}
+              className={`health-overview-bar-segment ${category.severity}`}
+              style={{ flexGrow: category.count }}
+            />
+          ))}
+      </div>
+
+      <ul className="health-overview-rows">
+        {categories.map((category) => (
+          <li className="health-overview-row" key={category.key}>
+            <span className={`health-section-dot ${category.severity}`} />
+            <span className="health-overview-row-label">{category.heading}</span>
+            <span className="health-overview-row-count">{category.count}</span>
+            <span className="health-overview-row-percent">
+              {percentage(category.count, total)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="health-overview-note">
+        {attentionCount === 0
+          ? "Every password looks healthy."
+          : `${attentionCount} ${attentionCount === 1 ? "password needs" : "passwords need"} attention.`}
+      </p>
+      <p className="health-overview-hint">Pick a category above to list its entries.</p>
+    </div>
   );
 }
 
@@ -89,9 +147,8 @@ export function HealthScreen({ entries, onSelectEntry }: HealthScreenProps) {
     },
   ];
 
-  const [selectedKey, setSelectedKey] = useState<CategoryKey | undefined>(
-    () => categories.find((category) => category.count > 0)?.key,
-  );
+  // No category is open to begin with: the overview is the landing view.
+  const [selectedKey, setSelectedKey] = useState<CategoryKey | undefined>(undefined);
   const selected = categories.find((category) => category.key === selectedKey);
 
   const healthyCount = report.fair.length + report.strong.length;
@@ -110,6 +167,18 @@ export function HealthScreen({ entries, onSelectEntry }: HealthScreenProps) {
             </p>
 
             <div className="health-stats">
+              <button
+                type="button"
+                className={`health-stat-card accent${selectedKey === undefined ? " selected" : ""}`}
+                aria-pressed={selectedKey === undefined}
+                onClick={() => setSelectedKey(undefined)}
+              >
+                <div className="health-stat-number accent">
+                  {percentage(healthyCount, entries.length)}%
+                </div>
+                <div className="health-stat-label">Healthy</div>
+              </button>
+
               {categories.map((category) => (
                 <button
                   key={category.key}
@@ -128,7 +197,7 @@ export function HealthScreen({ entries, onSelectEntry }: HealthScreenProps) {
               ))}
             </div>
 
-            {selected && (
+            {selected ? (
               <div className="health-section">
                 <div className="health-section-heading">
                   <span className={`health-section-dot ${selected.severity}`} />
@@ -146,6 +215,12 @@ export function HealthScreen({ entries, onSelectEntry }: HealthScreenProps) {
                   </div>
                 )}
               </div>
+            ) : (
+              <HealthOverview
+                categories={categories}
+                total={entries.length}
+                healthyCount={healthyCount}
+              />
             )}
           </>
         )}

@@ -3215,6 +3215,10 @@ input[type="radio"]:checked::after {
   background: color-mix(in srgb, var(--color-surface) 82%, var(--color-text) 4%);
 }
 
+.health-stat-card.selected.accent {
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
+}
+
 .health-stat-card.selected.warning {
   box-shadow: inset 0 0 0 1.5px var(--color-warning);
 }
@@ -3238,6 +3242,10 @@ input[type="radio"]:checked::after {
   margin-bottom: 4px;
 }
 
+.health-stat-number.accent {
+  color: var(--color-accent);
+}
+
 .health-stat-number.warning {
   color: var(--color-warning);
 }
@@ -3255,6 +3263,89 @@ input[type="radio"]:checked::after {
 }
 
 .health-stat-label {
+  font-size: 12.5px;
+  color: var(--color-text-dimmer);
+}
+
+.health-overview {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  padding: 20px 22px;
+  margin-bottom: 26px;
+}
+
+.health-overview-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.health-overview-bar-segment {
+  flex-basis: 0;
+  min-width: 3px;
+}
+
+.health-overview-bar-segment.warning {
+  background: var(--color-warning);
+}
+
+.health-overview-bar-segment.danger {
+  background: var(--color-danger);
+}
+
+.health-overview-bar-segment.neutral {
+  background: var(--color-text-dimmer);
+}
+
+.health-overview-bar-segment.success {
+  background: var(--color-success);
+}
+
+.health-overview-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.health-overview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.health-overview-row-label {
+  flex: 1;
+  color: var(--color-text-dim);
+}
+
+.health-overview-row-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.health-overview-row-percent {
+  width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-dimmer);
+}
+
+.health-overview-note {
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--color-text-dim);
+}
+
+.health-overview-hint {
+  margin: 4px 0 0;
   font-size: 12.5px;
   color: var(--color-text-dimmer);
 }
