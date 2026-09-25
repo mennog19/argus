@@ -93,8 +93,10 @@ export class VaultAccessService {
    * Unless `options.force` is set, first checks whether the file changed on
    * disk since it was last opened/saved here, throwing
    * `VaultSaveConflictError` instead of overwriting that external change.
-   * On a successful write, rotates up to 3 rolling backups of the previous
-   * contents (`<path>.bak1` most recent, `.bak3` oldest).
+   * Once the vault has serialized, rotates up to 3 rolling backups of the
+   * previous contents (`<path>.bak1` most recent, `.bak3` oldest) and then
+   * writes. `FileStorage.writeFile` is expected to be atomic, so the file is
+   * never left half-written.
    */
   async saveVault(vault: Vault, filePath: string, options: SaveVaultOptions = {}): Promise<void> {
     const fileExists = await this.fileStorage.exists(filePath);
@@ -107,11 +109,14 @@ export class VaultAccessService {
       }
     }
 
+    // Serialize before touching any backup: a failure here must not have already
+    // rotated the older backups out in favour of copies of the current file.
+    const fileBytes = await this.repository.saveVault(vault);
+
     if (fileExists) {
       await this.rotateBackups(filePath);
     }
 
-    const fileBytes = await this.repository.saveVault(vault);
     await this.fileStorage.writeFile(filePath, fileBytes);
     await this.rememberMtime(filePath);
   }
