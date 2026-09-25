@@ -28,6 +28,7 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+percent-encoding = "2"
 
 # Auto-type drives the Win32 input APIs and UI Automation directly: there is no
 # cross-platform Tauri plugin for "type into somebody else's window".

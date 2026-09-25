@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { copyFile, exists, readFile, stat, writeFile } from "@tauri-apps/plugin-fs";
+import { copyFile, exists, readFile, stat } from "@tauri-apps/plugin-fs";
 import { FileStorage } from "../application/file-storage";
 
 /** `FileStorage` backed by Tauri's filesystem plugin. */
@@ -9,8 +9,17 @@ export class TauriFileStorage implements FileStorage {
     return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   }
 
+  /**
+   * Goes through the app's own `write_file_atomic` command rather than
+   * plugin-fs `writeFile`, which truncates the file and then writes into it: a
+   * crash mid-write would leave a corrupt `.kdbx`. The command stages the bytes
+   * in a temp file and renames it into place, so the file is always either
+   * entirely the old contents or entirely the new.
+   */
   async writeFile(path: string, data: ArrayBuffer): Promise<void> {
-    await writeFile(path, new Uint8Array(data));
+    await invoke("write_file_atomic", new Uint8Array(data), {
+      headers: { path: encodeURIComponent(path) },
+    });
   }
 
   async exists(path: string): Promise<boolean> {

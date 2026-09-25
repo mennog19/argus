@@ -184,6 +184,20 @@ describe("VaultAccessService", () => {
       expect(fileStorage.writeFile).not.toHaveBeenCalled();
     });
 
+    it("leaves the existing backups alone when serializing fails", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockRejectedValue(new Error("Save failed")),
+      });
+      const dialog = fakeDialog();
+      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await expect(service.saveVault(vault, "C:/vaults/mine.kdbx")).rejects.toThrow("Save failed");
+
+      expect(fileStorage.copyFile).not.toHaveBeenCalled();
+    });
+
     it("throws a conflict error instead of overwriting when the file changed on disk since it was opened", async () => {
       const vault = Vault.create("My Vault");
       const repository = fakeRepository({
