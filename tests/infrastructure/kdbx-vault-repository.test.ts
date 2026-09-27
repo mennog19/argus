@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
+import { ByteUtils, Consts, Credentials, Int64, Kdbx, ProtectedValue } from "kdbxweb";
 import { CustomField, CustomFields, Password } from "../../src/domain";
 import { configureKdbxCrypto } from "../../src/infrastructure/kdbx-crypto";
-import { KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
+import { DEFAULT_KDF, KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 
 const MASTER_PASSWORD = "correct horse battery staple";
 
@@ -105,6 +105,22 @@ describe("KdbxVaultRepository", () => {
     const savedBytes = await session.save(session.vault);
     const reopened = (await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD)).vault;
     expect(reopened.name).toBe("Brand New Vault");
+  });
+
+  it("creates new vaults with Argon2id at DEFAULT_KDF strength, not kdbxweb's weak defaults", async () => {
+    const session = await new KdbxVaultRepository().createVault("Vault", MASTER_PASSWORD);
+    const savedBytes = await session.save(session.vault);
+
+    const raw = await Kdbx.load(
+      savedBytes,
+      new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)),
+    );
+    const params = raw.header.kdfParameters!;
+    expect(ByteUtils.bytesToBase64(params.get("$UUID") as ArrayBuffer)).toBe(Consts.KdfId.Argon2id);
+    expect((params.get("M") as Int64).value).toBe(64 * 1024 * 1024);
+    expect((params.get("I") as Int64).value).toBe(4);
+    expect(params.get("P")).toBe(2);
+    expect(DEFAULT_KDF).toEqual({ memoryBytes: 64 * 1024 * 1024, iterations: 4, parallelism: 2 });
   });
 
   describe("changeMasterPassword", () => {
