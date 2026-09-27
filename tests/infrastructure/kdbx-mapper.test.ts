@@ -419,7 +419,7 @@ describe("applyVaultToKdbx", () => {
     expect([...root.allEntries()]).toHaveLength(0);
     const deletedUuids = db.deletedObjects.map((d) => d.uuid);
     for (const uuid of binnedUuids) {
-      expect(deletedUuids.some((d) => d.equals(uuid))).toBe(true);
+      expect(deletedUuids.some((d) => d?.equals(uuid))).toBe(true);
     }
   });
 
@@ -438,7 +438,7 @@ describe("applyVaultToKdbx", () => {
 
     expect(binnedGroup.entries).toHaveLength(0);
     expect(recycleBin.entries).toHaveLength(0);
-    expect(db.deletedObjects.some((d) => d.uuid.equals(nestedEntry.uuid))).toBe(true);
+    expect(db.deletedObjects.some((d) => d.uuid?.equals(nestedEntry.uuid))).toBe(true);
   });
 
   it("writes a lazily-created domain recycle bin's id onto meta.recycleBinUuid", () => {
