@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { copyFile, exists, readFile, stat, writeFile } from "@tauri-apps/plugin-fs";
+import { copyFile, exists, readFile, stat } from "@tauri-apps/plugin-fs";
 import { TauriFileStorage } from "../../src/infrastructure/tauri-file-storage";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -9,7 +9,6 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readFile: vi.fn(),
-  writeFile: vi.fn(),
   exists: vi.fn(),
   stat: vi.fn(),
   copyFile: vi.fn(),
@@ -39,13 +38,25 @@ describe("TauriFileStorage", () => {
     expect(new Uint8Array(result)).toEqual(new Uint8Array([9, 8, 7, 6]));
   });
 
-  it("writes an ArrayBuffer to a file", async () => {
+  it("writes an ArrayBuffer to a file through the atomic-write command", async () => {
     const data = new Uint8Array([5, 6, 7, 8]).buffer;
     const storage = new TauriFileStorage();
 
     await storage.writeFile("C:/vaults/new.kdbx", data);
 
-    expect(writeFile).toHaveBeenCalledWith("C:/vaults/new.kdbx", new Uint8Array(data));
+    expect(invoke).toHaveBeenCalledWith("write_file_atomic", new Uint8Array(data), {
+      headers: { path: encodeURIComponent("C:/vaults/new.kdbx") },
+    });
+  });
+
+  it("percent-encodes the path so non-ASCII vault locations survive the header", async () => {
+    const storage = new TauriFileStorage();
+
+    await storage.writeFile("C:/Users/Renée/wachtwoorden.kdbx", new ArrayBuffer(0));
+
+    expect(invoke).toHaveBeenCalledWith("write_file_atomic", expect.anything(), {
+      headers: { path: "C%3A%2FUsers%2FRen%C3%A9e%2Fwachtwoorden.kdbx" },
+    });
   });
 
   it("reports whether a file exists", async () => {

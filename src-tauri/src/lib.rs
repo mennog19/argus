@@ -1,3 +1,4 @@
+mod atomic_write;
 mod auto_type;
 
 use tauri::Manager;
@@ -17,6 +18,42 @@ fn grant_file_access(app: tauri::AppHandle, path: String) -> Result<(), String> 
     app.fs_scope()
         .allow_file(path)
         .map_err(|error| error.to_string())
+}
+
+/// Writes a vault file crash-safely; see `atomic_write::write_file_atomic`.
+///
+/// Sent as a raw request body (the bytes) plus a `path` header
+/// (percent-encoded, since header values must be ASCII) rather than as JSON, so
+/// a large vault isn't inflated into a JSON number array on the way over.
+///
+/// The path must already be in the filesystem scope -- picked by the user in a
+/// dialog, or remembered by `persisted-scope` -- so this command can't be used to
+/// write anywhere `plugin-fs` itself would have refused.
+#[tauri::command]
+fn write_file_atomic(
+    app: tauri::AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the file contents as a raw request body".into());
+    };
+    let encoded_path = request
+        .headers()
+        .get("path")
+        .and_then(|value| value.to_str().ok())
+        .ok_or("missing `path` header")?;
+    let path = percent_encoding::percent_decode_str(encoded_path)
+        .decode_utf8()
+        .map_err(|error| error.to_string())?;
+    let path = std::path::Path::new(path.as_ref());
+
+    if !app.fs_scope().is_allowed(path) {
+        return Err(format!(
+            "path is not in the allowed scope: {}",
+            path.display()
+        ));
+    }
+    atomic_write::write_file_atomic(path, bytes).map_err(|error| error.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -47,6 +84,7 @@ pub fn run() {
         .manage(auto_type::AutoTypeState::default())
         .invoke_handler(tauri::generate_handler![
             grant_file_access,
+            write_file_atomic,
             auto_type::auto_type_capture_target,
             auto_type::auto_type_inspect_target,
             auto_type::auto_type_send
