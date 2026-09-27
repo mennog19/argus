@@ -194,6 +194,41 @@ describe("VaultAccessService", () => {
     });
   });
 
+  describe("closeVault", () => {
+    it("drops the open vault, so nothing can be saved or re-keyed until it's reopened", async () => {
+      const repository = fakeRepository({
+        openVault: vi.fn().mockResolvedValue(Vault.create("My Vault")),
+      });
+      const fileStorage = fakeFileStorage();
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      service.closeVault();
+
+      await expect(
+        service.saveVault(Vault.create("My Vault"), "C:/vaults/mine.kdbx"),
+      ).rejects.toThrow("No vault is open");
+      await expect(
+        service.changeMasterPassword(Vault.create("My Vault"), "C:/vaults/mine.kdbx", "a", "b"),
+      ).rejects.toThrow("No vault is open");
+      expect(repository.saveVault).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("lets a vault be opened again afterwards", async () => {
+      const repository = fakeRepository({
+        openVault: vi.fn().mockResolvedValue(Vault.create("My Vault")),
+      });
+      const fileStorage = fakeFileStorage();
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      service.closeVault();
+      await service.openVaultAtPath("C:/vaults/mine.kdbx", "master password");
+      await service.saveVault(Vault.create("My Vault"), "C:/vaults/mine.kdbx");
+
+      expect(fileStorage.writeFile).toHaveBeenCalled();
+    });
+  });
+
   describe("getFileInfo", () => {
     it("reports the file's size and last-modified time", async () => {
       const repository = fakeRepository();
