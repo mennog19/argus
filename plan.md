@@ -38,11 +38,8 @@ Goal: a user can download the Windows installer from GitHub Releases and use it.
 
 ### Should do
 
-- [x] **Harden security config** — replaced `"csp": null` with a strict CSP (`default-src 'self'`, no unsafe script eval, IPC-only `connect-src`); tightened `capabilities/default.json` to non-recursive `$APPDATA` fs scope and dropped the unused `opener:allow-reveal-item-in-dir` grant; closed an unrestricted-path hole in the `grant_file_access` command (it now only widens scope to a fixed `.bak1`/`.bak2`/`.bak3` suffix of a path already in scope, not an arbitrary renderer-supplied path). `/security-review` on the resulting diff found no high-confidence issues.
-- [x] **Verify vault saves are safe** — vault writes go through a Rust `write_file_atomic` command (temp file + `fsync` + rename, scope-checked), and the vault is serialized before the rolling backups rotate, so a crash or failed save can't corrupt a `.kdbx` or wipe older backups.
-- [ ] **Align CI with `CLAUDE.md`** — add Playwright (`pnpm test:e2e`) to CI; run a full bundle (not `--no-bundle`) so installer failures surface before release time.
-- [ ] **Rewrite `README.md`** — description, download link, install steps, SmartScreen "More info → Run anyway" note (unsigned), checksum verification, features, KeePass/KeePassXC compatibility, security model (local-only, no telemetry, auto-type caveats), known limitations, build from source.
-- [ ] **Add a `LICENSE`.**
+- [x] **Rewrite `README.md`** — description, download link, install steps, SmartScreen "More info → Run anyway" note (unsigned), checksum verification, features, KeePass/KeePassXC compatibility, security model (local-only, no telemetry, auto-type caveats), known limitations, build from source.
+- [x] **Add a `LICENSE`.**
 - [ ] **Pick and wire the first version** — `package.json`, `Cargo.toml`, and `tauri.conf.json` all say `0.1.0`; decide `v0.1.0` (pre-release) vs `v1.0.0` and bump together.
 - [ ] **"Check for updates" button** — promised in the locked-in decisions but not implemented: explicit, user-triggered, opens the GitHub Releases page. Or drop it from the decisions above.
 - [ ] **Commit or discard pending working-tree changes** (`plan.md`, `src-tauri/Cargo.toml`) before tagging.
