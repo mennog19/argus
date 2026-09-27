@@ -38,7 +38,7 @@ Goal: a user can download the Windows installer from GitHub Releases and use it.
 
 ### Should do
 
-- [ ] **Harden security config** — replace `"csp": null` in `tauri.conf.json` with a strict CSP; audit fs permissions and persisted scope; run `/security-review`.
+- [x] **Harden security config** — replaced `"csp": null` with a strict CSP (`default-src 'self'`, no unsafe script eval, IPC-only `connect-src`); tightened `capabilities/default.json` to non-recursive `$APPDATA` fs scope and dropped the unused `opener:allow-reveal-item-in-dir` grant; closed an unrestricted-path hole in the `grant_file_access` command (it now only widens scope to a fixed `.bak1`/`.bak2`/`.bak3` suffix of a path already in scope, not an arbitrary renderer-supplied path). `/security-review` on the resulting diff found no high-confidence issues.
 - [x] **Verify vault saves are safe** — vault writes go through a Rust `write_file_atomic` command (temp file + `fsync` + rename, scope-checked), and the vault is serialized before the rolling backups rotate, so a crash or failed save can't corrupt a `.kdbx` or wipe older backups.
 - [ ] **Align CI with `CLAUDE.md`** — add Playwright (`pnpm test:e2e`) to CI; run a full bundle (not `--no-bundle`) so installer failures surface before release time.
 - [ ] **Rewrite `README.md`** — description, download link, install steps, SmartScreen "More info → Run anyway" note (unsigned), checksum verification, features, KeePass/KeePassXC compatibility, security model (local-only, no telemetry, auto-type caveats), known limitations, build from source.

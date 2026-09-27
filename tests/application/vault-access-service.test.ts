@@ -405,9 +405,9 @@ describe("VaultAccessService", () => {
 
       await service.saveVault(vault, "C:/vaults/mine.kdbx", { force: true });
 
-      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak1");
-      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak2");
-      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak3");
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx", ".bak1");
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx", ".bak2");
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith("C:/vaults/mine.kdbx", ".bak3");
       const granted = vi.mocked(fileStorage.grantAccess).mock.invocationCallOrder;
       const copied = vi.mocked(fileStorage.copyFile).mock.invocationCallOrder;
       expect(Math.max(...granted)).toBeLessThan(Math.min(...copied));

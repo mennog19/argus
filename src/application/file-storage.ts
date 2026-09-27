@@ -14,10 +14,12 @@ export interface FileStorage {
   size(path: string): Promise<number>;
   copyFile(source: string, destination: string): Promise<void>;
   /**
-   * Asks the OS layer for access to `path` before it is read or written.
-   * Needed for paths the app derives itself (e.g. backups sitting next to a
-   * vault) rather than ones the user picked in a file dialog; a no-op where
+   * Asks the OS layer for access to `basePath + suffix` before it is read or
+   * written. Needed for the rolling-backup paths the app derives itself
+   * (e.g. `<vault>.bak1`) rather than ones the user picked in a file dialog.
+   * `basePath` must already be accessible -- the vault the backup sits next
+   * to -- so this can't be used to grant an arbitrary path; a no-op where
    * the platform doesn't sandbox file access.
    */
-  grantAccess(path: string): Promise<void>;
+  grantAccess(basePath: string, suffix: string): Promise<void>;
 }

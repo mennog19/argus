@@ -107,13 +107,14 @@ describe("TauriFileStorage", () => {
     expect(copyFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
   });
 
-  it("grants filesystem access to a path through the app's own command", async () => {
+  it("grants filesystem access to a backup path through the app's own command", async () => {
     const storage = new TauriFileStorage();
 
-    await storage.grantAccess("C:/vaults/mine.kdbx.bak1");
+    await storage.grantAccess("C:/vaults/mine.kdbx", ".bak1");
 
     expect(invoke).toHaveBeenCalledWith("grant_file_access", {
-      path: "C:/vaults/mine.kdbx.bak1",
+      anchor: "C:/vaults/mine.kdbx",
+      suffix: ".bak1",
     });
   });
 });
