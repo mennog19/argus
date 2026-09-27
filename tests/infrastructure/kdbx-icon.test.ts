@@ -1,15 +1,15 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { Consts, Credentials, Kdbx, KdbxEntry, KdbxUuid, ProtectedValue } from "kdbxweb";
-import { Entry, Icon } from "../domain";
+import { Entry, Icon } from "../../src/domain";
 import {
   ICON_CUSTOM_DATA_KEY,
   LIBRARY_ICON_KEEPASS_IDS,
   iconFromKdbx,
   writeIconToKdbx,
-} from "./kdbx-icon";
-import { configureKdbxCrypto } from "./kdbx-crypto";
-import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
+} from "../../src/infrastructure/kdbx-icon";
+import { configureKdbxCrypto } from "../../src/infrastructure/kdbx-crypto";
+import { applyVaultToKdbx, vaultFromKdbx } from "../../src/infrastructure/kdbx-mapper";
 
 const Icons = Consts.Icons;
 

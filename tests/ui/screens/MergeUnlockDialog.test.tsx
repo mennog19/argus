@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Vault } from "../../domain";
-import { VaultMergeSource } from "../../application/vault-merge-source";
-import { MergeUnlockDialog } from "./MergeUnlockDialog";
+import { Vault } from "../../../src/domain";
+import { VaultMergeSource } from "../../../src/application/vault-merge-source";
+import { MergeUnlockDialog } from "../../../src/ui/screens/MergeUnlockDialog";
 
 const FILE_PATH = "C:/vaults/other.kdbx";
 

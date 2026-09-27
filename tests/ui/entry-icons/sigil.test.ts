@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hashString, hostOf, sigilFor, sigilSeed } from "./sigil";
+import { hashString, hostOf, sigilFor, sigilSeed } from "../../../src/ui/entry-icons/sigil";
 
 describe("hashString", () => {
   it("is deterministic and unsigned", () => {

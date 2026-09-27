@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Entry, Group, Icon } from "../../domain";
-import { GroupTree } from "./GroupTree";
-import { ENTRY_DRAG_TYPE } from "../entry-drag";
-import { GROUP_DRAG_TYPE } from "../group-drag";
+import { Entry, Group, Icon } from "../../../src/domain";
+import { GroupTree } from "../../../src/ui/screens/GroupTree";
+import { ENTRY_DRAG_TYPE } from "../../../src/ui/entry-drag";
+import { GROUP_DRAG_TYPE } from "../../../src/ui/group-drag";
 
 function buildTree() {
   const nested = Group.create("Nested");

@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { Icon } from "../../domain";
-import { createBrandCatalog } from "./brand-icons";
-import { IconPicker } from "./IconPicker";
+import { Icon } from "../../../src/domain";
+import { createBrandCatalog } from "../../../src/ui/entry-icons/brand-icons";
+import { IconPicker } from "../../../src/ui/entry-icons/IconPicker";
 
 const brands = createBrandCatalog([
   { slug: "github", title: "GitHub", hex: "181717", domains: ["github.com"], path: "M0 0" },

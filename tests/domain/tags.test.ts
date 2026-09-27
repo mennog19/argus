@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Tag } from "./tag";
-import { Tags } from "./tags";
+import { Tag } from "../../src/domain/tag";
+import { Tags } from "../../src/domain/tags";
 
 describe("Tags", () => {
   it("starts empty by default", () => {

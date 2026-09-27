@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GroupId } from "./group-id";
+import { GroupId } from "../../src/domain/group-id";
 
 describe("GroupId", () => {
   it("creates unique ids", () => {

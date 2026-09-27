@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { TauriWindowProtection } from "./tauri-window-protection";
+import { TauriWindowProtection } from "../../src/infrastructure/tauri-window-protection";
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(),

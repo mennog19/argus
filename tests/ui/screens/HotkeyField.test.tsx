@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { HotkeyField } from "./HotkeyField";
+import { HotkeyField } from "../../../src/ui/screens/HotkeyField";
 
 function renderField(value = "CommandOrControl+Shift+A") {
   const onChange = vi.fn();

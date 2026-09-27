@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Entry } from "./entry";
-import { Group } from "./group";
-import { GroupId } from "./group-id";
-import { Icon } from "./icon";
+import { Entry } from "../../src/domain/entry";
+import { Group } from "../../src/domain/group";
+import { GroupId } from "../../src/domain/group-id";
+import { Icon } from "../../src/domain/icon";
 
 describe("Group", () => {
   it("creates an empty named group with a fresh id", () => {

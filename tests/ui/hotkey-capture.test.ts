@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatHotkey, HotkeyKeyEvent, hotkeyFromKeyPress } from "./hotkey-capture";
+import { formatHotkey, HotkeyKeyEvent, hotkeyFromKeyPress } from "../../src/ui/hotkey-capture";
 
 function press(code: string, modifiers: Partial<HotkeyKeyEvent> = {}): HotkeyKeyEvent {
   return {

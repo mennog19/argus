@@ -33,7 +33,7 @@ export default [
   // rules need the type checker, which is why they can't live in the block
   // above: it also matches config files that sit outside the project.
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ["{src,tests}/**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -59,7 +59,7 @@ export default [
   // An async stub with no `await` is just a fake returning a resolved
   // promise — normal in tests, not worth failing CI over.
   {
-    files: ["src/**/*.{test,spec}.{ts,tsx}"],
+    files: ["tests/**/*.{test,spec}.{ts,tsx}"],
     rules: {
       "@typescript-eslint/require-await": "off",
     },

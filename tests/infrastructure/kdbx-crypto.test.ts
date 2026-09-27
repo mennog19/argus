@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { CryptoEngine } from "kdbxweb";
-import { configureKdbxCrypto } from "./kdbx-crypto";
+import { configureKdbxCrypto } from "../../src/infrastructure/kdbx-crypto";
 
 const PASSWORD = new TextEncoder().encode("correct horse battery staple").buffer;
 const SALT = new Uint8Array(32).fill(7).buffer;

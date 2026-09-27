@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { EntrySortId } from "../../application/settings";
-import { EntrySortMenu } from "./EntrySortMenu";
+import { EntrySortId } from "../../../src/application/settings";
+import { EntrySortMenu } from "../../../src/ui/screens/EntrySortMenu";
 
 function renderMenu(value: EntrySortId = "manual") {
   const onChange = vi.fn();

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { BRAND_ICONS, brandGlyphColor, createBrandCatalog } from "./brand-icons";
+import {
+  BRAND_ICONS,
+  brandGlyphColor,
+  createBrandCatalog,
+} from "../../../src/ui/entry-icons/brand-icons";
 
 const catalog = createBrandCatalog([
   { slug: "google", title: "Google", hex: "4285F4", domains: ["google.com"], path: "M0 0" },

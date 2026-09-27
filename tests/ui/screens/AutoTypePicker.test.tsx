@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AutoTypeRequest } from "../../application/auto-type-service";
-import { Entry } from "../../domain";
-import { AutoTypePicker } from "./AutoTypePicker";
+import { AutoTypeRequest } from "../../../src/application/auto-type-service";
+import { Entry } from "../../../src/domain";
+import { AutoTypePicker } from "../../../src/ui/screens/AutoTypePicker";
 
 const GITHUB = Entry.create({ title: "GitHub", username: "menno", url: "https://github.com" });
 const GITHUB_WORK = Entry.create({ title: "GitHub work", url: "https://github.com" });

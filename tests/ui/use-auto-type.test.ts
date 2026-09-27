@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AutoTyper, ForegroundWindow, GlobalHotkey } from "../application/auto-type";
-import { AutoTypeService } from "../application/auto-type-service";
-import { AutoTypeSettings } from "../application/settings";
-import { Entry, Password } from "../domain";
-import { useAutoType } from "./use-auto-type";
+import { AutoTyper, ForegroundWindow, GlobalHotkey } from "../../src/application/auto-type";
+import { AutoTypeService } from "../../src/application/auto-type-service";
+import { AutoTypeSettings } from "../../src/application/settings";
+import { Entry, Password } from "../../src/domain";
+import { useAutoType } from "../../src/ui/use-auto-type";
 
 const SETTINGS: AutoTypeSettings = {
   enabled: true,

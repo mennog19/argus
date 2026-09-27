@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { TauriVaultFileDialog } from "./tauri-vault-file-dialog";
+import { TauriVaultFileDialog } from "../../src/infrastructure/tauri-vault-file-dialog";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(),

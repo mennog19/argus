@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TotpConfig } from "../domain";
-import { useTotpCode } from "./use-totp-code";
+import { TotpConfig } from "../../src/domain";
+import { useTotpCode } from "../../src/ui/use-totp-code";
 
 const MAX_CRYPTO_TURNS = 100;
 

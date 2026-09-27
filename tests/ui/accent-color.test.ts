@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AccentColor } from "../application/settings";
-import { accentColorCssVars, accentColorHue } from "./accent-color";
+import { AccentColor } from "../../src/application/settings";
+import { accentColorCssVars, accentColorHue } from "../../src/ui/accent-color";
 
 describe("accentColorHue", () => {
   it("resolves a preset id to its hue", () => {

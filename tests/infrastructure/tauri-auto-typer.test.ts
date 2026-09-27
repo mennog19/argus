@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { TauriAutoTyper } from "./tauri-auto-typer";
+import { TauriAutoTyper } from "../../src/infrastructure/tauri-auto-typer";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 

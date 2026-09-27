@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PasswordPolicy } from "./password-policy";
+import { PasswordPolicy } from "../../src/domain/password-policy";
 
 describe("PasswordPolicy", () => {
   it("defaults to a 16-character policy using upper/lower/digits", () => {

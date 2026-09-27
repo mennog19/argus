@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { base32Decode, TotpAlgorithm, TotpConfig } from "./totp";
-import { generateTotpCode, Hmac } from "./totp-code";
+import { base32Decode, TotpAlgorithm, TotpConfig } from "../../src/domain/totp";
+import { generateTotpCode, Hmac } from "../../src/domain/totp-code";
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Icon } from "./icon";
+import { Icon } from "../../src/domain/icon";
 
 describe("Icon", () => {
   it("has an automatic default", () => {

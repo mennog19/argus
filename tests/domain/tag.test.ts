@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Tag } from "./tag";
+import { Tag } from "../../src/domain/tag";
 
 describe("Tag", () => {
   it("stores a trimmed value", () => {

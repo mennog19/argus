@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { JsonSettingsStore } from "./json-settings-store";
-import { AppSettings, DEFAULT_SETTINGS } from "../application/settings";
+import { JsonSettingsStore } from "../../src/infrastructure/json-settings-store";
+import { AppSettings, DEFAULT_SETTINGS } from "../../src/application/settings";
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
   BaseDirectory: { AppData: "AppData" },

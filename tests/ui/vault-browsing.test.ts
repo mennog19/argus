@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { Entry, Group } from "../domain";
+import { Entry, Group } from "../../src/domain";
 import {
   collectAllEntries,
   countGroupContents,
   entriesOf,
   flattenGroupOptions,
   searchEntries,
-} from "./vault-browsing";
+} from "../../src/ui/vault-browsing";
 
 describe("entriesOf", () => {
   it("returns only the group's own entries, paired with that group", () => {

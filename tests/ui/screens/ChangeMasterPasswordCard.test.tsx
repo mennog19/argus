@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ChangeMasterPasswordCard } from "./ChangeMasterPasswordCard";
+import { ChangeMasterPasswordCard } from "../../../src/ui/screens/ChangeMasterPasswordCard";
 
 async function reveal(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /change master password/i }));

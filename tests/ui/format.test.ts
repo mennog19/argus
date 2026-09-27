@@ -6,7 +6,7 @@ import {
   formatRelativeTime,
   formatTotpCode,
   isSamePath,
-} from "./format";
+} from "../../src/ui/format";
 
 describe("basename", () => {
   it("returns the last segment of a forward-slash path", () => {

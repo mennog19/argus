@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { TauriClipboard } from "./tauri-clipboard";
+import { TauriClipboard } from "../../src/infrastructure/tauri-clipboard";
 
 vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({
   writeText: vi.fn(),

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render } from "@testing-library/react";
-import { ArgusMark } from "./ArgusMark";
-import { GAZE_FALLOFF_PX, MAX_GAZE_SHIFT, gazeOffset } from "./argus-gaze";
+import { ArgusMark } from "../../src/ui/ArgusMark";
+import { GAZE_FALLOFF_PX, MAX_GAZE_SHIFT, gazeOffset } from "../../src/ui/argus-gaze";
 import {
   BLINK_DURATION_MS,
   DOUBLE_BLINK_CHANCE,
   DOUBLE_BLINK_GAP_MS,
   nextBlinkDelay,
-} from "./argus-blink";
+} from "../../src/ui/argus-blink";
 
 /** Returns the given values in order, repeating the last one forever. */
 function sequence(...values: number[]): () => number {

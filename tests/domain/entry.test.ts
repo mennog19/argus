@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CustomField } from "./custom-field";
-import { CustomFields } from "./custom-fields";
-import { Entry } from "./entry";
-import { Icon } from "./icon";
-import { EntryId } from "./entry-id";
-import { Password } from "./password";
-import { Tag } from "./tag";
-import { Tags } from "./tags";
+import { CustomField } from "../../src/domain/custom-field";
+import { CustomFields } from "../../src/domain/custom-fields";
+import { Entry } from "../../src/domain/entry";
+import { Icon } from "../../src/domain/icon";
+import { EntryId } from "../../src/domain/entry-id";
+import { Password } from "../../src/domain/password";
+import { Tag } from "../../src/domain/tag";
+import { Tags } from "../../src/domain/tags";
 
 describe("Entry", () => {
   it("defaults every field when created with none", () => {

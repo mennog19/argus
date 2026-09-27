@@ -1,9 +1,18 @@
 import { describe, expect, it, Mock, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomField, CustomFields, Entry, Group, Password, Tag, Tags, Vault } from "../../domain";
-import { MERGE_GROUP_NAME } from "../../application/apply-vault-merge";
-import { MergeWizardScreen } from "./MergeWizardScreen";
+import {
+  CustomField,
+  CustomFields,
+  Entry,
+  Group,
+  Password,
+  Tag,
+  Tags,
+  Vault,
+} from "../../../src/domain";
+import { MERGE_GROUP_NAME } from "../../../src/application/apply-vault-merge";
+import { MergeWizardScreen } from "../../../src/ui/screens/MergeWizardScreen";
 
 const FILE_PATH = "C:/vaults/other.kdbx";
 const TOTP_SECRET = "JBSWY3DPEHPK3PXP";

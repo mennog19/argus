@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AppSettings, DEFAULT_SETTINGS } from "./settings";
+import { AppSettings, DEFAULT_SETTINGS } from "../../src/application/settings";
 import {
   applyPortableSettings,
   parsePortableSettings,
@@ -9,7 +9,7 @@ import {
   serializePortableSettings,
   SettingsImportError,
   toPortableSettings,
-} from "./settings-transfer";
+} from "../../src/application/settings-transfer";
 
 const CUSTOMIZED: AppSettings = {
   recentVaults: [{ path: "C:/vaults/mine.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],

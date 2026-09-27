@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
-import { TauriGlobalHotkey } from "./tauri-global-hotkey";
+import { TauriGlobalHotkey } from "../../src/infrastructure/tauri-global-hotkey";
 
 vi.mock("@tauri-apps/plugin-global-shortcut", () => ({
   register: vi.fn(),

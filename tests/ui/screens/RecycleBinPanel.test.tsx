@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Entry, Group } from "../../domain";
-import { RecycleBinPanel } from "./RecycleBinPanel";
+import { Entry, Group } from "../../../src/domain";
+import { RecycleBinPanel } from "../../../src/ui/screens/RecycleBinPanel";
 
 function baseProps(
   binGroup: Group,

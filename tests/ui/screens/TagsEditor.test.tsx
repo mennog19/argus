@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Tag, Tags } from "../../domain";
-import { TagsEditor } from "./TagsEditor";
+import { Tag, Tags } from "../../../src/domain";
+import { TagsEditor } from "../../../src/ui/screens/TagsEditor";
 
 describe("TagsEditor", () => {
   it("renders no chips when there are no tags", () => {

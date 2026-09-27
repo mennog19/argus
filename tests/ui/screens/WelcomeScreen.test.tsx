@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Vault } from "../../domain";
-import { OpenedVault, VaultAccessService } from "../../application/vault-access-service";
-import { RecentVaultEntry } from "../../application/settings";
-import { WelcomeScreen } from "./WelcomeScreen";
+import { Vault } from "../../../src/domain";
+import { OpenedVault, VaultAccessService } from "../../../src/application/vault-access-service";
+import { RecentVaultEntry } from "../../../src/application/settings";
+import { WelcomeScreen } from "../../../src/ui/screens/WelcomeScreen";
 
 function fakeService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
   return {

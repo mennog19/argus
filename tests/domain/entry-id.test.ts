@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EntryId } from "./entry-id";
+import { EntryId } from "../../src/domain/entry-id";
 
 describe("EntryId", () => {
   it("creates unique ids", () => {

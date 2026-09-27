@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ClipboardWriter } from "../application/clipboard";
-import { useClipboardCopy } from "./use-clipboard-copy";
+import { ClipboardWriter } from "../../src/application/clipboard";
+import { useClipboardCopy } from "../../src/ui/use-clipboard-copy";
 
 function fakeWriter(): ClipboardWriter & { writeText: ReturnType<typeof vi.fn> } {
   return { writeText: vi.fn(async () => undefined) };

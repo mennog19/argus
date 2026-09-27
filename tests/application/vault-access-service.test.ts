@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { Vault } from "../domain";
-import { FileStorage } from "./file-storage";
-import { VaultFileDialog } from "./vault-file-dialog";
-import { VaultAccessService, VaultSaveConflictError } from "./vault-access-service";
-import { VaultRepository, VaultSession } from "./vault-repository";
+import { Vault } from "../../src/domain";
+import { FileStorage } from "../../src/application/file-storage";
+import { VaultFileDialog } from "../../src/application/vault-file-dialog";
+import {
+  VaultAccessService,
+  VaultSaveConflictError,
+} from "../../src/application/vault-access-service";
+import { VaultRepository, VaultSession } from "../../src/application/vault-repository";
 
 /**
  * A repository whose sessions delegate to one shared pair of mocks, so tests

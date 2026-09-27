@@ -5,8 +5,8 @@ import {
   autoTypeMatchScore,
   autoTypeSiteName,
   AUTO_TYPE_MATCH_SCORES,
-} from "./auto-type-match";
-import { Entry } from "./entry";
+} from "../../src/domain/auto-type-match";
+import { Entry } from "../../src/domain/entry";
 
 function entry(fields: { title?: string; url?: string }): Entry {
   return Entry.create({ title: fields.title ?? "", url: fields.url ?? "" });

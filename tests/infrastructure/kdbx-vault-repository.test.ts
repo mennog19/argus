@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
-import { CustomField, CustomFields, Password } from "../domain";
-import { configureKdbxCrypto } from "./kdbx-crypto";
-import { KdbxVaultRepository } from "./kdbx-vault-repository";
+import { CustomField, CustomFields, Password } from "../../src/domain";
+import { configureKdbxCrypto } from "../../src/infrastructure/kdbx-crypto";
+import { KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 
 const MASTER_PASSWORD = "correct horse battery staple";
 

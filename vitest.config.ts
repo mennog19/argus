@@ -9,18 +9,13 @@ export default defineConfig({
     // test framework via the global `afterEach`) unmounts between tests —
     // test files still import describe/it/expect/vi explicitly for lint.
     globals: true,
-    setupFiles: ["./src/vitest.setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    setupFiles: ["./tests/vitest.setup.ts"],
+    include: ["tests/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: [
-        "src/main.tsx",
-        "src/vite-env.d.ts",
-        "src/vitest.setup.ts",
-        "src/**/*.{test,spec}.{ts,tsx}",
-      ],
+      exclude: ["src/main.tsx", "src/vite-env.d.ts"],
       thresholds: {
         lines: 100,
         branches: 100,

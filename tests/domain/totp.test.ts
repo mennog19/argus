@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CustomField } from "./custom-field";
-import { CustomFields } from "./custom-fields";
+import { CustomField } from "../../src/domain/custom-field";
+import { CustomFields } from "../../src/domain/custom-fields";
 import {
   base32Decode,
   parseOtpauthUri,
   parseTotpInput,
   TotpConfig,
   totpConfigFromCustomFields,
-} from "./totp";
+} from "../../src/domain/totp";
 
 describe("TotpConfig", () => {
   it("defaults to SHA1, 6 digits, 30s period", () => {

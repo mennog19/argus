@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CustomField } from "./custom-field";
-import { CustomFields } from "./custom-fields";
-import { Entry } from "./entry";
-import { matchesSearchQuery } from "./entry-search";
-import { Password } from "./password";
-import { Tag } from "./tag";
-import { Tags } from "./tags";
+import { CustomField } from "../../src/domain/custom-field";
+import { CustomFields } from "../../src/domain/custom-fields";
+import { Entry } from "../../src/domain/entry";
+import { matchesSearchQuery } from "../../src/domain/entry-search";
+import { Password } from "../../src/domain/password";
+import { Tag } from "../../src/domain/tag";
+import { Tags } from "../../src/domain/tags";
 
 describe("matchesSearchQuery", () => {
   it("matches an empty query against every entry", () => {

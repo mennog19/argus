@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { FileStorage } from "./file-storage";
-import { AppSettings, DEFAULT_SETTINGS } from "./settings";
-import { SettingsFileDialog } from "./settings-file-dialog";
-import { SettingsTransferService } from "./settings-transfer-service";
+import { FileStorage } from "../../src/application/file-storage";
+import { AppSettings, DEFAULT_SETTINGS } from "../../src/application/settings";
+import { SettingsFileDialog } from "../../src/application/settings-file-dialog";
+import { SettingsTransferService } from "../../src/application/settings-transfer-service";
 import {
   serializePortableSettings,
   SettingsImportError,
   toPortableSettings,
-} from "./settings-transfer";
+} from "../../src/application/settings-transfer";
 
 const SETTINGS: AppSettings = {
   recentVaults: [{ path: "C:/vaults/mine.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],

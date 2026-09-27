@@ -1,4 +1,4 @@
-// Regenerates src/ui/entry-icons/brands.generated.ts from scripts/brand-icons.json.
+// Regenerates src/ui/entry-icons/brands.generated.ts from src/assets/brand-icons.json.
 //
 // brand-icons.json is the source of truth: one { slug, domains } per brand,
 // where slug is a Simple Icons slug (https://simpleicons.org). Only the brands
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import * as simpleIcons from "simple-icons";
 
 const root = new URL("..", import.meta.url);
-const list = JSON.parse(readFileSync(new URL("scripts/brand-icons.json", root), "utf8"));
+const list = JSON.parse(readFileSync(new URL("src/assets/brand-icons.json", root), "utf8"));
 const bySlug = new Map(Object.values(simpleIcons).map((icon) => [icon.slug, icon]));
 
 const seenDomains = new Map();

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { Icon } from "../../domain";
-import { EntryAvatar } from "./EntryAvatar";
-import { sigilFor } from "./sigil";
+import { Icon } from "../../../src/domain";
+import { EntryAvatar } from "../../../src/ui/entry-icons/EntryAvatar";
+import { sigilFor } from "../../../src/ui/entry-icons/sigil";
 
 function renderAvatar(url: string, icon = Icon.AUTO, size?: "sm" | "lg") {
   const { container } = render(<EntryAvatar entry={{ title: "Title", url, icon }} size={size} />);

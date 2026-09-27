@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { TauriUrlOpener } from "./tauri-url-opener";
+import { TauriUrlOpener } from "../../src/infrastructure/tauri-url-opener";
 
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: vi.fn(),

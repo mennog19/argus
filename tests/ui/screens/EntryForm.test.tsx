@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomField, CustomFields, Entry, Icon, GroupId, Password, Tag, Tags } from "../../domain";
-import { DEFAULT_ENTRY_FIELD_VISIBILITY } from "../../application/settings";
-import { EntryForm } from "./EntryForm";
+import {
+  CustomField,
+  CustomFields,
+  Entry,
+  Icon,
+  GroupId,
+  Password,
+  Tag,
+  Tags,
+} from "../../../src/domain";
+import { DEFAULT_ENTRY_FIELD_VISIBILITY } from "../../../src/application/settings";
+import { EntryForm } from "../../../src/ui/screens/EntryForm";
 
 const groupOptions = [
   { id: "root-id", label: "My Vault" },

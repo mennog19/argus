@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Entry } from "./entry";
-import { EntryId } from "./entry-id";
-import { Group } from "./group";
-import { GroupId } from "./group-id";
-import { Icon } from "./icon";
-import { Vault } from "./vault";
+import { Entry } from "../../src/domain/entry";
+import { EntryId } from "../../src/domain/entry-id";
+import { Group } from "../../src/domain/group";
+import { GroupId } from "../../src/domain/group-id";
+import { Icon } from "../../src/domain/icon";
+import { Vault } from "../../src/domain/vault";
 
 describe("Vault", () => {
   it("creates a vault with an empty root group named after it", () => {

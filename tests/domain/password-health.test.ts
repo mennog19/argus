@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { Entry } from "./entry";
-import { Password } from "./password";
-import { PasswordHealthPolicy } from "./password-health-policy";
+import { Entry } from "../../src/domain/entry";
+import { Password } from "../../src/domain/password";
+import { PasswordHealthPolicy } from "../../src/domain/password-health-policy";
 import {
   checkPasswordHealth,
   findDuplicatePasswords,
   isPasswordWeak,
   passwordStrength,
-} from "./password-health";
+} from "../../src/domain/password-health";
 
 const policy = new PasswordHealthPolicy({
   minLength: 10,

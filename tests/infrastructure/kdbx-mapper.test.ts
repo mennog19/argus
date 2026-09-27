@@ -11,11 +11,11 @@ import {
   Tag,
   Tags,
   Vault,
-} from "../domain";
+} from "../../src/domain";
 
 const Icons = Consts.Icons;
-import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
-import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
+import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "../../src/infrastructure/kdbx-id";
+import { applyVaultToKdbx, vaultFromKdbx } from "../../src/infrastructure/kdbx-mapper";
 
 function createDb(name = "Test Vault"): Kdbx {
   return Kdbx.create(new Credentials(null), name);

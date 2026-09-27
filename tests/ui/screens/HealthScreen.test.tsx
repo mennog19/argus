@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Entry, Group, Password } from "../../domain";
-import { EntryWithGroup } from "../vault-browsing";
-import { HealthScreen } from "./HealthScreen";
+import { Entry, Group, Password } from "../../../src/domain";
+import { EntryWithGroup } from "../../../src/ui/vault-browsing";
+import { HealthScreen } from "../../../src/ui/screens/HealthScreen";
 
 const STRONG_PASSWORD = "Correct-Horse-7!";
 const OTHER_STRONG_PASSWORD = "Battery-Staple-9!";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Icon } from "../../domain";
-import { createBrandCatalog } from "./brand-icons";
-import { resolveIcon } from "./resolve-entry-icon";
+import { Icon } from "../../../src/domain";
+import { createBrandCatalog } from "../../../src/ui/entry-icons/brand-icons";
+import { resolveIcon } from "../../../src/ui/entry-icons/resolve-entry-icon";
 
 const brands = createBrandCatalog([
   { slug: "github", title: "GitHub", hex: "181717", domains: ["github.com"], path: "M0 0" },

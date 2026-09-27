@@ -1,22 +1,22 @@
 ﻿import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Entry, Vault } from "../domain";
-import { ClipboardWriter } from "../application/clipboard";
+import { Entry, Vault } from "../../src/domain";
+import { ClipboardWriter } from "../../src/application/clipboard";
 import {
   OpenedVault,
   VaultAccessService,
   VaultSaveConflictError,
-} from "../application/vault-access-service";
-import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../application/settings";
-import { SettingsTransferService } from "../application/settings-transfer-service";
-import { UrlOpener } from "../application/url-opener";
-import { WindowEvents } from "../application/window-events";
-import { WindowProtection } from "../application/window-protection";
-import { VaultMergeSource } from "../application/vault-merge-source";
-import { AutoTyper, GlobalHotkey } from "../application/auto-type";
-import { AutoTypeService } from "../application/auto-type-service";
-import App from "./App";
+} from "../../src/application/vault-access-service";
+import { AppSettings, DEFAULT_SETTINGS, SettingsStore } from "../../src/application/settings";
+import { SettingsTransferService } from "../../src/application/settings-transfer-service";
+import { UrlOpener } from "../../src/application/url-opener";
+import { WindowEvents } from "../../src/application/window-events";
+import { WindowProtection } from "../../src/application/window-protection";
+import { VaultMergeSource } from "../../src/application/vault-merge-source";
+import { AutoTyper, GlobalHotkey } from "../../src/application/auto-type";
+import { AutoTypeService } from "../../src/application/auto-type-service";
+import App from "../../src/ui/App";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
   return {

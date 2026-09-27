@@ -15,7 +15,7 @@ import {
   recordVaultOpened,
   resolveSettings,
   withSetting,
-} from "./settings";
+} from "../../src/application/settings";
 
 describe("recordVaultOpened", () => {
   it("adds a path to an empty list", () => {

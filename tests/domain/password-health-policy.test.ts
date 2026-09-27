@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PasswordHealthPolicy } from "./password-health-policy";
+import { PasswordHealthPolicy } from "../../src/domain/password-health-policy";
 
 describe("PasswordHealthPolicy", () => {
   it("defaults to a 12-char/3-class weak bar and a 16-char/4-class strong bar", () => {

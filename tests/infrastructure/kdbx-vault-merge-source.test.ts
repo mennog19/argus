@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
-import { FileStorage } from "../application/file-storage";
-import { VaultFileDialog } from "../application/vault-file-dialog";
-import { configureKdbxCrypto } from "./kdbx-crypto";
-import { KdbxVaultMergeSource } from "./kdbx-vault-merge-source";
+import { FileStorage } from "../../src/application/file-storage";
+import { VaultFileDialog } from "../../src/application/vault-file-dialog";
+import { configureKdbxCrypto } from "../../src/infrastructure/kdbx-crypto";
+import { KdbxVaultMergeSource } from "../../src/infrastructure/kdbx-vault-merge-source";
 
 const MASTER_PASSWORD = "correct horse battery staple";
 

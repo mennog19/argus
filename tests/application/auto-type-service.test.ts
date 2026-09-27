@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { AutoTypeService } from "./auto-type-service";
-import { AutoTyper, ForegroundWindow } from "./auto-type";
-import { Entry, FormLayout, Password } from "../domain";
+import { AutoTypeService } from "../../src/application/auto-type-service";
+import { AutoTyper, ForegroundWindow } from "../../src/application/auto-type";
+import { Entry, FormLayout, Password } from "../../src/domain";
 
 const WINDOW: ForegroundWindow = {
   title: "Sign in to GitHub — Mozilla Firefox",

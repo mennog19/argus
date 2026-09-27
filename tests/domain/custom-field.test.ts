@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CustomField } from "./custom-field";
+import { CustomField } from "../../src/domain/custom-field";
 
 describe("CustomField", () => {
   it("stores a trimmed key, value, and protection flag", () => {

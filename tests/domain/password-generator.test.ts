@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { generatePassword } from "./password-generator";
-import { PasswordPolicy } from "./password-policy";
+import { generatePassword } from "../../src/domain/password-generator";
+import { PasswordPolicy } from "../../src/domain/password-policy";
 
 describe("generatePassword", () => {
   it("produces a deterministic character password when randomInt is fixed", () => {

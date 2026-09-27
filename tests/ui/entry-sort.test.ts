@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Entry, Group } from "../domain";
-import { ENTRY_SORT_OPTIONS, sortEntries } from "./entry-sort";
-import { EntryWithGroup } from "./vault-browsing";
+import { Entry, Group } from "../../src/domain";
+import { ENTRY_SORT_OPTIONS, sortEntries } from "../../src/ui/entry-sort";
+import { EntryWithGroup } from "../../src/ui/vault-browsing";
 
 const group = Group.create("Mine");
 

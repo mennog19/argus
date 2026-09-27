@@ -10,9 +10,9 @@ import {
   EntryFieldVisibility,
   GroupDeleteMode,
   Theme,
-} from "../../application/settings";
-import { VaultFileInfo } from "../../application/vault-access-service";
-import { SettingsScreen } from "./SettingsScreen";
+} from "../../../src/application/settings";
+import { VaultFileInfo } from "../../../src/application/vault-access-service";
+import { SettingsScreen } from "../../../src/ui/screens/SettingsScreen";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {

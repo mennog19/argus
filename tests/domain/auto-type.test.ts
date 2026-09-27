@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AutoTypeNoFieldsError, autoTypeSteps } from "./auto-type";
+import { AutoTypeNoFieldsError, autoTypeSteps } from "../../src/domain/auto-type";
 
 const CREDENTIALS = { username: "menno", password: "hunter2" };
 

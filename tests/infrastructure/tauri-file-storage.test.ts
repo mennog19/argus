@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { copyFile, exists, readFile, stat, writeFile } from "@tauri-apps/plugin-fs";
-import { TauriFileStorage } from "./tauri-file-storage";
+import { TauriFileStorage } from "../../src/infrastructure/tauri-file-storage";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),

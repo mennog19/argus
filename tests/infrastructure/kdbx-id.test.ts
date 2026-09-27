@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
+import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "../../src/infrastructure/kdbx-id";
 
 describe("domainIdToKdbxUuid / kdbxUuidToDomainId", () => {
   it("round-trips a UUID through the KDBX uuid representation", () => {

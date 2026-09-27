@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasClockJumped, hasIdleTimedOut } from "./auto-lock";
+import { hasClockJumped, hasIdleTimedOut } from "../../src/ui/auto-lock";
 
 describe("hasIdleTimedOut", () => {
   it("is false before the timeout has elapsed", () => {

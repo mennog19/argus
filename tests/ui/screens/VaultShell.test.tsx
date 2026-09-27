@@ -12,7 +12,7 @@ import {
   Tag,
   Tags,
   Vault,
-} from "../../domain";
+} from "../../../src/domain";
 import {
   AccentColor,
   AutoLockSettings,
@@ -24,12 +24,12 @@ import {
   EntrySortId,
   GroupDeleteMode,
   Theme,
-} from "../../application/settings";
-import { ClipboardWriter } from "../../application/clipboard";
-import { UrlOpener } from "../../application/url-opener";
-import { VaultMergeSource } from "../../application/vault-merge-source";
-import { GROUP_DRAG_TYPE } from "../group-drag";
-import { VaultShell } from "./VaultShell";
+} from "../../../src/application/settings";
+import { ClipboardWriter } from "../../../src/application/clipboard";
+import { UrlOpener } from "../../../src/application/url-opener";
+import { VaultMergeSource } from "../../../src/application/vault-merge-source";
+import { GROUP_DRAG_TYPE } from "../../../src/ui/group-drag";
+import { VaultShell } from "../../../src/ui/screens/VaultShell";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {

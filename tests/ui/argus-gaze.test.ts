@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GAZE_FALLOFF_PX, MAX_GAZE_SHIFT, gazeOffset } from "./argus-gaze";
+import { GAZE_FALLOFF_PX, MAX_GAZE_SHIFT, gazeOffset } from "../../src/ui/argus-gaze";
 
 describe("gazeOffset", () => {
   it("stays centred when the pointer is on the eye", () => {

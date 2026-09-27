@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Password } from "./password";
+import { Password } from "../../src/domain/password";
 
 describe("Password", () => {
   it("reveals the underlying value", () => {

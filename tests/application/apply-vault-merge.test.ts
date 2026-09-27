@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Entry, Group, MatchedEntryPair, Vault } from "../domain";
-import { applyVaultMerge, MERGE_GROUP_NAME, VaultMergeSelections } from "./apply-vault-merge";
+import { Entry, Group, MatchedEntryPair, Vault } from "../../src/domain";
+import {
+  applyVaultMerge,
+  MERGE_GROUP_NAME,
+  VaultMergeSelections,
+} from "../../src/application/apply-vault-merge";
 
 function emptySelections(): VaultMergeSelections {
   return { newEntries: [], resolvedConflicts: [], identicalEntriesToImport: [] };

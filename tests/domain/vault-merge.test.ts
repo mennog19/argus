@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CustomField } from "./custom-field";
-import { CustomFields } from "./custom-fields";
-import { Entry } from "./entry";
-import { Group } from "./group";
-import { Password } from "./password";
-import { Tag } from "./tag";
-import { Tags } from "./tags";
-import { Vault } from "./vault";
-import { diffVaults, mergeFieldValue } from "./vault-merge";
+import { CustomField } from "../../src/domain/custom-field";
+import { CustomFields } from "../../src/domain/custom-fields";
+import { Entry } from "../../src/domain/entry";
+import { Group } from "../../src/domain/group";
+import { Password } from "../../src/domain/password";
+import { Tag } from "../../src/domain/tag";
+import { Tags } from "../../src/domain/tags";
+import { Vault } from "../../src/domain/vault";
+import { diffVaults, mergeFieldValue } from "../../src/domain/vault-merge";
 
 const TOTP_SECRET = "JBSWY3DPEHPK3PXP";
 

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Vault } from "../../domain";
-import { VaultAccessService } from "../../application/vault-access-service";
-import { LockedScreen } from "./LockedScreen";
+import { Vault } from "../../../src/domain";
+import { VaultAccessService } from "../../../src/application/vault-access-service";
+import { LockedScreen } from "../../../src/ui/screens/LockedScreen";
 
 function fakeService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
   return {

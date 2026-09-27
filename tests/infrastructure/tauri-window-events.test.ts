@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { TauriWindowEvents } from "./tauri-window-events";
+import { TauriWindowEvents } from "../../src/infrastructure/tauri-window-events";
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(),
