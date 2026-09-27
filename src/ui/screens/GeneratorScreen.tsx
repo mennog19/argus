@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ClipboardWriter } from "../../application/clipboard";
 import {
   generatePassword,
   PassphraseSeparator,
@@ -6,12 +7,16 @@ import {
   PasswordPolicyMode,
   PasswordPolicyOptions,
 } from "../../domain";
-import { RefreshIcon } from "../icons";
+import { CopyIcon, RefreshIcon } from "../icons";
 
 interface GeneratorScreenProps {
   policyOptions: PasswordPolicyOptions;
   onPolicyChange: (options: PasswordPolicyOptions) => void;
+  clipboardWriter: ClipboardWriter;
 }
+
+/** How long the "Copied" confirmation stays up next to the button. */
+const COPIED_LABEL_MS = 1500;
 
 const SEPARATORS: readonly { value: PassphraseSeparator; label: string }[] = [
   { value: "-", label: "Hyphen (-)" },
@@ -20,9 +25,20 @@ const SEPARATORS: readonly { value: PassphraseSeparator; label: string }[] = [
   { value: ".", label: "Period (.)" },
 ];
 
-export function GeneratorScreen({ policyOptions, onPolicyChange }: GeneratorScreenProps) {
+export function GeneratorScreen({
+  policyOptions,
+  onPolicyChange,
+  clipboardWriter,
+}: GeneratorScreenProps) {
   const policy = new PasswordPolicy(policyOptions);
   const [password, setPassword] = useState(() => generatePassword(policy).reveal());
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), COPIED_LABEL_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   // `PasswordPolicy`'s constructor already rejects invalid combinations (e.g.
   // every character set disabled, or a length/word count below 1) — reuse
@@ -43,6 +59,14 @@ export function GeneratorScreen({ policyOptions, onPolicyChange }: GeneratorScre
     setPassword(generatePassword(policy).reveal());
   }
 
+  // Deliberately no auto-clear countdown here: a freshly generated password
+  // isn't stored in the vault yet, and the user is typically about to paste
+  // it into a sign-up form.
+  async function copyPassword() {
+    await clipboardWriter.writeText(password);
+    setCopied(true);
+  }
+
   function setMode(mode: PasswordPolicyMode) {
     applyPolicy({ mode });
   }
@@ -54,14 +78,25 @@ export function GeneratorScreen({ policyOptions, onPolicyChange }: GeneratorScre
 
         <div className="detail-card padded generator-output">
           <div className="generator-password">{password}</div>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Regenerate password"
-            onClick={regenerate}
-          >
-            <RefreshIcon size={18} />
-          </button>
+          <div className="generator-actions">
+            {copied && <span className="copied-label">Copied</span>}
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Copy password"
+              onClick={() => void copyPassword()}
+            >
+              <CopyIcon size={18} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Regenerate password"
+              onClick={regenerate}
+            >
+              <RefreshIcon size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="generator-mode-toggle" role="group" aria-label="Generator mode">

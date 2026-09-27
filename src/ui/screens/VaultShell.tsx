@@ -330,6 +330,7 @@ export function VaultShell({
           <GeneratorScreen
             policyOptions={generatorPolicy}
             onPolicyChange={(policy) => onSettingChange("generatorPolicy", policy)}
+            clipboardWriter={clipboardWriter}
           />
         );
       case "health":
