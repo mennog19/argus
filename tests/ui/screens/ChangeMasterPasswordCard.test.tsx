@@ -54,6 +54,33 @@ describe("ChangeMasterPasswordCard", () => {
     expect(onChangeMasterPassword).not.toHaveBeenCalled();
   });
 
+  it("rejects a new password shorter than 12 characters", async () => {
+    const user = userEvent.setup();
+    const onChangeMasterPassword = vi.fn();
+    render(<ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />);
+
+    await reveal(user);
+    await user.type(screen.getByLabelText("Current password"), "old-pw");
+    await user.type(screen.getByLabelText("New password"), "elevenchars");
+    await user.type(screen.getByLabelText("Confirm new password"), "elevenchars");
+    await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+    expect(
+      await screen.findByText("New password must be at least 12 characters."),
+    ).toBeInTheDocument();
+    expect(onChangeMasterPassword).not.toHaveBeenCalled();
+  });
+
+  it("shows the strength of the new password as it is typed", async () => {
+    const user = userEvent.setup();
+    render(<ChangeMasterPasswordCard onChangeMasterPassword={vi.fn()} />);
+
+    await reveal(user);
+    await user.type(screen.getByLabelText("New password"), "Correct-Horse-Battery-9");
+
+    expect(screen.getByText("Strong")).toBeInTheDocument();
+  });
+
   it("validates the new passwords match", async () => {
     const user = userEvent.setup();
     const onChangeMasterPassword = vi.fn();
@@ -61,7 +88,7 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-pw");
+    await user.type(screen.getByLabelText("New password"), "new-password");
     await user.type(screen.getByLabelText("Confirm new password"), "different");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
@@ -76,11 +103,11 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-pw");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-pw");
+    await user.type(screen.getByLabelText("New password"), "new-password");
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
-    expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-pw");
+    expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-password");
     expect(await screen.findByText("Master password changed.")).toBeInTheDocument();
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(screen.getByLabelText("New password")).toHaveValue("");
@@ -96,8 +123,8 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "wrong-pw");
-    await user.type(screen.getByLabelText("New password"), "new-pw");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-pw");
+    await user.type(screen.getByLabelText("New password"), "new-password");
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(await screen.findByText("Current password is incorrect.")).toBeInTheDocument();
@@ -111,8 +138,8 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-pw");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-pw");
+    await user.type(screen.getByLabelText("New password"), "new-password");
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(await screen.findByText("boom")).toBeInTheDocument();

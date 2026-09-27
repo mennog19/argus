@@ -69,10 +69,10 @@ describe("WelcomeScreen", () => {
       );
 
       await user.click(screen.getByRole("button", { name: /open existing vault/i }));
-      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose file & unlock/i }));
 
-      expect(service.openExistingVault).toHaveBeenCalledWith("hunter2");
+      expect(service.openExistingVault).toHaveBeenCalledWith("hunter2-long");
       expect(onOpened).toHaveBeenCalledWith(opened);
     });
 
@@ -195,6 +195,47 @@ describe("WelcomeScreen", () => {
       expect(await screen.findByText("Master password is required.")).toBeInTheDocument();
     });
 
+    it("rejects a master password shorter than 12 characters", async () => {
+      const user = userEvent.setup();
+      const service = fakeService();
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={service}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await openCreateForm(user);
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "elevenchars");
+      await user.type(screen.getByLabelText("Confirm password"), "elevenchars");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(
+        await screen.findByText("Master password must be at least 12 characters."),
+      ).toBeInTheDocument();
+      expect(service.createNewVault).not.toHaveBeenCalled();
+    });
+
+    it("shows the strength of the master password as it is typed", async () => {
+      const user = userEvent.setup();
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={fakeService()}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await openCreateForm(user);
+      await user.type(screen.getByLabelText("Master password"), "short");
+
+      expect(screen.getByText("Weak")).toBeInTheDocument();
+    });
+
     it("validates the passwords match", async () => {
       const user = userEvent.setup();
       render(
@@ -208,7 +249,7 @@ describe("WelcomeScreen", () => {
 
       await openCreateForm(user);
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
       await user.type(screen.getByLabelText("Confirm password"), "different");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
@@ -235,11 +276,11 @@ describe("WelcomeScreen", () => {
 
       await openCreateForm(user);
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
-      expect(service.createNewVault).toHaveBeenCalledWith("Personal", "hunter2");
+      expect(service.createNewVault).toHaveBeenCalledWith("Personal", "hunter2-long");
       expect(onOpened).toHaveBeenCalledWith(opened);
     });
 
@@ -259,8 +300,8 @@ describe("WelcomeScreen", () => {
 
       await openCreateForm(user);
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(onOpened).not.toHaveBeenCalled();
@@ -283,8 +324,8 @@ describe("WelcomeScreen", () => {
 
       await openCreateForm(user);
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(await screen.findByText("Disk is full")).toBeInTheDocument();
@@ -305,8 +346,8 @@ describe("WelcomeScreen", () => {
 
       await openCreateForm(user);
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(await screen.findByText("boom")).toBeInTheDocument();
