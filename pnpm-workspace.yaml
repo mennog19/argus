@@ -1,0 +1,4 @@
+overrides:
+  # kdbxweb 2.1.1 pins ^0.7.4, and no 0.7.x release has the fixes for the
+  # GHSA advisories reported by `pnpm audit`.
+  "@xmldom/xmldom": ^0.8.15
