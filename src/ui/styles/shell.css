@@ -2129,6 +2129,12 @@ input[type="radio"]:checked::after {
   word-break: break-all;
 }
 
+.generator-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .generator-mode-toggle {
   display: flex;
   gap: 10px;

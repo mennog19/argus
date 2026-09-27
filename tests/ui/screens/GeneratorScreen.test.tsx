@@ -1,13 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PasswordPolicyOptions } from "../../../src/domain";
 import { GeneratorScreen } from "../../../src/ui/screens/GeneratorScreen";
 
 function renderGenerator(policyOptions: PasswordPolicyOptions = {}) {
   const onPolicyChange = vi.fn();
-  render(<GeneratorScreen policyOptions={policyOptions} onPolicyChange={onPolicyChange} />);
-  return { onPolicyChange };
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  const view = render(
+    <GeneratorScreen
+      policyOptions={policyOptions}
+      onPolicyChange={onPolicyChange}
+      clipboardWriter={{ writeText }}
+    />,
+  );
+  return { onPolicyChange, writeText, unmount: view.unmount };
 }
 
 describe("GeneratorScreen", () => {
@@ -37,6 +44,46 @@ describe("GeneratorScreen", () => {
     await user.click(screen.getByRole("button", { name: "Regenerate password" }));
 
     expect(document.querySelector(".generator-password")?.textContent).toHaveLength(24);
+  });
+
+  it("copies the shown password without scheduling a clipboard wipe", async () => {
+    vi.useFakeTimers();
+    try {
+      const { writeText } = renderGenerator();
+      const password = document.querySelector(".generator-password")?.textContent;
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+      });
+
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(password);
+      expect(screen.getByText("Copied")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
+
+      expect(screen.queryByText("Copied")).not.toBeInTheDocument();
+      expect(writeText).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels the Copied label timer when unmounted", async () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = renderGenerator();
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+      });
+
+      unmount();
+
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("updates the length and reports the new policy when the length slider changes", () => {
