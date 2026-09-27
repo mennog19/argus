@@ -1,4 +1,4 @@
-import { Credentials, Kdbx, ProtectedValue } from "kdbxweb";
+import { Consts, Credentials, Int64, Kdbx, ProtectedValue, VarDictionary } from "kdbxweb";
 import {
   IncorrectMasterPasswordError,
   VaultRepository,
@@ -12,6 +12,27 @@ import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
 // would be dead code — a mismatched byte still fails the comparison.
 function buffersEqual(a: Uint8Array, b: Uint8Array): boolean {
   return a.every((byte, index) => byte === b[index]);
+}
+
+/**
+ * Argon2id settings for vaults Argus creates.
+ * kdbxweb's own defaults are Argon2d with 1 MiB / 2 iterations, far too cheap
+ * to slow down an offline guessing attack. These cost ~0.5s in hash-wasm's
+ * single-threaded WASM Argon2 — paid on every unlock and every save.
+ */
+export const DEFAULT_KDF = {
+  memoryBytes: 64 * 1024 * 1024,
+  iterations: 4,
+  parallelism: 2,
+} as const;
+
+function applyDefaultKdf(db: Kdbx): void {
+  db.setKdf(Consts.KdfId.Argon2id);
+  // `setKdf` with an Argon2 id always populates the parameter dictionary.
+  const params = db.header.kdfParameters!;
+  params.set("M", VarDictionary.ValueType.UInt64, new Int64(DEFAULT_KDF.memoryBytes));
+  params.set("I", VarDictionary.ValueType.UInt64, new Int64(DEFAULT_KDF.iterations));
+  params.set("P", VarDictionary.ValueType.UInt32, DEFAULT_KDF.parallelism);
 }
 
 /** A `kdbxweb` document, held open so that unmapped fields survive a save. */
@@ -60,6 +81,8 @@ export class KdbxVaultRepository implements VaultRepository {
   createVault(name: string, masterPassword: string): Promise<VaultSession> {
     configureKdbxCrypto();
     const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
-    return Promise.resolve(new KdbxVaultSession(Kdbx.create(credentials, name)));
+    const db = Kdbx.create(credentials, name);
+    applyDefaultKdf(db);
+    return Promise.resolve(new KdbxVaultSession(db));
   }
 }
