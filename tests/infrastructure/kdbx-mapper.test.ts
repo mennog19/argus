@@ -399,6 +399,48 @@ describe("applyVaultToKdbx", () => {
     expect(recycledParent.entries[0].fields.get("Title")).toBe("direct");
   });
 
+  it("permanently deletes entries and groups when the recycle bin is emptied", () => {
+    const db = createDb();
+    const root = db.getDefaultGroup();
+    const recycleBin = root.groups.find((g) => g.name === "Recycle Bin")!;
+    const binnedEntry = db.createEntry(recycleBin);
+    binnedEntry.fields.set("Title", "binned entry");
+    const binnedGroup = db.createGroup(recycleBin, "Binned Group");
+    const nestedEntry = db.createEntry(binnedGroup);
+    nestedEntry.fields.set("Title", "nested binned entry");
+    const binnedUuids = [binnedEntry.uuid, binnedGroup.uuid, nestedEntry.uuid];
+
+    const vault = vaultFromKdbx(db).emptyRecycleBin();
+
+    applyVaultToKdbx(db, vault);
+
+    expect(recycleBin.entries).toHaveLength(0);
+    expect(recycleBin.groups).toHaveLength(0);
+    expect([...root.allEntries()]).toHaveLength(0);
+    const deletedUuids = db.deletedObjects.map((d) => d.uuid);
+    for (const uuid of binnedUuids) {
+      expect(deletedUuids.some((d) => d.equals(uuid))).toBe(true);
+    }
+  });
+
+  it("permanently deletes an entry removed from a recycle bin subgroup instead of moving it to the bin's top level", () => {
+    const db = createDb();
+    const recycleBin = db.getDefaultGroup().groups.find((g) => g.name === "Recycle Bin")!;
+    const binnedGroup = db.createGroup(recycleBin, "Binned Group");
+    const nestedEntry = db.createEntry(binnedGroup);
+    nestedEntry.fields.set("Title", "nested binned entry");
+
+    const vault = vaultFromKdbx(db);
+    const domainBinnedGroup = vault.recycleBin!.groups[0];
+    const updatedVault = vault.removeEntry(domainBinnedGroup.entries[0].id);
+
+    applyVaultToKdbx(db, updatedVault);
+
+    expect(binnedGroup.entries).toHaveLength(0);
+    expect(recycleBin.entries).toHaveLength(0);
+    expect(db.deletedObjects.some((d) => d.uuid.equals(nestedEntry.uuid))).toBe(true);
+  });
+
   it("writes a lazily-created domain recycle bin's id onto meta.recycleBinUuid", () => {
     const db = createDb();
     db.meta.recycleBinEnabled = false;

@@ -94,6 +94,37 @@ describe("KdbxVaultRepository", () => {
     expect(rawUntouched?.icon).toBe(12);
   });
 
+  it("round-trips an emptied recycle bin without the deleted items remaining in the saved file", async () => {
+    const bytes = await createFixtureBytes();
+    const session = await new KdbxVaultRepository().openVault(bytes, MASTER_PASSWORD);
+
+    const willChange = session.vault.rootGroup.entries.find((e) => e.title === "Will Change")!;
+    const subGroup = session.vault.rootGroup.groups.find((g) => g.name === "Sub Group")!;
+    const binnedBytes = await session.save(
+      session.vault.deleteEntry(willChange.id).deleteGroup(subGroup.id),
+    );
+
+    const binnedSession = await new KdbxVaultRepository().openVault(binnedBytes, MASTER_PASSWORD);
+    expect(binnedSession.vault.recycleBin?.entries.map((e) => e.title)).toEqual(["Will Change"]);
+    const emptiedBytes = await binnedSession.save(binnedSession.vault.emptyRecycleBin());
+
+    const reopened = (await new KdbxVaultRepository().openVault(emptiedBytes, MASTER_PASSWORD))
+      .vault;
+    expect(reopened.recycleBin?.entries).toEqual([]);
+    expect(reopened.recycleBin?.groups).toEqual([]);
+
+    const raw = await Kdbx.load(
+      emptiedBytes,
+      new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)),
+    );
+    const root = raw.getDefaultGroup();
+    expect([...root.allEntries()].map((e) => e.fields.get("Title"))).toEqual(["Untouched Site"]);
+    expect([...root.allGroups()].map((g) => g.name)).not.toContain("Sub Group");
+    // "Will Change", "Sub Group" and "Nested Entry" are recorded as deleted so
+    // KeePass-style sync doesn't resurrect them from another copy of the file.
+    expect(raw.deletedObjects).toHaveLength(3);
+  });
+
   it("creates a brand-new vault that can be saved and reopened", async () => {
     const repository = new KdbxVaultRepository();
 
