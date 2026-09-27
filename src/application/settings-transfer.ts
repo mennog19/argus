@@ -3,17 +3,11 @@ import {
   AccentColor,
   AppSettings,
   AutoLockSettings,
-  DEFAULT_ACCENT_COLOR,
-  DEFAULT_AUTO_LOCK,
-  DEFAULT_CLIPBOARD_CLEAR_SECONDS,
-  DEFAULT_CONTENT_PROTECTION,
-  DEFAULT_ENTRY_FIELD_VISIBILITY,
-  DEFAULT_GROUP_DELETE_MODE,
-  DEFAULT_THEME,
   ENTRY_FIELD_KEYS,
   EntryFieldVisibility,
   GROUP_DELETE_MODES,
   GroupDeleteMode,
+  resolveSettings,
   THEMES,
   Theme,
 } from "./settings";
@@ -69,25 +63,28 @@ export class SettingsImportError extends Error {
  * app the sender actually sees rather than a half-empty object.
  */
 export function toPortableSettings(settings: AppSettings): PortableSettings {
-  const autoLock = settings.autoLock ?? DEFAULT_AUTO_LOCK;
+  const {
+    theme,
+    accentColor,
+    autoLock,
+    clipboardClearSeconds,
+    contentProtection,
+    groupDeleteMode,
+    entryFieldVisibility,
+  } = resolveSettings(settings);
   return {
     format: PORTABLE_SETTINGS_FORMAT,
     version: PORTABLE_SETTINGS_VERSION,
-    appearance: {
-      theme: settings.theme ?? DEFAULT_THEME,
-      accentColor: settings.accentColor ?? DEFAULT_ACCENT_COLOR,
-    },
+    appearance: { theme, accentColor },
     security: {
       idleTimeoutMinutes: autoLock.idleTimeoutMinutes,
       lockOnMinimize: autoLock.lockOnMinimize,
       lockOnSleep: autoLock.lockOnSleep,
-      clipboardClearSeconds: settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS,
-      contentProtection: settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,
+      clipboardClearSeconds,
+      contentProtection,
     },
-    groups: { deleteMode: settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE },
-    entryCreation: {
-      fieldVisibility: settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
-    },
+    groups: { deleteMode: groupDeleteMode },
+    entryCreation: { fieldVisibility: entryFieldVisibility },
   };
 }
 

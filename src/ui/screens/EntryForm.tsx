@@ -20,7 +20,7 @@ import {
 import { EntryFieldVisibility } from "../../application/settings";
 import { IconPicker } from "../entry-icons/IconPicker";
 import { EyeIcon, EyeOffIcon } from "../icons";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { GroupOption } from "../vault-browsing";
 import { TagsEditor } from "./TagsEditor";
 
@@ -70,8 +70,7 @@ export function EntryForm({
   const [groupId, setGroupId] = useState(initialGroupId);
   const [tags, setTags] = useState(initialEntry?.tags ?? new Tags());
   const [icon, setIcon] = useState(initialEntry?.icon ?? Icon.AUTO);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run, fail } = useAsyncAction();
 
   const strength =
     password === "" ? undefined : passwordStrength(new Password(password), HEALTH_POLICY);
@@ -85,7 +84,7 @@ export function EntryForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (title.trim() === "") {
-      setError("Title is required.");
+      fail("Title is required.");
       return;
     }
 
@@ -104,7 +103,7 @@ export function EntryForm({
       } else {
         const totpConfig = parseTotpInput(trimmedTotp);
         if (!totpConfig) {
-          setError("Invalid TOTP secret or otpauth:// URI.");
+          fail("Invalid TOTP secret or otpauth:// URI.");
           return;
         }
         // A pasted otpauth:// URI is stored exactly as given, preserving its
@@ -129,15 +128,7 @@ export function EntryForm({
     };
     const entry = initialEntry ? initialEntry.update(fields) : Entry.create(fields);
 
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onSubmit(entry, GroupId.fromString(groupId));
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to save entry."));
-    } finally {
-      setBusy(false);
-    }
+    await run(() => onSubmit(entry, GroupId.fromString(groupId)), "Failed to save entry.");
   }
 
   return (

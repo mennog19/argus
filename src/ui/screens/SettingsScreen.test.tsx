@@ -6,6 +6,7 @@ import {
   AutoLockSettings,
   AutoTypeSettings,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
+  EffectiveSettings,
   EntryFieldVisibility,
   GroupDeleteMode,
   Theme,
@@ -43,40 +44,33 @@ function renderSettings(
   const onChangeMasterPassword =
     overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
   const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
-  const onClipboardClearSecondsChange = vi.fn();
-  const onAutoLockChange = vi.fn();
-  const onAutoTypeChange = vi.fn();
-  const onGroupDeleteModeChange = vi.fn();
-  const onAccentColorChange = vi.fn();
-  const onThemeChange = vi.fn();
-  const onContentProtectionChange = vi.fn();
-  const onEntryFieldVisibilityChange = vi.fn();
+  const onSettingChange = vi.fn();
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
   const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
+  // Flat overrides are this helper's own convenience; the screen itself takes
+  // one resolved settings object.
+  const settings: EffectiveSettings = {
+    generatorPolicy: {},
+    clipboardClearSeconds: overrides.clipboardClearSeconds ?? 20,
+    autoLock: overrides.autoLock ?? DEFAULT_AUTO_LOCK,
+    autoType: overrides.autoType ?? DEFAULT_AUTO_TYPE,
+    groupDeleteMode: overrides.groupDeleteMode ?? "deleteContents",
+    accentColor: overrides.accentColor ?? DEFAULT_ACCENT_COLOR,
+    theme: overrides.theme ?? "dark",
+    contentProtection: overrides.contentProtection ?? true,
+    entryFieldVisibility: overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
+    entrySort: "manual",
+  };
   const { container, unmount } = render(
     <SettingsScreen
       filePath={overrides.filePath ?? "C:/vaults/personal.kdbx"}
       fileInfo={overrides.fileInfo}
       entryCount={overrides.entryCount ?? 0}
-      clipboardClearSeconds={overrides.clipboardClearSeconds ?? 20}
-      autoLock={overrides.autoLock ?? DEFAULT_AUTO_LOCK}
-      autoType={overrides.autoType ?? DEFAULT_AUTO_TYPE}
-      groupDeleteMode={overrides.groupDeleteMode ?? "deleteContents"}
-      accentColor={overrides.accentColor ?? DEFAULT_ACCENT_COLOR}
-      theme={overrides.theme ?? "dark"}
-      contentProtection={overrides.contentProtection ?? true}
-      entryFieldVisibility={overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
+      settings={settings}
+      onSettingChange={onSettingChange}
       onChangeMasterPassword={onChangeMasterPassword}
       mergeError={overrides.mergeError}
       onOpenMergeWizard={onOpenMergeWizard}
-      onClipboardClearSecondsChange={onClipboardClearSecondsChange}
-      onAutoLockChange={onAutoLockChange}
-      onAutoTypeChange={onAutoTypeChange}
-      onGroupDeleteModeChange={onGroupDeleteModeChange}
-      onAccentColorChange={onAccentColorChange}
-      onThemeChange={onThemeChange}
-      onContentProtectionChange={onContentProtectionChange}
-      onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
       onExportSettings={onExportSettings}
       onImportSettings={onImportSettings}
     />,
@@ -86,14 +80,7 @@ function renderSettings(
     unmount,
     onChangeMasterPassword,
     onOpenMergeWizard,
-    onClipboardClearSecondsChange,
-    onAutoLockChange,
-    onAutoTypeChange,
-    onGroupDeleteModeChange,
-    onAccentColorChange,
-    onThemeChange,
-    onContentProtectionChange,
-    onEntryFieldVisibilityChange,
+    onSettingChange,
     onExportSettings,
     onImportSettings,
   };
@@ -130,15 +117,15 @@ describe("SettingsScreen", () => {
   });
 
   it("reports a group delete mode change in either direction", () => {
-    const { onGroupDeleteModeChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.click(screen.getByRole("radio", { name: /keep its entries/i }));
-    expect(onGroupDeleteModeChange).toHaveBeenLastCalledWith("keepContents");
+    expect(onSettingChange).toHaveBeenLastCalledWith("groupDeleteMode", "keepContents");
 
     cleanup();
     const second = renderSettings({ groupDeleteMode: "keepContents" });
     fireEvent.click(screen.getByRole("radio", { name: /delete its entries/i }));
-    expect(second.onGroupDeleteModeChange).toHaveBeenLastCalledWith("deleteContents");
+    expect(second.onSettingChange).toHaveBeenLastCalledWith("groupDeleteMode", "deleteContents");
   });
 
   it("shows the current clipboard clear delay", () => {
@@ -148,38 +135,38 @@ describe("SettingsScreen", () => {
   });
 
   it("reports a valid new clipboard clear delay", () => {
-    const { onClipboardClearSecondsChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.change(screen.getByLabelText(/clear clipboard after/i), { target: { value: "45" } });
 
-    expect(onClipboardClearSecondsChange).toHaveBeenCalledWith(45);
+    expect(onSettingChange).toHaveBeenCalledWith("clipboardClearSeconds", 45);
   });
 
   it("ignores a non-integer or non-positive value instead of reporting it", () => {
-    const { onClipboardClearSecondsChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.change(screen.getByLabelText(/clear clipboard after/i), { target: { value: "0" } });
     fireEvent.change(screen.getByLabelText(/clear clipboard after/i), { target: { value: "abc" } });
 
-    expect(onClipboardClearSecondsChange).not.toHaveBeenCalled();
+    expect(onSettingChange).not.toHaveBeenCalled();
   });
 
   it("steps the clipboard clear delay up and down via the stepper buttons", () => {
-    const { onClipboardClearSecondsChange } = renderSettings({ clipboardClearSeconds: 20 });
+    const { onSettingChange } = renderSettings({ clipboardClearSeconds: 20 });
 
     fireEvent.click(screen.getByRole("button", { name: /increase clipboard clear seconds/i }));
-    expect(onClipboardClearSecondsChange).toHaveBeenLastCalledWith(21);
+    expect(onSettingChange).toHaveBeenLastCalledWith("clipboardClearSeconds", 21);
 
     fireEvent.click(screen.getByRole("button", { name: /decrease clipboard clear seconds/i }));
-    expect(onClipboardClearSecondsChange).toHaveBeenLastCalledWith(19);
+    expect(onSettingChange).toHaveBeenLastCalledWith("clipboardClearSeconds", 19);
   });
 
   it("floors the clipboard clear delay stepper at 1 second", () => {
-    const { onClipboardClearSecondsChange } = renderSettings({ clipboardClearSeconds: 1 });
+    const { onSettingChange } = renderSettings({ clipboardClearSeconds: 1 });
 
     fireEvent.click(screen.getByRole("button", { name: /decrease clipboard clear seconds/i }));
 
-    expect(onClipboardClearSecondsChange).toHaveBeenLastCalledWith(1);
+    expect(onSettingChange).toHaveBeenLastCalledWith("clipboardClearSeconds", 1);
   });
 
   it("shows a blank idle timeout and unchecked toggles by default", () => {
@@ -201,70 +188,75 @@ describe("SettingsScreen", () => {
   });
 
   it("reports a valid new idle timeout", () => {
-    const { onAutoLockChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "10" } });
 
-    expect(onAutoLockChange).toHaveBeenCalledWith(
+    expect(onSettingChange).toHaveBeenCalledWith(
+      "autoLock",
       expect.objectContaining({ idleTimeoutMinutes: 10 }),
     );
   });
 
   it("clears the idle timeout when the field is emptied", () => {
-    const { onAutoLockChange } = renderSettings({
+    const { onSettingChange } = renderSettings({
       autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
     });
 
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "" } });
 
-    expect(onAutoLockChange).toHaveBeenCalledWith(
+    expect(onSettingChange).toHaveBeenCalledWith(
+      "autoLock",
       expect.objectContaining({ idleTimeoutMinutes: undefined }),
     );
   });
 
   it("ignores a non-integer or non-positive idle timeout instead of reporting it", () => {
-    const { onAutoLockChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "0" } });
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "abc" } });
 
-    expect(onAutoLockChange).not.toHaveBeenCalled();
+    expect(onSettingChange).not.toHaveBeenCalled();
   });
 
   it("steps a blank idle timeout up to 1 minute via the stepper button", () => {
-    const { onAutoLockChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.click(
       screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }),
     );
 
-    expect(onAutoLockChange).toHaveBeenCalledWith(
+    expect(onSettingChange).toHaveBeenCalledWith(
+      "autoLock",
       expect.objectContaining({ idleTimeoutMinutes: 1 }),
     );
   });
 
   it("steps an already-configured idle timeout up and down", () => {
-    const { onAutoLockChange } = renderSettings({
+    const { onSettingChange } = renderSettings({
       autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
     });
 
     fireEvent.click(
       screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }),
     );
-    expect(onAutoLockChange).toHaveBeenLastCalledWith(
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
       expect.objectContaining({ idleTimeoutMinutes: 11 }),
     );
 
     fireEvent.click(
       screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }),
     );
-    expect(onAutoLockChange).toHaveBeenLastCalledWith(
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
       expect.objectContaining({ idleTimeoutMinutes: 9 }),
     );
   });
 
   it("clears the idle timeout when stepping down from 1 minute", () => {
-    const { onAutoLockChange } = renderSettings({
+    const { onSettingChange } = renderSettings({
       autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
     });
 
@@ -272,31 +264,34 @@ describe("SettingsScreen", () => {
       screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }),
     );
 
-    expect(onAutoLockChange).toHaveBeenCalledWith(
+    expect(onSettingChange).toHaveBeenCalledWith(
+      "autoLock",
       expect.objectContaining({ idleTimeoutMinutes: undefined }),
     );
   });
 
   it("ignores a decrease of an already-blank idle timeout", () => {
-    const { onAutoLockChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.click(
       screen.getByRole("button", { name: /decrease lock-after-inactivity minutes/i }),
     );
 
-    expect(onAutoLockChange).not.toHaveBeenCalled();
+    expect(onSettingChange).not.toHaveBeenCalled();
   });
 
   it("toggles lock-on-minimize and lock-on-sleep independently", () => {
-    const { onAutoLockChange } = renderSettings();
+    const { onSettingChange } = renderSettings();
 
     fireEvent.click(screen.getByRole("checkbox", { name: /minimized/i }));
-    expect(onAutoLockChange).toHaveBeenLastCalledWith(
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
       expect.objectContaining({ lockOnMinimize: true, lockOnSleep: false }),
     );
 
     fireEvent.click(screen.getByRole("checkbox", { name: /system sleeps/i }));
-    expect(onAutoLockChange).toHaveBeenLastCalledWith(
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
       expect.objectContaining({ lockOnMinimize: false, lockOnSleep: true }),
     );
   });
@@ -308,11 +303,11 @@ describe("SettingsScreen", () => {
   });
 
   it("reports a content protection toggle", () => {
-    const { onContentProtectionChange } = renderSettings({ contentProtection: true });
+    const { onSettingChange } = renderSettings({ contentProtection: true });
 
     fireEvent.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
-    expect(onContentProtectionChange).toHaveBeenCalledWith(false);
+    expect(onSettingChange).toHaveBeenCalledWith("contentProtection", false);
   });
 
   describe("danger zone", () => {
@@ -381,11 +376,11 @@ describe("SettingsScreen", () => {
     });
 
     it("reports a preset selection", () => {
-      const { onAccentColorChange } = renderSettings();
+      const { onSettingChange } = renderSettings();
 
       fireEvent.click(screen.getByRole("radio", { name: "Purple" }));
 
-      expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "preset", id: "purple" });
+      expect(onSettingChange).toHaveBeenCalledWith("accentColor", { kind: "preset", id: "purple" });
     });
 
     it("does not show the hue slider while a preset is selected", () => {
@@ -395,13 +390,13 @@ describe("SettingsScreen", () => {
     });
 
     it("switches to custom, seeded from the current preset's hue, when Custom is chosen", () => {
-      const { onAccentColorChange } = renderSettings({
+      const { onSettingChange } = renderSettings({
         accentColor: { kind: "preset", id: "teal" },
       });
 
       fireEvent.click(screen.getByRole("radio", { name: "Custom" }));
 
-      expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "custom", hue: 195 });
+      expect(onSettingChange).toHaveBeenCalledWith("accentColor", { kind: "custom", hue: 195 });
     });
 
     it("shows the hue slider at the current hue once custom is active", () => {
@@ -412,11 +407,11 @@ describe("SettingsScreen", () => {
     });
 
     it("reports a new hue as the slider moves", () => {
-      const { onAccentColorChange } = renderSettings({ accentColor: { kind: "custom", hue: 88 } });
+      const { onSettingChange } = renderSettings({ accentColor: { kind: "custom", hue: 88 } });
 
       fireEvent.change(screen.getByLabelText(/custom color/i), { target: { value: "210" } });
 
-      expect(onAccentColorChange).toHaveBeenCalledWith({ kind: "custom", hue: 210 });
+      expect(onSettingChange).toHaveBeenCalledWith("accentColor", { kind: "custom", hue: 210 });
     });
   });
 
@@ -429,19 +424,19 @@ describe("SettingsScreen", () => {
     });
 
     it("reports a theme selection", () => {
-      const { onThemeChange } = renderSettings({ theme: "dark" });
+      const { onSettingChange } = renderSettings({ theme: "dark" });
 
       fireEvent.click(screen.getByRole("radio", { name: "Light" }));
 
-      expect(onThemeChange).toHaveBeenCalledWith("light");
+      expect(onSettingChange).toHaveBeenCalledWith("theme", "light");
     });
 
     it("reports switching back to dark", () => {
-      const { onThemeChange } = renderSettings({ theme: "light" });
+      const { onSettingChange } = renderSettings({ theme: "light" });
 
       fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
 
-      expect(onThemeChange).toHaveBeenCalledWith("dark");
+      expect(onSettingChange).toHaveBeenCalledWith("theme", "dark");
     });
   });
 
@@ -468,11 +463,12 @@ describe("SettingsScreen", () => {
     });
 
     it("reports turning a field off and on again", () => {
-      const { onEntryFieldVisibilityChange } = renderSettings();
+      const { onSettingChange } = renderSettings();
 
       fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
 
-      expect(onEntryFieldVisibilityChange).toHaveBeenCalledWith(
+      expect(onSettingChange).toHaveBeenCalledWith(
+        "entryFieldVisibility",
         expect.objectContaining({ notes: false }),
       );
 
@@ -482,7 +478,8 @@ describe("SettingsScreen", () => {
       });
       fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
 
-      expect(second.onEntryFieldVisibilityChange).toHaveBeenCalledWith(
+      expect(second.onSettingChange).toHaveBeenCalledWith(
+        "entryFieldVisibility",
         expect.objectContaining({ notes: true }),
       );
     });
@@ -514,32 +511,41 @@ describe("SettingsScreen", () => {
     });
 
     it("reports being switched on", async () => {
-      const { onAutoTypeChange } = renderSettings();
+      const { onSettingChange } = renderSettings();
 
       await userEvent.click(screen.getByRole("checkbox", { name: /hotkey/i }));
 
-      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, enabled: true });
+      expect(onSettingChange).toHaveBeenCalledWith("autoType", {
+        ...DEFAULT_AUTO_TYPE,
+        enabled: true,
+      });
     });
 
     it("reports being switched off again", async () => {
-      const { onAutoTypeChange } = renderSettings({
+      const { onSettingChange } = renderSettings({
         autoType: { ...DEFAULT_AUTO_TYPE, enabled: true },
       });
 
       await userEvent.click(screen.getByRole("checkbox", { name: /hotkey/i }));
 
-      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, enabled: false });
+      expect(onSettingChange).toHaveBeenCalledWith("autoType", {
+        ...DEFAULT_AUTO_TYPE,
+        enabled: false,
+      });
     });
 
     it("reports a newly recorded hotkey", async () => {
-      const { onAutoTypeChange } = renderSettings();
+      const { onSettingChange } = renderSettings();
       const hotkey = screen.getByLabelText("Hotkey");
 
       await userEvent.click(hotkey);
       fireEvent.keyDown(hotkey, { code: "Space", altKey: true });
       fireEvent.keyDown(hotkey, { code: "Enter" });
 
-      expect(onAutoTypeChange).toHaveBeenCalledWith({ ...DEFAULT_AUTO_TYPE, hotkey: "Alt+Space" });
+      expect(onSettingChange).toHaveBeenCalledWith("autoType", {
+        ...DEFAULT_AUTO_TYPE,
+        hotkey: "Alt+Space",
+      });
     });
   });
 });

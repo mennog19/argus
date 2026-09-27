@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Vault } from "../../domain";
 import { VaultMergeSource } from "../../application/vault-merge-source";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { basename } from "../format";
 
 interface MergeUnlockDialogProps {
@@ -23,21 +23,15 @@ export function MergeUnlockDialog({
   onCancel,
 }: MergeUnlockDialogProps) {
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run } = useAsyncAction();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
-    setError(undefined);
-    try {
+    await run(async () => {
       const opened = await mergeSource.openFile(filePath, password);
       setPassword("");
       onUnlocked(opened);
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to open vault."));
-      setBusy(false);
-    }
+    }, "Failed to open vault.");
   }
 
   return (

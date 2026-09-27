@@ -108,6 +108,19 @@ export class Vault {
     return this.recycleBinId ? this.findGroup(this.recycleBinId) : undefined;
   }
 
+  /**
+   * A new `Vault` around the tree `result` produced, or a thrown error when
+   * the mutation never found what it was aiming at. Every id-targeted
+   * mutation ends this way, so that "not found" is a failure rather than a
+   * silent no-op against a stale reference.
+   */
+  private rebuilt(result: TreeUpdate, notFoundMessage: string): Vault {
+    if (!result.found) {
+      throw new Error(notFoundMessage);
+    }
+    return new Vault(this.name, result.group, this.recycleBinId);
+  }
+
   findGroup(groupId: GroupId): Group | undefined {
     return findGroupInTree(this.rootGroup, groupId);
   }
@@ -123,24 +136,20 @@ export class Vault {
   }
 
   addGroup(parentId: GroupId, group: Group): Vault {
-    const result = updateGroupById(this.rootGroup, parentId, (parent) => parent.addGroup(group));
-    if (!result.found) {
-      throw new Error(`Group not found: ${parentId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
+    return this.rebuilt(
+      updateGroupById(this.rootGroup, parentId, (parent) => parent.addGroup(group)),
+      `Group not found: ${parentId.toString()}`,
+    );
   }
 
   removeGroup(groupId: GroupId): Vault {
     if (this.rootGroup.id.equals(groupId)) {
       throw new Error("Cannot remove the root group");
     }
-    const result = updateGroupContainingGroup(this.rootGroup, groupId, (owner) =>
-      owner.removeGroup(groupId),
+    return this.rebuilt(
+      updateGroupContainingGroup(this.rootGroup, groupId, (owner) => owner.removeGroup(groupId)),
+      `Group not found: ${groupId.toString()}`,
     );
-    if (!result.found) {
-      throw new Error(`Group not found: ${groupId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
   }
 
   /**
@@ -149,57 +158,47 @@ export class Vault {
    * belong to the same parent group.
    */
   reorderGroup(groupId: GroupId, beforeId: GroupId | undefined): Vault {
-    const result = updateGroupContainingGroup(this.rootGroup, groupId, (owner) =>
-      owner.moveGroupBefore(groupId, beforeId),
+    return this.rebuilt(
+      updateGroupContainingGroup(this.rootGroup, groupId, (owner) =>
+        owner.moveGroupBefore(groupId, beforeId),
+      ),
+      `Group not found: ${groupId.toString()}`,
     );
-    if (!result.found) {
-      throw new Error(`Group not found: ${groupId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
   }
 
   renameGroup(groupId: GroupId, name: string): Vault {
-    const result = updateGroupById(this.rootGroup, groupId, (group) => group.rename(name));
-    if (!result.found) {
-      throw new Error(`Group not found: ${groupId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
+    return this.rebuilt(
+      updateGroupById(this.rootGroup, groupId, (group) => group.rename(name)),
+      `Group not found: ${groupId.toString()}`,
+    );
   }
 
   changeGroupIcon(groupId: GroupId, icon: Icon): Vault {
-    const result = updateGroupById(this.rootGroup, groupId, (group) => group.changeIcon(icon));
-    if (!result.found) {
-      throw new Error(`Group not found: ${groupId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
+    return this.rebuilt(
+      updateGroupById(this.rootGroup, groupId, (group) => group.changeIcon(icon)),
+      `Group not found: ${groupId.toString()}`,
+    );
   }
 
   addEntry(groupId: GroupId, entry: Entry): Vault {
-    const result = updateGroupById(this.rootGroup, groupId, (group) => group.addEntry(entry));
-    if (!result.found) {
-      throw new Error(`Group not found: ${groupId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
+    return this.rebuilt(
+      updateGroupById(this.rootGroup, groupId, (group) => group.addEntry(entry)),
+      `Group not found: ${groupId.toString()}`,
+    );
   }
 
   updateEntry(entry: Entry): Vault {
-    const result = updateGroupContainingEntry(this.rootGroup, entry.id, (owner) =>
-      owner.replaceEntry(entry),
+    return this.rebuilt(
+      updateGroupContainingEntry(this.rootGroup, entry.id, (owner) => owner.replaceEntry(entry)),
+      `Entry not found: ${entry.id.toString()}`,
     );
-    if (!result.found) {
-      throw new Error(`Entry not found: ${entry.id.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
   }
 
   removeEntry(entryId: EntryId): Vault {
-    const result = updateGroupContainingEntry(this.rootGroup, entryId, (owner) =>
-      owner.removeEntry(entryId),
+    return this.rebuilt(
+      updateGroupContainingEntry(this.rootGroup, entryId, (owner) => owner.removeEntry(entryId)),
+      `Entry not found: ${entryId.toString()}`,
     );
-    if (!result.found) {
-      throw new Error(`Entry not found: ${entryId.toString()}`);
-    }
-    return new Vault(this.name, result.group, this.recycleBinId);
   }
 
   /** Creates the recycle bin group under the root, if one doesn't already exist. */

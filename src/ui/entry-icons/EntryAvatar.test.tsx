@@ -57,10 +57,7 @@ describe("EntryAvatar", () => {
   });
 
   it("lets a manual hue override the name-derived colour of a chosen icon", () => {
-    const { root } = renderAvatar(
-      "https://example.com",
-      Icon.library("luggage", 235),
-    );
+    const { root } = renderAvatar("https://example.com", Icon.library("luggage", 235));
     expect(root.dataset.hue).toBe("235");
     expect(root.style.getPropertyValue("--sigil-hue")).toBe("235");
   });

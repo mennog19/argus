@@ -16,7 +16,7 @@ import {
   ResolvedConflict,
   VaultMergeSelections,
 } from "../../application/apply-vault-merge";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { basename } from "../format";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { CheckIcon, ChevronIcon, EyeIcon, EyeOffIcon, XIcon } from "../icons";
@@ -116,8 +116,7 @@ export function MergeWizardScreen({
 }: MergeWizardScreenProps) {
   const plan = useMemo(() => diffVaults(vault, sourceVault), [vault, sourceVault]);
   const [review, setReview] = useState<ReviewState>(() => initialReviewState(plan));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run } = useAsyncAction();
   const [step, setStep] = useState(0);
   const [revealSecrets, setRevealSecrets] = useState(false);
   const [previewEntry, setPreviewEntry] = useState<Entry | undefined>(undefined);
@@ -151,14 +150,13 @@ export function MergeWizardScreen({
   }
 
   async function handleApply() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onApply(applyVaultMerge(vault, buildSelections(plan, review)));
+    // The wizard only closes once the merged vault is actually on disk.
+    const applied = await run(
+      () => onApply(applyVaultMerge(vault, buildSelections(plan, review))),
+      "Failed to apply the merge.",
+    );
+    if (applied) {
       onClose();
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to apply the merge."));
-      setBusy(false);
     }
   }
 

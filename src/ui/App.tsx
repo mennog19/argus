@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PasswordPolicyOptions, Vault } from "../domain";
+import { Vault } from "../domain";
 import { hasClockJumped, hasIdleTimedOut } from "./auto-lock";
 import { ClipboardWriter } from "../application/clipboard";
 import {
@@ -13,36 +13,13 @@ import { AutoTypeService } from "../application/auto-type-service";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
 import {
-  AccentColor,
   AppSettings,
-  AutoLockSettings,
-  AutoTypeSettings,
-  DEFAULT_ACCENT_COLOR,
-  DEFAULT_AUTO_LOCK,
-  DEFAULT_AUTO_TYPE,
-  DEFAULT_CLIPBOARD_CLEAR_SECONDS,
-  DEFAULT_CONTENT_PROTECTION,
-  DEFAULT_ENTRY_FIELD_VISIBILITY,
-  DEFAULT_ENTRY_SORT,
-  DEFAULT_GROUP_DELETE_MODE,
+  ConfigurableSetting,
   DEFAULT_SETTINGS,
-  DEFAULT_THEME,
-  EntryFieldVisibility,
-  EntrySortId,
-  GroupDeleteMode,
   recordVaultOpened,
+  resolveSettings,
   SettingsStore,
-  Theme,
-  withAccentColor,
-  withAutoLock,
-  withAutoType,
-  withClipboardClearSeconds,
-  withContentProtection,
-  withEntryFieldVisibility,
-  withEntrySort,
-  withGeneratorPolicy,
-  withGroupDeleteMode,
-  withTheme,
+  withSetting,
 } from "../application/settings";
 import { SettingsTransferService } from "../application/settings-transfer-service";
 import { UrlOpener } from "../application/url-opener";
@@ -102,7 +79,10 @@ function App({
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
   const [fileInfo, setFileInfo] = useState<VaultFileInfo | undefined>(undefined);
 
-  const autoTypeSettings = settings.autoType ?? DEFAULT_AUTO_TYPE;
+  // Resolved once here so that no screen below reads a raw `AppSettings` hole
+  // and has to remember which default belongs to it.
+  const effective = useMemo(() => resolveSettings(settings), [settings]);
+  const autoTypeSettings = effective.autoType;
 
   // Everything auto-type is allowed to offer: the whole vault minus the
   // recycle bin, so a deleted login can't be typed back into a live site.
@@ -131,7 +111,7 @@ function App({
     if (screen.kind !== "unlocked") {
       return;
     }
-    const autoLock = settings.autoLock ?? DEFAULT_AUTO_LOCK;
+    const autoLock = effective.autoLock;
     const lock = handleLock(screen.filePath);
     const cleanups: (() => void)[] = [];
 
@@ -180,7 +160,7 @@ function App({
         cleanup();
       }
     };
-  }, [screen, settings.autoLock, windowEvents]);
+  }, [screen, effective.autoLock, windowEvents]);
 
   useEffect(() => {
     void settingsStore
@@ -198,21 +178,18 @@ function App({
   }, [settingsStore]);
 
   useEffect(() => {
-    const hue = accentColorHue(settings.accentColor ?? DEFAULT_ACCENT_COLOR);
-    const { accent, accentHover } = accentColorCssVars(hue);
+    const { accent, accentHover } = accentColorCssVars(accentColorHue(effective.accentColor));
     document.documentElement.style.setProperty("--color-accent", accent);
     document.documentElement.style.setProperty("--color-accent-hover", accentHover);
-  }, [settings.accentColor]);
+  }, [effective.accentColor]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.theme ?? DEFAULT_THEME;
-  }, [settings.theme]);
+    document.documentElement.dataset.theme = effective.theme;
+  }, [effective.theme]);
 
   useEffect(() => {
-    void windowProtection.setContentProtected(
-      settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,
-    );
-  }, [settings.contentProtection, windowProtection]);
+    void windowProtection.setContentProtected(effective.contentProtection);
+  }, [effective.contentProtection, windowProtection]);
 
   async function refreshFileInfo(filePath: string) {
     try {
@@ -258,19 +235,24 @@ function App({
     };
   }
 
+  /**
+   * A conflict opens the resolution modal *and* rejects. The screens awaiting
+   * this treat it resolving as "the file was written" — they close the editor,
+   * select the new entry, report the password as changed — so swallowing the
+   * failure here would have them all confirm a save that never happened.
+   */
   function handleVaultSave(filePath: string) {
     return async (nextVault: Vault) => {
       try {
         await vaultAccessService.saveVault(nextVault, filePath);
-        setScreen({ kind: "unlocked", vault: nextVault, filePath });
-        void refreshFileInfo(filePath);
       } catch (cause) {
         if (cause instanceof VaultSaveConflictError) {
           setConflict({ nextVault, filePath });
-          return;
         }
         throw cause;
       }
+      setScreen({ kind: "unlocked", vault: nextVault, filePath });
+      void refreshFileInfo(filePath);
     };
   }
 
@@ -292,125 +274,39 @@ function App({
           currentPassword,
           newPassword,
         );
-        void refreshFileInfo(filePath);
       } catch (cause) {
         if (cause instanceof VaultSaveConflictError) {
           setConflict({ nextVault: vault, filePath });
-          return;
         }
         throw cause;
       }
+      void refreshFileInfo(filePath);
     };
   }
 
-  // Only rendered from within `{conflict && (...)}` below, so `conflict` is
-  // always set by the time either handler can be invoked.
-  async function handleOverwriteConflict() {
-    const { nextVault, filePath } = conflict!;
-    await vaultAccessService.saveVault(nextVault, filePath, { force: true });
-    setScreen({ kind: "unlocked", vault: nextVault, filePath });
+  async function handleOverwriteConflict(pending: SaveConflict) {
+    await vaultAccessService.saveVault(pending.nextVault, pending.filePath, { force: true });
+    setScreen({ kind: "unlocked", vault: pending.nextVault, filePath: pending.filePath });
     setConflict(undefined);
-    void refreshFileInfo(filePath);
+    void refreshFileInfo(pending.filePath);
   }
 
-  function handleDiscardConflict() {
-    const filePath = conflict!.filePath;
+  function handleDiscardConflict(pending: SaveConflict) {
     setConflict(undefined);
-    handleLock(filePath)();
+    handleLock(pending.filePath)();
   }
 
-  async function handleGeneratorPolicyChange(policy: PasswordPolicyOptions) {
-    const updated = withGeneratorPolicy(settings, policy);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a generator settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleClipboardClearSecondsChange(seconds: number) {
-    const updated = withClipboardClearSeconds(settings, seconds);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleAutoLockChange(autoLock: AutoLockSettings) {
-    const updated = withAutoLock(settings, autoLock);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleAutoTypeChange(autoTypeNext: AutoTypeSettings) {
-    const updated = withAutoType(settings, autoTypeNext);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleGroupDeleteModeChange(mode: GroupDeleteMode) {
-    const updated = withGroupDeleteMode(settings, mode);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleAccentColorChange(accentColor: AccentColor) {
-    const updated = withAccentColor(settings, accentColor);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleThemeChange(theme: Theme) {
-    const updated = withTheme(settings, theme);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleContentProtectionChange(contentProtection: boolean) {
-    const updated = withContentProtection(settings, contentProtection);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleEntrySortChange(sort: EntrySortId) {
-    const updated = withEntrySort(settings, sort);
-    setSettings(updated);
-    try {
-      await settingsStore.save(updated);
-    } catch {
-      // Best-effort; a settings save failure shouldn't interrupt the UI.
-    }
-  }
-
-  async function handleEntryFieldVisibilityChange(visibility: EntryFieldVisibility) {
-    const updated = withEntryFieldVisibility(settings, visibility);
+  /**
+   * Records one setting and persists the whole file.
+   *
+   * Every setting used to have its own handler here: the same spread, the
+   * same optimistic `setSettings`, the same swallowed write failure, ten
+   * times over. The write stays best-effort by design — losing a preference
+   * isn't worth interrupting what the user was doing — but that's now one
+   * decision made in one place.
+   */
+  async function updateSetting<K extends ConfigurableSetting>(key: K, value: AppSettings[K]) {
+    const updated = withSetting(settings, key, value);
     setSettings(updated);
     try {
       await settingsStore.save(updated);
@@ -468,35 +364,13 @@ function App({
         fileInfo={fileInfo}
         urlOpener={urlOpener}
         clipboardWriter={clipboardWriter}
-        generatorPolicy={settings.generatorPolicy ?? {}}
-        clipboardClearSeconds={settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS}
-        autoLock={settings.autoLock ?? DEFAULT_AUTO_LOCK}
-        autoType={autoTypeSettings}
-        groupDeleteMode={settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE}
-        accentColor={settings.accentColor ?? DEFAULT_ACCENT_COLOR}
-        theme={settings.theme ?? DEFAULT_THEME}
-        contentProtection={settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION}
-        entryFieldVisibility={settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY}
-        entrySort={settings.entrySort ?? DEFAULT_ENTRY_SORT}
         mergeSource={mergeSource}
+        settings={effective}
+        onSettingChange={(key, value) => void updateSetting(key, value)}
         onLock={handleLock(screen.filePath)}
         onSave={handleVaultSave(screen.filePath)}
         onVaultChange={handleVaultChange(screen.filePath)}
         onChangeMasterPassword={handleChangeMasterPassword(screen.vault, screen.filePath)}
-        onGeneratorPolicyChange={(policy) => void handleGeneratorPolicyChange(policy)}
-        onClipboardClearSecondsChange={(seconds) => void handleClipboardClearSecondsChange(seconds)}
-        onAutoLockChange={(autoLock) => void handleAutoLockChange(autoLock)}
-        onAutoTypeChange={(next) => void handleAutoTypeChange(next)}
-        onGroupDeleteModeChange={(mode) => void handleGroupDeleteModeChange(mode)}
-        onAccentColorChange={(accentColor) => void handleAccentColorChange(accentColor)}
-        onThemeChange={(theme) => void handleThemeChange(theme)}
-        onEntrySortChange={(sort) => void handleEntrySortChange(sort)}
-        onContentProtectionChange={(contentProtection) =>
-          void handleContentProtectionChange(contentProtection)
-        }
-        onEntryFieldVisibilityChange={(visibility) =>
-          void handleEntryFieldVisibilityChange(visibility)
-        }
         onExportSettings={handleExportSettings}
         onImportSettings={handleImportSettings}
       />
@@ -529,13 +403,17 @@ function App({
               Overwriting will discard that external change.
             </p>
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={handleDiscardConflict}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => handleDiscardConflict(conflict)}
+              >
                 Discard my changes &amp; lock
               </button>
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => void handleOverwriteConflict()}
+                onClick={() => void handleOverwriteConflict(conflict)}
               >
                 Overwrite anyway
               </button>

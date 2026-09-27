@@ -1,7 +1,7 @@
 import { KeyboardEvent, useState } from "react";
 import { Vault } from "../../domain";
 import { VaultAccessService } from "../../application/vault-access-service";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename } from "../format";
 import { EyeIcon, EyeOffIcon } from "../icons";
@@ -21,20 +21,12 @@ export function LockedScreen({
 }: LockedScreenProps) {
   const [password, setPassword] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run } = useAsyncAction();
 
   async function handleUnlock() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      const vault = await vaultAccessService.openVaultAtPath(filePath, password);
-      onUnlocked(vault);
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to unlock vault."));
-    } finally {
-      setBusy(false);
-    }
+    await run(async () => {
+      onUnlocked(await vaultAccessService.openVaultAtPath(filePath, password));
+    }, "Failed to unlock vault.");
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {

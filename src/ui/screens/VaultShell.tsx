@@ -1,24 +1,19 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Entry,
   EntryId,
   Group,
   GroupId,
   Icon,
-  PasswordPolicyOptions,
   TOTP_FIELD_KEYS,
   totpConfigFromCustomFields,
   Vault,
 } from "../../domain";
 import {
-  AccentColor,
-  AutoLockSettings,
-  AutoTypeSettings,
+  AppSettings,
+  ConfigurableSetting,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
-  EntryFieldVisibility,
-  EntrySortId,
-  GroupDeleteMode,
-  Theme,
+  EffectiveSettings,
 } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
@@ -39,11 +34,12 @@ import {
   VaultIcon,
   XIcon,
 } from "../icons";
-import { errorMessage } from "../error-message";
 import { ENTRY_DRAG_TYPE } from "../entry-drag";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { formatTotpCode, isSamePath } from "../format";
 import { useTotpCode } from "../use-totp-code";
+import { ClipboardCopy, useClipboardCopy } from "../use-clipboard-copy";
+import { useAsyncAction } from "../use-async-action";
 import { sortEntries } from "../entry-sort";
 import {
   collectAllEntries,
@@ -69,32 +65,20 @@ interface VaultShellProps {
   fileInfo: VaultFileInfo | undefined;
   urlOpener: UrlOpener;
   clipboardWriter: ClipboardWriter;
-  generatorPolicy: PasswordPolicyOptions;
-  clipboardClearSeconds: number;
-  autoLock: AutoLockSettings;
-  autoType: AutoTypeSettings;
-  groupDeleteMode: GroupDeleteMode;
-  accentColor: AccentColor;
-  theme: Theme;
-  contentProtection: boolean;
-  entryFieldVisibility: EntryFieldVisibility;
-  entrySort: EntrySortId;
   mergeSource: VaultMergeSource;
+  /**
+   * Passed whole rather than one prop per setting. The shell reads three of
+   * these itself and forwards the rest to the settings screen; enumerating
+   * them here meant every new setting changed this file twice — once for the
+   * value, once for its setter — without the shell ever caring what it was.
+   */
+  settings: EffectiveSettings;
+  onSettingChange: <K extends ConfigurableSetting>(key: K, value: AppSettings[K]) => void;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  onGeneratorPolicyChange: (policy: PasswordPolicyOptions) => void;
-  onClipboardClearSecondsChange: (seconds: number) => void;
-  onAutoLockChange: (autoLock: AutoLockSettings) => void;
-  onAutoTypeChange: (autoType: AutoTypeSettings) => void;
-  onGroupDeleteModeChange: (mode: GroupDeleteMode) => void;
-  onAccentColorChange: (accentColor: AccentColor) => void;
-  onThemeChange: (theme: Theme) => void;
-  onContentProtectionChange: (contentProtection: boolean) => void;
-  onEntryFieldVisibilityChange: (visibility: EntryFieldVisibility) => void;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<string | undefined>;
-  onEntrySortChange: (sort: EntrySortId) => void;
   /** Replaces the in-memory vault without writing the file — used for the
    * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
   onVaultChange: (vault: Vault) => void;
@@ -111,34 +95,23 @@ export function VaultShell({
   fileInfo,
   urlOpener,
   clipboardWriter,
-  generatorPolicy,
-  clipboardClearSeconds,
-  autoLock,
-  autoType,
-  groupDeleteMode,
-  accentColor,
-  theme,
-  contentProtection,
-  entryFieldVisibility,
-  entrySort,
   mergeSource,
+  settings,
+  onSettingChange,
   onLock,
   onSave,
   onChangeMasterPassword,
-  onGeneratorPolicyChange,
-  onClipboardClearSecondsChange,
-  onAutoLockChange,
-  onAutoTypeChange,
-  onGroupDeleteModeChange,
-  onAccentColorChange,
-  onThemeChange,
-  onContentProtectionChange,
-  onEntryFieldVisibilityChange,
   onExportSettings,
   onImportSettings,
-  onEntrySortChange,
   onVaultChange,
 }: VaultShellProps) {
+  const {
+    clipboardClearSeconds,
+    entryFieldVisibility,
+    entrySort,
+    generatorPolicy,
+    groupDeleteMode,
+  } = settings;
   const [view, setView] = useState<View>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
   const [selectedEntryId, setSelectedEntryId] = useState<string | undefined>(undefined);
@@ -150,9 +123,20 @@ export function VaultShell({
   const [mergeSourceVault, setMergeSourceVault] = useState<Vault | undefined>(undefined);
   const [mergeError, setMergeError] = useState<string | undefined>(undefined);
 
+  // Owned at the shell rather than in the detail pane so a pending clipboard
+  // wipe survives the user selecting another entry or opening the editor.
+  const clipboard = useClipboardCopy(clipboardWriter, clipboardClearSeconds);
+
   const rootGroup = vault.rootGroup;
-  const recycleBin = vault.recycleBin;
-  const excludeFromBrowsing = recycleBin ? [recycleBin.id] : [];
+  // Both walk the tree, and both were being recomputed several times per
+  // render — the entry list, the health screen, and two sidebar counts each
+  // asked for the same walk.
+  const recycleBin = useMemo(() => vault.recycleBin, [vault]);
+  const excludeFromBrowsing = useMemo(() => (recycleBin ? [recycleBin.id] : []), [recycleBin]);
+  const allEntries = useMemo(
+    () => collectAllEntries(rootGroup, excludeFromBrowsing),
+    [rootGroup, excludeFromBrowsing],
+  );
 
   // Falls back to "All Items" if the selected group no longer exists (e.g.
   // it, or an ancestor of it, was just deleted).
@@ -170,14 +154,22 @@ export function VaultShell({
   const trimmedQuery = searchQuery.trim();
   const isSearching = trimmedQuery !== "";
 
-  const matchingEntries: EntryWithGroup[] = isRecycleBinSelected
-    ? []
-    : isSearching
-      ? searchEntries(collectAllEntries(rootGroup, excludeFromBrowsing), trimmedQuery)
-      : effectiveGroupId === ALL_ITEMS
-        ? collectAllEntries(rootGroup, excludeFromBrowsing)
-        : entriesOf(selectedGroup!);
-  const visibleEntries = sortEntries(matchingEntries, entrySort);
+  /**
+   * What the entry list shows. Written as early returns rather than nested
+   * ternaries so the "a group is selected, so it exists" step can narrow
+   * `selectedGroup` instead of asserting it away.
+   */
+  function entriesInScope(): EntryWithGroup[] {
+    if (isRecycleBinSelected) {
+      return [];
+    }
+    if (isSearching) {
+      return searchEntries(allEntries, trimmedQuery);
+    }
+    return selectedGroup ? entriesOf(selectedGroup) : allEntries;
+  }
+
+  const visibleEntries = sortEntries(entriesInScope(), entrySort);
 
   const selected = visibleEntries.find((item) => item.entry.id.toString() === selectedEntryId);
   const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing).map((option) =>
@@ -407,37 +399,20 @@ export function VaultShell({
         ) : view === "generator" ? (
           <GeneratorScreen
             policyOptions={generatorPolicy}
-            onPolicyChange={onGeneratorPolicyChange}
+            onPolicyChange={(policy) => onSettingChange("generatorPolicy", policy)}
           />
         ) : view === "health" ? (
-          <HealthScreen
-            entries={collectAllEntries(rootGroup, excludeFromBrowsing)}
-            onSelectEntry={handleSelectHealthEntry}
-          />
+          <HealthScreen entries={allEntries} onSelectEntry={handleSelectHealthEntry} />
         ) : view === "settings" ? (
           <SettingsScreen
             filePath={filePath}
             fileInfo={fileInfo}
-            entryCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
-            clipboardClearSeconds={clipboardClearSeconds}
-            autoLock={autoLock}
-            autoType={autoType}
-            groupDeleteMode={groupDeleteMode}
-            accentColor={accentColor}
-            theme={theme}
-            contentProtection={contentProtection}
-            entryFieldVisibility={entryFieldVisibility}
+            entryCount={allEntries.length}
+            settings={settings}
+            onSettingChange={onSettingChange}
             onChangeMasterPassword={onChangeMasterPassword}
             mergeError={mergeError}
             onOpenMergeWizard={() => void startMerge()}
-            onClipboardClearSecondsChange={onClipboardClearSecondsChange}
-            onAutoLockChange={onAutoLockChange}
-            onAutoTypeChange={onAutoTypeChange}
-            onGroupDeleteModeChange={onGroupDeleteModeChange}
-            onAccentColorChange={onAccentColorChange}
-            onThemeChange={onThemeChange}
-            onContentProtectionChange={onContentProtectionChange}
-            onEntryFieldVisibilityChange={onEntryFieldVisibilityChange}
             onExportSettings={onExportSettings}
             onImportSettings={onImportSettings}
           />
@@ -448,7 +423,7 @@ export function VaultShell({
               recycleBin={recycleBin}
               selectedGroupId={effectiveGroupId}
               allItemsId={ALL_ITEMS}
-              allItemsCount={collectAllEntries(rootGroup, excludeFromBrowsing).length}
+              allItemsCount={allEntries.length}
               onSelect={selectGroup}
               onCreateGroup={handleCreateGroup}
               onRenameGroup={handleRenameGroup}
@@ -499,7 +474,10 @@ export function VaultShell({
                         <XIcon size={12} />
                       </button>
                     )}
-                    <EntrySortMenu value={entrySort} onChange={onEntrySortChange} />
+                    <EntrySortMenu
+                      value={entrySort}
+                      onChange={(sort) => onSettingChange("entrySort", sort)}
+                    />
                   </div>
                   <div className="entry-list">
                     {visibleEntries.length === 0 && (
@@ -566,7 +544,7 @@ export function VaultShell({
                     <EntryDetail
                       entryWithGroup={selected}
                       urlOpener={urlOpener}
-                      clipboardWriter={clipboardWriter}
+                      clipboard={clipboard}
                       clipboardClearSeconds={clipboardClearSeconds}
                       revealed={revealed}
                       onToggleReveal={() => setRevealed((value) => !value)}
@@ -596,7 +574,7 @@ export function VaultShell({
 interface EntryDetailProps {
   entryWithGroup: EntryWithGroup;
   urlOpener: UrlOpener;
-  clipboardWriter: ClipboardWriter;
+  clipboard: ClipboardCopy;
   clipboardClearSeconds: number;
   revealed: boolean;
   onToggleReveal: () => void;
@@ -604,12 +582,10 @@ interface EntryDetailProps {
   onDelete: () => Promise<void>;
 }
 
-type CopiedField = "username" | "password" | "totp" | undefined;
-
 function EntryDetail({
   entryWithGroup,
   urlOpener,
-  clipboardWriter,
+  clipboard,
   clipboardClearSeconds,
   revealed,
   onToggleReveal,
@@ -626,41 +602,11 @@ function EntryDetail({
     ? entry.customFields.values.filter((field) => !TOTP_FIELD_KEYS.has(field.key))
     : entry.customFields.values;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [copiedField, setCopiedField] = useState<CopiedField>(undefined);
-  const [clearingField, setClearingField] = useState<CopiedField>(undefined);
-  const [clearingToken, setClearingToken] = useState(0);
-  const copyToken = useRef(0);
-
-  async function handleCopy(value: string, field: "username" | "password" | "totp") {
-    copyToken.current += 1;
-    const thisToken = copyToken.current;
-    await clipboardWriter.writeText(value);
-    setCopiedField(field);
-    setClearingField(field);
-    setClearingToken(thisToken);
-    setTimeout(() => {
-      setCopiedField((current) => (current === field ? undefined : current));
-    }, 1500);
-    setTimeout(() => {
-      if (copyToken.current === thisToken) {
-        void clipboardWriter.writeText("");
-      }
-      setClearingField((current) => (current === field ? undefined : current));
-    }, clipboardClearSeconds * 1000);
-  }
+  const { busy, error, run } = useAsyncAction();
+  const { copiedField, clearingField, clearingToken, copy } = clipboard;
 
   async function handleConfirmDelete() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onDelete();
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to delete entry."));
-    } finally {
-      setBusy(false);
-    }
+    await run(onDelete, "Failed to delete entry.");
   }
 
   return (
@@ -730,7 +676,7 @@ function EntryDetail({
                 type="button"
                 className="icon-button-small"
                 aria-label="Copy username"
-                onClick={() => void handleCopy(entry.username, "username")}
+                onClick={() => void copy(entry.username, "username")}
               >
                 <CopyIcon size={17} strokeWidth={2.25} />
               </button>
@@ -752,7 +698,7 @@ function EntryDetail({
                 type="button"
                 className="icon-button-small"
                 aria-label="Copy password"
-                onClick={() => void handleCopy(entry.password.reveal(), "password")}
+                onClick={() => void copy(entry.password.reveal(), "password")}
               >
                 <CopyIcon size={17} strokeWidth={2.25} />
               </button>
@@ -792,7 +738,7 @@ function EntryDetail({
                   className="icon-button-small"
                   aria-label="Copy authenticator code"
                   disabled={!totpCode}
-                  onClick={() => totpCode && void handleCopy(totpCode.value, "totp")}
+                  onClick={() => totpCode && void copy(totpCode.value, "totp")}
                 >
                   <CopyIcon size={17} strokeWidth={2.25} />
                 </button>

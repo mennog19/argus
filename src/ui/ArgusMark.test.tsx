@@ -94,15 +94,23 @@ describe("ArgusMark blinking", () => {
     const { container } = render(<ArgusMark random={sequence(0, 0.9, 0)} />);
     expect(isBlinking(container)).toBe(false);
 
-    act(() => vi.advanceTimersByTime(2499));
+    act(() => {
+      vi.advanceTimersByTime(2499);
+    });
     expect(isBlinking(container)).toBe(false);
-    act(() => vi.advanceTimersByTime(1));
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     expect(isBlinking(container)).toBe(true);
 
-    act(() => vi.advanceTimersByTime(BLINK_DURATION_MS));
+    act(() => {
+      vi.advanceTimersByTime(BLINK_DURATION_MS);
+    });
     expect(isBlinking(container)).toBe(false);
 
-    act(() => vi.advanceTimersByTime(2500));
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
     expect(isBlinking(container)).toBe(true);
   });
 
@@ -111,20 +119,32 @@ describe("ArgusMark blinking", () => {
       <ArgusMark random={sequence(0, DOUBLE_BLINK_CHANCE / 2, 1, 0.9)} />,
     );
 
-    act(() => vi.advanceTimersByTime(2500));
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
     expect(isBlinking(container)).toBe(true);
-    act(() => vi.advanceTimersByTime(BLINK_DURATION_MS));
+    act(() => {
+      vi.advanceTimersByTime(BLINK_DURATION_MS);
+    });
     expect(isBlinking(container)).toBe(false);
 
-    act(() => vi.advanceTimersByTime(DOUBLE_BLINK_GAP_MS));
+    act(() => {
+      vi.advanceTimersByTime(DOUBLE_BLINK_GAP_MS);
+    });
     expect(isBlinking(container)).toBe(true);
-    act(() => vi.advanceTimersByTime(BLINK_DURATION_MS));
+    act(() => {
+      vi.advanceTimersByTime(BLINK_DURATION_MS);
+    });
     expect(isBlinking(container)).toBe(false);
 
     // Back to the normal rhythm: the next delay drew 1 → 8 seconds.
-    act(() => vi.advanceTimersByTime(7999));
+    act(() => {
+      vi.advanceTimersByTime(7999);
+    });
     expect(isBlinking(container)).toBe(false);
-    act(() => vi.advanceTimersByTime(1));
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     expect(isBlinking(container)).toBe(true);
   });
 
@@ -132,7 +152,9 @@ describe("ArgusMark blinking", () => {
     const random = vi.fn(() => 0.9);
     const { unmount } = render(<ArgusMark random={random} />);
     unmount();
-    act(() => vi.advanceTimersByTime(60_000));
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
     expect(random).toHaveBeenCalledTimes(1);
   });
 });

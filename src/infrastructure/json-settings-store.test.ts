@@ -34,7 +34,9 @@ describe("JsonSettingsStore", () => {
 
       const result = await store.load();
 
-      expect(readTextFile).toHaveBeenCalledWith("settings.json", { baseDir: BaseDirectory.AppData });
+      expect(readTextFile).toHaveBeenCalledWith("settings.json", {
+        baseDir: BaseDirectory.AppData,
+      });
       expect(result).toEqual(settings);
     });
 
@@ -59,9 +61,13 @@ describe("JsonSettingsStore", () => {
       await store.save(settings);
 
       expect(mkdir).toHaveBeenCalledWith("", { baseDir: BaseDirectory.AppData, recursive: true });
-      expect(writeTextFile).toHaveBeenCalledWith("settings.json", JSON.stringify(settings, null, 2), {
-        baseDir: BaseDirectory.AppData,
-      });
+      expect(writeTextFile).toHaveBeenCalledWith(
+        "settings.json",
+        JSON.stringify(settings, null, 2),
+        {
+          baseDir: BaseDirectory.AppData,
+        },
+      );
     });
   });
 });

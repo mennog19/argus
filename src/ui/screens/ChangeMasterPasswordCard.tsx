@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 
 interface ChangeMasterPasswordCardProps {
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -12,8 +12,7 @@ export function ChangeMasterPasswordCard({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run, fail } = useAsyncAction();
   const [success, setSuccess] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
@@ -21,30 +20,30 @@ export function ChangeMasterPasswordCard({
     setSuccess(false);
 
     if (currentPassword.length === 0) {
-      setError("Current password is required.");
+      fail("Current password is required.");
       return;
     }
     if (newPassword.length === 0) {
-      setError("New password is required.");
+      fail("New password is required.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.");
+      fail("New passwords do not match.");
       return;
     }
 
-    setBusy(true);
-    setError(undefined);
-    try {
-      await onChangeMasterPassword(currentPassword, newPassword);
+    // Only on a confirmed success: the vault file is re-encrypted by this, so
+    // claiming it changed when it didn't leaves the user with a password that
+    // doesn't open their vault.
+    const changed = await run(
+      () => onChangeMasterPassword(currentPassword, newPassword),
+      "Failed to change master password.",
+    );
+    if (changed) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setSuccess(true);
-    } catch (cause) {
-      setError(errorMessage(cause, "Failed to change master password."));
-    } finally {
-      setBusy(false);
     }
   }
 

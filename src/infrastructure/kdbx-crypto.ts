@@ -19,20 +19,22 @@ export function configureKdbxCrypto(): void {
   }
   configured = true;
 
-  CryptoEngine.setArgon2Impl(async (password, salt, memory, iterations, length, parallelism, type, version) => {
-    if (version !== SUPPORTED_ARGON2_VERSION) {
-      throw new Error(`Unsupported Argon2 version: 0x${version.toString(16)}`);
-    }
-    const hash = type === CryptoEngine.Argon2TypeArgon2id ? argon2id : argon2d;
-    const result = await hash({
-      password: new Uint8Array(password),
-      salt: new Uint8Array(salt),
-      iterations,
-      parallelism,
-      memorySize: memory,
-      hashLength: length,
-      outputType: "binary",
-    });
-    return Uint8Array.from(result).buffer;
-  });
+  CryptoEngine.setArgon2Impl(
+    async (password, salt, memory, iterations, length, parallelism, type, version) => {
+      if (version !== SUPPORTED_ARGON2_VERSION) {
+        throw new Error(`Unsupported Argon2 version: 0x${version.toString(16)}`);
+      }
+      const hash = type === CryptoEngine.Argon2TypeArgon2id ? argon2id : argon2d;
+      const result = await hash({
+        password: new Uint8Array(password),
+        salt: new Uint8Array(salt),
+        iterations,
+        parallelism,
+        memorySize: memory,
+        hashLength: length,
+        outputType: "binary",
+      });
+      return Uint8Array.from(result).buffer;
+    },
+  );
 }

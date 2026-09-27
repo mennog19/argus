@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { errorMessage } from "../error-message";
+import { useAsyncAction } from "../use-async-action";
 import { basename } from "../format";
 
 interface SettingsTransferCardProps {
@@ -13,28 +13,23 @@ export function SettingsTransferCard({
   onExportSettings,
   onImportSettings,
 }: SettingsTransferCardProps) {
-  const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { busy, error, run: runAction } = useAsyncAction();
 
   async function run(
     transfer: () => Promise<string | undefined>,
     succeeded: (filePath: string) => string,
     failed: string,
   ) {
-    setBusy(true);
     setStatus(undefined);
-    setError(undefined);
-    try {
+    await runAction(async () => {
+      // Undefined means the user cancelled the file dialog, which is neither
+      // a success to report nor a failure to explain.
       const filePath = await transfer();
       if (filePath) {
         setStatus(succeeded(filePath));
       }
-    } catch (cause) {
-      setError(errorMessage(cause, failed));
-    } finally {
-      setBusy(false);
-    }
+    }, failed);
   }
 
   return (

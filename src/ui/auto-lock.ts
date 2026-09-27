@@ -1,5 +1,9 @@
 /** Whether `timeoutMinutes` of inactivity has elapsed since `lastActivityAt`. */
-export function hasIdleTimedOut(lastActivityAt: number, now: number, timeoutMinutes: number): boolean {
+export function hasIdleTimedOut(
+  lastActivityAt: number,
+  now: number,
+  timeoutMinutes: number,
+): boolean {
   return now - lastActivityAt >= timeoutMinutes * 60_000;
 }
 

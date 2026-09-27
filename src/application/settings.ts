@@ -157,6 +157,48 @@ export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
 
 export const DEFAULT_CLIPBOARD_CLEAR_SECONDS = 20;
 
+/** Every setting a user can change, i.e. everything but the recency list. */
+export type ConfigurableSetting = Exclude<keyof AppSettings, "recentVaults">;
+
+/**
+ * Every setting resolved to the value the app actually behaves as.
+ *
+ * `AppSettings` is the shape of the settings *file*, where an absent field
+ * means "the user has never touched this" — which is what lets a future
+ * change to a default reach people who never overrode it. `EffectiveSettings`
+ * is the shape the *app* reads, so that no screen has to remember which
+ * default fills which hole, and a new setting can't be read raw by mistake.
+ */
+export interface EffectiveSettings {
+  readonly generatorPolicy: PasswordPolicyOptions;
+  readonly clipboardClearSeconds: number;
+  readonly autoLock: AutoLockSettings;
+  readonly autoType: AutoTypeSettings;
+  readonly groupDeleteMode: GroupDeleteMode;
+  readonly accentColor: AccentColor;
+  readonly theme: Theme;
+  readonly contentProtection: boolean;
+  readonly entryFieldVisibility: EntryFieldVisibility;
+  readonly entrySort: EntrySortId;
+}
+
+/** Fills in every "not set yet" hole in `settings` with its default. */
+export function resolveSettings(settings: AppSettings): EffectiveSettings {
+  return {
+    // `PasswordPolicy` applies its own defaults to an empty options object.
+    generatorPolicy: settings.generatorPolicy ?? {},
+    clipboardClearSeconds: settings.clipboardClearSeconds ?? DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+    autoLock: settings.autoLock ?? DEFAULT_AUTO_LOCK,
+    autoType: settings.autoType ?? DEFAULT_AUTO_TYPE,
+    groupDeleteMode: settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE,
+    accentColor: settings.accentColor ?? DEFAULT_ACCENT_COLOR,
+    theme: settings.theme ?? DEFAULT_THEME,
+    contentProtection: settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,
+    entryFieldVisibility: settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
+    entrySort: settings.entrySort ?? DEFAULT_ENTRY_SORT,
+  };
+}
+
 /**
  * Reads/writes the local app settings file. Implemented in `infrastructure`
  * against the Tauri filesystem API.
@@ -186,61 +228,18 @@ export function recordVaultOpened(
   return { ...settings, recentVaults };
 }
 
-/** Returns settings with `policy` recorded as the shared generator settings. */
-export function withGeneratorPolicy(
+/**
+ * Returns settings with `key` recorded as `value`.
+ *
+ * One function rather than one per setting: every such helper was the same
+ * spread, and a per-setting name meant adding a setting touched this file,
+ * the App handler that called it, and both of their tests before the setting
+ * itself did anything.
+ */
+export function withSetting<K extends ConfigurableSetting>(
   settings: AppSettings,
-  policy: PasswordPolicyOptions,
+  key: K,
+  value: AppSettings[K],
 ): AppSettings {
-  return { ...settings, generatorPolicy: policy };
-}
-
-/** Returns settings with `seconds` recorded as the clipboard auto-clear delay. */
-export function withClipboardClearSeconds(settings: AppSettings, seconds: number): AppSettings {
-  return { ...settings, clipboardClearSeconds: seconds };
-}
-
-/** Returns settings with `autoLock` recorded as the auto-lock configuration. */
-export function withAutoLock(settings: AppSettings, autoLock: AutoLockSettings): AppSettings {
-  return { ...settings, autoLock };
-}
-
-/** Returns settings with `autoType` recorded as the auto-type configuration. */
-export function withAutoType(settings: AppSettings, autoType: AutoTypeSettings): AppSettings {
-  return { ...settings, autoType };
-}
-
-/** Returns settings with `mode` recorded as the group delete behaviour. */
-export function withGroupDeleteMode(settings: AppSettings, mode: GroupDeleteMode): AppSettings {
-  return { ...settings, groupDeleteMode: mode };
-}
-
-/** Returns settings with `accentColor` recorded as the app's accent color. */
-export function withAccentColor(settings: AppSettings, accentColor: AccentColor): AppSettings {
-  return { ...settings, accentColor };
-}
-
-/** Returns settings with `theme` recorded as the app's color scheme. */
-export function withTheme(settings: AppSettings, theme: Theme): AppSettings {
-  return { ...settings, theme };
-}
-
-/** Returns settings with `contentProtection` recorded as the window capture-protection setting. */
-export function withContentProtection(
-  settings: AppSettings,
-  contentProtection: boolean,
-): AppSettings {
-  return { ...settings, contentProtection };
-}
-
-/** Returns settings with `visibility` recorded as the entry creation form's field visibility. */
-export function withEntryFieldVisibility(
-  settings: AppSettings,
-  visibility: EntryFieldVisibility,
-): AppSettings {
-  return { ...settings, entryFieldVisibility: visibility };
-}
-
-/** Returns settings with `sort` recorded as the entry list's sort order. */
-export function withEntrySort(settings: AppSettings, sort: EntrySortId): AppSettings {
-  return { ...settings, entrySort: sort };
+  return { ...settings, [key]: value };
 }
