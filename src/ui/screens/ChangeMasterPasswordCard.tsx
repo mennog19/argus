@@ -1,5 +1,7 @@
 import { FormEvent, useState } from "react";
+import { MASTER_PASSWORD_MIN_LENGTH } from "../../domain";
 import { useAsyncAction } from "../use-async-action";
+import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 interface ChangeMasterPasswordCardProps {
   onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -25,6 +27,10 @@ export function ChangeMasterPasswordCard({
     }
     if (newPassword.length === 0) {
       fail("New password is required.");
+      return;
+    }
+    if (newPassword.length < MASTER_PASSWORD_MIN_LENGTH) {
+      fail(`New password must be at least ${MASTER_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -94,8 +100,9 @@ export function ChangeMasterPasswordCard({
             className="field-input"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
-            placeholder="New password"
+            placeholder={`At least ${MASTER_PASSWORD_MIN_LENGTH} characters`}
           />
+          <PasswordStrengthMeter password={newPassword} />
         </div>
         <div className="field-group">
           <label className="field-label" htmlFor="change-password-confirm">

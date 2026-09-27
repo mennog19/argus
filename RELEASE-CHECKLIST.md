@@ -11,7 +11,7 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 - [x] **Locking doesn't clear the decrypted vault from memory.** `lock()` only changes the screen ([App.tsx](src/ui/App.tsx#L111)). `VaultAccessService.session` keeps holding the open `Kdbx` document, including all the decrypted secrets, until another vault is opened. Add a `closeVault()` that drops the session and call it when locking.
 - [ ] **Auto-lock is completely off by default** ([settings.ts](src/application/settings.ts#L17)). That's an unusual default for a password manager. Consider an idle timeout of around 10–15 minutes and lock-on-sleep enabled by default.
 - [ ] **A dependency has known security issues.** `pnpm audit` reports 15 vulnerabilities (13 high), all in `@xmldom/xmldom` 0.8.x, which comes in through `kdbxweb`. Merging a vault file from somewhere else runs it through that XML parser. Fix it with a `pnpm.overrides` entry pinning `@xmldom/xmldom` to `>=0.8.15`.
-- [ ] **Anyone can create a vault with a 1-character master password.** The only check is that it isn't empty ([WelcomeScreen.tsx](src/ui/screens/WelcomeScreen.tsx#L57)). Add a minimum length and/or a strength meter; the password-health code can probably provide one.
+- [x] **Anyone can create a vault with a 1-character master password.** The only check was that it wasn't empty. Creating a vault and changing the master password now both require at least 12 characters (`MASTER_PASSWORD_MIN_LENGTH`, matching the health policy's weak-password length) and show the same weak/fair/strong meter as the entry form. Only length is enforced, so a long lowercase passphrase is still accepted.
 
 ## Should fix
 

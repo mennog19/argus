@@ -1,9 +1,11 @@
 import { FormEvent, useState } from "react";
 import { OpenedVault, VaultAccessService } from "../../application/vault-access-service";
 import { RecentVaultEntry } from "../../application/settings";
+import { MASTER_PASSWORD_MIN_LENGTH } from "../../domain";
 import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename, formatRelativeTime } from "../format";
+import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 interface WelcomeScreenProps {
   recentVaults: readonly RecentVaultEntry[];
@@ -56,6 +58,10 @@ export function WelcomeScreen({
     }
     if (createPassword.length === 0) {
       fail("Master password is required.");
+      return;
+    }
+    if (createPassword.length < MASTER_PASSWORD_MIN_LENGTH) {
+      fail(`Master password must be at least ${MASTER_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
     if (createPassword !== createConfirmPassword) {
@@ -140,8 +146,9 @@ export function WelcomeScreen({
               className="field-input"
               value={createPassword}
               onChange={(event) => setCreatePassword(event.target.value)}
-              placeholder="Master password"
+              placeholder={`At least ${MASTER_PASSWORD_MIN_LENGTH} characters`}
             />
+            <PasswordStrengthMeter password={createPassword} />
           </div>
           <div className="field-group">
             <label className="field-label" htmlFor="create-confirm-password">
