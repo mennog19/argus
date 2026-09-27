@@ -301,6 +301,29 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
 
   const isUnvisitedGroup = (g: KdbxGroup) => !visitedGroups.has(kdbxUuidToDomainId(g.uuid));
 
+  const recycleBinId = vault.recycleBinId?.toString();
+  const isInRecycleBin = (item: KdbxGroup | KdbxEntry): boolean => {
+    for (let g = item.parentGroup; g; g = g.parentGroup) {
+      if (kdbxUuidToDomainId(g.uuid) === recycleBinId) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // db.remove() moves an item into the recycle bin, which is a no-op (or a
+  // flattening move) for something already inside it — so emptying the bin
+  // would leave everything in the saved file. Items already in the bin are
+  // detached with no destination instead, which kdbxweb records as a
+  // deleted object so KeePass-style sync doesn't resurrect them.
+  const discard = (item: KdbxGroup | KdbxEntry) => {
+    if (isInRecycleBin(item)) {
+      db.move(item, undefined);
+    } else {
+      db.remove(item);
+    }
+  };
+
   // Only the root group can lack a parentGroup, and the root is always
   // visited (it's synced unconditionally above), so anything reaching these
   // checks structurally has one — asserted rather than branched on, since a
@@ -312,7 +335,7 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
     if (isUnvisitedGroup(group.parentGroup!)) {
       continue;
     }
-    db.remove(group);
+    discard(group);
   }
   for (const [id, entry] of existingEntries) {
     if (visitedEntries.has(id)) {
@@ -321,6 +344,6 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
     if (isUnvisitedGroup(entry.parentGroup!)) {
       continue;
     }
-    db.remove(entry);
+    discard(entry);
   }
 }
