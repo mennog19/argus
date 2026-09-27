@@ -34,7 +34,6 @@ Goal: a user can download the Windows installer from GitHub Releases and use it.
 ### Blockers
 
 - [ ] **Release workflow** — `.github/workflows/release.yml`, triggered on `v*` tags: build the NSIS `.exe` and `.msi`, attach them plus SHA-256 checksums to a GitHub Release. Fail if the tag doesn't match the app version.
-- [x] **Replace placeholder metadata** — crate/package renamed to `argus`, description and author (Studio Helios) set in `Cargo.toml`; publisher, copyright, category, and short/long description added to `bundle` in `tauri.conf.json`.
 - [ ] **Smoke-test an installed build on a clean Windows machine/VM** — open/create/save a vault, persisted file scope across restart, single-instance, auto-type hotkey, clipboard clearing, `contentProtected`, uninstall, and WebView2 bootstrap on a machine without it.
 
 ### Should do
