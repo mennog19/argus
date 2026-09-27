@@ -4,19 +4,40 @@ mod auto_type;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
-/// Adds `path` to the filesystem scope, so later `plugin-fs` calls against it
-/// are not rejected as out-of-scope.
+/// Rolling-backup suffixes `VaultAccessService` rotates next to a vault; the
+/// only paths `grant_file_access` is willing to widen scope to.
+const ALLOWED_BACKUP_SUFFIXES: [&str; 3] = [".bak1", ".bak2", ".bak3"];
+
+/// Appends `suffix` to `anchor`, but only when `suffix` is one of the fixed
+/// rolling-backup suffixes. A plain function (no `AppHandle`) so the
+/// allow-list check is unit-testable without a running Tauri app.
+fn derive_backup_path(anchor: &str, suffix: &str) -> Result<String, String> {
+    if !ALLOWED_BACKUP_SUFFIXES.contains(&suffix) {
+        return Err(format!("unsupported backup suffix: {suffix}"));
+    }
+    Ok(format!("{anchor}{suffix}"))
+}
+
+/// Adds `anchor`'s `.bak1`/`.bak2`/`.bak3` rolling backup to the filesystem
+/// scope, so later `plugin-fs` calls against it are not rejected as
+/// out-of-scope.
 ///
 /// The dialog plugin grants access to exactly the file the user picked, so
-/// paths the app derives from it -- the `.bak1`/`.bak2`/`.bak3` rolling backups
-/// written next to a vault -- stay forbidden until they are allowed explicitly.
-/// Which paths those are is decided in TypeScript (`VaultAccessService`); this
-/// command only applies the grant, which `persisted-scope` then keeps across
-/// restarts.
+/// the backups `VaultAccessService` writes next to a vault stay forbidden
+/// until they are allowed explicitly. `anchor` must already be in scope --
+/// proof that it came from a dialog pick or a `persisted-scope` restore
+/// rather than a path the renderer made up -- and `suffix` must be one of
+/// the fixed backup suffixes, so this command can't be used to widen scope
+/// to an arbitrary path anywhere on disk. `persisted-scope` keeps the grant
+/// across restarts.
 #[tauri::command]
-fn grant_file_access(app: tauri::AppHandle, path: String) -> Result<(), String> {
+fn grant_file_access(app: tauri::AppHandle, anchor: String, suffix: String) -> Result<(), String> {
+    if !app.fs_scope().is_allowed(std::path::Path::new(&anchor)) {
+        return Err("anchor path is not in the allowed scope".into());
+    }
+    let derived = derive_backup_path(&anchor, &suffix)?;
     app.fs_scope()
-        .allow_file(path)
+        .allow_file(derived)
         .map_err(|error| error.to_string())
 }
 
@@ -91,4 +112,36 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::derive_backup_path;
+
+    #[test]
+    fn appends_an_allowed_backup_suffix_to_the_anchor() {
+        let result = derive_backup_path("C:/vaults/mine.kdbx", ".bak1");
+
+        assert_eq!(result, Ok("C:/vaults/mine.kdbx.bak1".to_string()));
+    }
+
+    #[test]
+    fn allows_all_three_rolling_backup_suffixes() {
+        assert!(derive_backup_path("C:/vaults/mine.kdbx", ".bak2").is_ok());
+        assert!(derive_backup_path("C:/vaults/mine.kdbx", ".bak3").is_ok());
+    }
+
+    #[test]
+    fn rejects_a_suffix_outside_the_fixed_allow_list() {
+        let result = derive_backup_path("C:/vaults/mine.kdbx", ".exe");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_an_empty_suffix() {
+        let result = derive_backup_path("C:/vaults/mine.kdbx", "");
+
+        assert!(result.is_err());
+    }
 }

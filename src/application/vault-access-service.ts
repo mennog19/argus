@@ -185,7 +185,7 @@ export class VaultAccessService {
     // Backup paths are derived here rather than picked by the user, so the OS
     // layer has to be told about them before they can be read or written.
     for (const suffix of BACKUP_SUFFIXES) {
-      await this.fileStorage.grantAccess(filePath + suffix);
+      await this.fileStorage.grantAccess(filePath, suffix);
     }
 
     for (let i = BACKUP_SUFFIXES.length - 1; i > 0; i--) {
