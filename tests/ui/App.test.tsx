@@ -26,6 +26,7 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     saveVault: vi.fn().mockResolvedValue(undefined),
     changeMasterPassword: vi.fn().mockResolvedValue(undefined),
     getFileInfo: vi.fn().mockResolvedValue({ sizeBytes: 0, lastModifiedMs: 0 }),
+    closeVault: vi.fn(),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -163,12 +164,13 @@ describe("App", () => {
       filePath: "C:/vaults/personal.kdbx",
     };
     const settingsStore = fakeSettingsStore();
+    const vaultAccessService = fakeVaultAccessService({
+      createNewVault: vi.fn().mockResolvedValue(opened),
+    });
 
     render(
       <App
-        vaultAccessService={fakeVaultAccessService({
-          createNewVault: vi.fn().mockResolvedValue(opened),
-        })}
+        vaultAccessService={vaultAccessService}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
         urlOpener={fakeUrlOpener()}
@@ -194,9 +196,13 @@ describe("App", () => {
       }),
     );
 
+    expect(vaultAccessService.closeVault).not.toHaveBeenCalled();
+
     await user.click(screen.getByRole("button", { name: "Lock vault" }));
 
     expect(await screen.findByText("personal.kdbx")).toBeInTheDocument();
+    // Locking has to drop the decrypted document, not just hide it.
+    expect(vaultAccessService.closeVault).toHaveBeenCalled();
   });
 
   it("unlocks from the locked screen", async () => {

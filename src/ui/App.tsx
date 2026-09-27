@@ -109,6 +109,7 @@ function App({
   );
 
   function lock(filePath: string) {
+    vaultAccessService.closeVault();
     setScreen({ kind: "locked", filePath });
   }
 

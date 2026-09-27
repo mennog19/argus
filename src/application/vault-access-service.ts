@@ -91,6 +91,16 @@ export class VaultAccessService {
   }
 
   /**
+   * Drops the open vault's document, for locking. The session holds the
+   * parsed file — every decrypted secret included — so keeping it past a
+   * lock would leave those secrets reachable until the next open. Unlocking
+   * again re-reads and re-decrypts the file from disk.
+   */
+  closeVault(): void {
+    this.session = undefined;
+  }
+
+  /**
    * The open vault's document. The lifecycle lives here rather than in the
    * repository, so this is the one place that has to state the invariant —
    * the repository itself is stateless and can't be called out of order.
