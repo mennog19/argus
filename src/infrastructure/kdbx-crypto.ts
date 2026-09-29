@@ -3,6 +3,41 @@ import { argon2d, argon2id } from "hash-wasm";
 
 const SUPPORTED_ARGON2_VERSION = 0x13;
 
+/**
+ * The most Argon2 work Argus will do to unlock a file. The KDF settings come
+ * from the file's unencrypted header, so a crafted or corrupted `.kdbx` can
+ * ask for gigabytes of memory — enough to crash the webview — or effectively
+ * endless iterations. Each limit is far above anything KeePass, KeePassXC, or
+ * Argus's own defaults (64 MiB, 4 iterations, 2 lanes) would write.
+ */
+export const ARGON2_LIMITS = {
+  memoryKiB: 1024 * 1024,
+  iterations: 1000,
+  parallelism: 64,
+} as const;
+
+function checkArgon2Limits(memoryKiB: number, iterations: number, parallelism: number): void {
+  if (memoryKiB > ARGON2_LIMITS.memoryKiB) {
+    const toMiB = (kib: number) => Math.ceil(kib / 1024);
+    throw new Error(
+      `This vault asks for ${toMiB(memoryKiB)} MiB of memory to unlock. ` +
+        `Argus allows at most ${toMiB(ARGON2_LIMITS.memoryKiB)} MiB.`,
+    );
+  }
+  if (iterations > ARGON2_LIMITS.iterations) {
+    throw new Error(
+      `This vault asks for ${iterations} Argon2 iterations to unlock. ` +
+        `Argus allows at most ${ARGON2_LIMITS.iterations}.`,
+    );
+  }
+  if (parallelism > ARGON2_LIMITS.parallelism) {
+    throw new Error(
+      `This vault asks for ${parallelism} Argon2 lanes to unlock. ` +
+        `Argus allows at most ${ARGON2_LIMITS.parallelism}.`,
+    );
+  }
+}
+
 let configured = false;
 
 /**
@@ -24,6 +59,9 @@ export function configureKdbxCrypto(): void {
       if (version !== SUPPORTED_ARGON2_VERSION) {
         throw new Error(`Unsupported Argon2 version: 0x${version.toString(16)}`);
       }
+      // `memory` arrives in KiB — kdbxweb has already divided the header's
+      // byte count down — and is checked before hash-wasm allocates any of it.
+      checkArgon2Limits(memory, iterations, parallelism);
       const hash = type === CryptoEngine.Argon2TypeArgon2id ? argon2id : argon2d;
       const result = await hash({
         password: new Uint8Array(password),
