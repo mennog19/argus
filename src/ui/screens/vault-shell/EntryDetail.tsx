@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { TOTP_FIELD_KEYS, totpConfigFromCustomFields } from "../../../domain";
+import { openableUrl, TOTP_FIELD_KEYS, totpConfigFromCustomFields } from "../../../domain";
 import { UrlOpener } from "../../../application/url-opener";
 import { EntryAvatar } from "../../entry-icons/EntryAvatar";
 import { EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "../../icons";
@@ -53,7 +53,7 @@ export function EntryDetail({
             <button
               type="button"
               className="link-muted"
-              onClick={() => void urlOpener.open(entry.url)}
+              onClick={() => void urlOpener.open(openableUrl(entry.url))}
             >
               {entry.url}
             </button>

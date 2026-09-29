@@ -401,9 +401,12 @@ describe("VaultShell", () => {
     expect(screen.queryByText("Custom fields")).not.toBeInTheDocument();
   });
 
-  it("opens the entry's URL via the UrlOpener when clicked", async () => {
+  it.each([
+    ["https://github.com", "https://github.com"],
+    ["github.com/login", "https://github.com/login"],
+  ])("opens the entry's URL %s via the UrlOpener as %s when clicked", async (url, opened) => {
     const user = userEvent.setup();
-    const entry = Entry.create({ title: "GitHub", url: "https://github.com" });
+    const entry = Entry.create({ title: "GitHub", url });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
     const urlOpener = fakeUrlOpener();
@@ -428,9 +431,10 @@ describe("VaultShell", () => {
     );
 
     await user.click(screen.getByText("GitHub"));
-    await user.click(screen.getByText("https://github.com"));
+    // Shown the way it's stored; only the address handed to the browser changes.
+    await user.click(screen.getByText(url));
 
-    expect(urlOpener.open).toHaveBeenCalledWith("https://github.com");
+    expect(urlOpener.open).toHaveBeenCalledWith(opened);
   });
 
   it("toggles password reveal for the selected entry, masked by default", async () => {
