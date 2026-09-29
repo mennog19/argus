@@ -100,6 +100,45 @@ pub fn pick_fields(fields: &[FieldInfo]) -> FieldPicks {
 pub struct ForegroundWindow {
     pub title: String,
     pub process_name: String,
+    /// The window belongs to a browser whose address bar Argus knows how to read.
+    pub is_browser: bool,
+    /// What that address bar showed. `None` for other apps, and for a browser
+    /// whose address couldn't be read.
+    pub url: Option<String>,
+}
+
+/// Where a browser keeps its address bar in the UI Automation tree.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Browser {
+    /// Chrome, Edge, Brave and friends: the omnibox is the first text box in
+    /// the browser's own toolbar, ahead of the page.
+    Chromium,
+    /// Firefox and its forks: the address bar has a stable automation id.
+    Firefox,
+}
+
+/// The browser family `process_name` (e.g. `chrome.exe`) belongs to, if any.
+///
+/// The page title is chosen by the page, so a phishing site can call itself
+/// "github.com - Sign in". The address bar is drawn by the browser, and is
+/// what auto-type matches on whenever it can be read.
+pub fn browser_for(process_name: &str) -> Option<Browser> {
+    match process_name.to_ascii_lowercase().as_str() {
+        "chrome.exe" | "msedge.exe" | "brave.exe" | "vivaldi.exe" | "opera.exe"
+        | "chromium.exe" | "arc.exe" => Some(Browser::Chromium),
+        "firefox.exe" | "librewolf.exe" | "waterfox.exe" | "floorp.exe" | "zen.exe" => {
+            Some(Browser::Firefox)
+        }
+        _ => None,
+    }
+}
+
+/// The address in an address bar's text, or `None` when it holds nothing
+/// that could be one -- empty, or search terms (Chrome shows those in place of
+/// the address on a results page), which contain spaces a URL can't.
+pub fn address_from(text: &str) -> Option<String> {
+    let trimmed = text.trim();
+    (!trimmed.is_empty() && !trimmed.contains(char::is_whitespace)).then(|| trimmed.to_string())
 }
 
 /// The window captured by the most recent hotkey press, if any.
@@ -115,6 +154,10 @@ pub struct AutoTypeState {
 pub struct Target {
     pub handle: isize,
     pub title: String,
+    /// For a browser, which kind -- so its address bar can be read again.
+    pub browser: Option<Browser>,
+    /// The address the entry was matched against, when one was read.
+    pub url: Option<String>,
 }
 
 /// Checks that the window in front is still the captured one, showing the
@@ -129,6 +172,19 @@ pub fn check_target(target: &Target, foreground: isize, title: &str) -> Result<(
         return Err("The target window's title changed; auto-type was stopped".into());
     }
     Ok(())
+}
+
+/// Checks that a browser still shows the address the entry was matched
+/// against. A page can keep its title while navigating somewhere else, so
+/// the title check alone can't catch that; this runs once, right before the
+/// first keystroke. Nothing to compare when no address was read at capture.
+pub fn check_address(target: &Target, current: Option<&str>) -> Result<(), String> {
+    match &target.url {
+        Some(expected) if current != Some(expected.as_str()) => {
+            Err("The page's address changed; auto-type was stopped".into())
+        }
+        _ => Ok(()),
+    }
 }
 
 /// A foreground window as the platform layer found it.
@@ -151,16 +207,26 @@ pub struct CapturedWindow {
 /// or Argus itself is in front -- pressing the hotkey while looking at the
 /// vault should do nothing rather than type into the vault, and nothing is
 /// raised in that case either.
+///
+/// For a browser, the address bar is read afterwards, on a blocking thread:
+/// UI Automation can take a moment, and the address doesn't change just
+/// because Argus came to the front.
 #[tauri::command]
-pub fn auto_type_capture_target(
+pub async fn auto_type_capture_target(
     app: tauri::AppHandle,
     state: tauri::State<'_, AutoTypeState>,
-) -> Option<ForegroundWindow> {
-    let captured = platform::foreground_window()?;
-    *state.target.lock().expect("auto-type target mutex") = Some(Target {
+) -> Result<Option<ForegroundWindow>, String> {
+    let Some(captured) = platform::foreground_window() else {
+        return Ok(None);
+    };
+    let browser = browser_for(&captured.process_name);
+    let target = Target {
         handle: captured.handle,
         title: captured.title.clone(),
-    });
+        browser,
+        url: None,
+    };
+    *state.target.lock().expect("auto-type target mutex") = Some(target.clone());
 
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
@@ -168,10 +234,35 @@ pub fn auto_type_capture_target(
         let _ = window.set_focus();
     }
 
-    Some(ForegroundWindow {
+    let url = match browser {
+        Some(browser) => {
+            let handle = captured.handle;
+            // A failed read is reported as "no address", which the frontend
+            // shows as a warning -- never as a reason to abandon the capture.
+            tauri::async_runtime::spawn_blocking(move || platform::browser_address(handle, browser))
+                .await
+                .ok()
+                .flatten()
+        }
+        None => None,
+    };
+    if url.is_some() {
+        let mut stored = state.target.lock().expect("auto-type target mutex");
+        // Only if no later press has replaced the target in the meantime.
+        if stored.as_ref() == Some(&target) {
+            *stored = Some(Target {
+                url: url.clone(),
+                ..target
+            });
+        }
+    }
+
+    Ok(Some(ForegroundWindow {
         title: captured.title,
         process_name: captured.process_name,
-    })
+        is_browser: browser.is_some(),
+        url,
+    }))
 }
 
 fn captured_target(state: &AutoTypeState) -> Result<Target, String> {
@@ -219,8 +310,8 @@ pub async fn auto_type_send(
 #[cfg(windows)]
 mod platform {
     use super::{
-        check_target, pick_fields, AutoTypeStep, CapturedWindow, FieldInfo, FormField, FormLayout,
-        Target,
+        address_from, check_address, check_target, pick_fields, AutoTypeStep, Browser,
+        CapturedWindow, FieldInfo, FormField, FormLayout, Target,
     };
     use std::thread::sleep;
     use std::time::Duration;
@@ -236,9 +327,10 @@ mod platform {
     };
     use windows::Win32::System::Variant::VARIANT;
     use windows::Win32::UI::Accessibility::{
-        CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Descendants,
-        UIA_ControlTypePropertyId, UIA_DocumentControlTypeId, UIA_EditControlTypeId,
-        UIA_IsEnabledPropertyId,
+        CUIAutomation, IUIAutomation, IUIAutomationElement, IUIAutomationValuePattern,
+        TreeScope_Descendants, UIA_AutomationIdPropertyId, UIA_ControlTypePropertyId,
+        UIA_DocumentControlTypeId, UIA_EditControlTypeId, UIA_IsEnabledPropertyId,
+        UIA_ValuePatternId,
     };
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
@@ -267,6 +359,18 @@ mod platform {
     /// nothing has been seen, look again this many times, this far apart.
     const LOCATE_ATTEMPTS: u32 = 8;
     const LOCATE_RETRY: Duration = Duration::from_millis(150);
+
+    /// Looks for the address bar this many times before giving up on it. It
+    /// is part of the browser's own UI, so it's normally there at once; the
+    /// retries cover a browser that builds its tree lazily on first contact.
+    const ADDRESS_ATTEMPTS: u32 = 3;
+
+    /// How far up from a candidate address bar to look for the page's
+    /// document before deciding it isn't inside the page.
+    const MAX_ANCESTOR_DEPTH: u32 = 64;
+
+    /// Firefox's address bar input, by automation id.
+    const FIREFOX_URLBAR_ID: &str = "urlbar-input";
 
     /// COM has to be initialised on any thread that uses UI Automation.
     /// Declared in a struct whose COM objects are dropped *before* this guard.
@@ -400,6 +504,104 @@ mod platform {
             }
         }
 
+        /// Reads the address bar of the browser window `hwnd`.
+        fn address(&self, hwnd: HWND, browser: Browser) -> Option<String> {
+            let mut bar = self.find_address_bar(hwnd, browser);
+            for _ in 1..ADDRESS_ATTEMPTS {
+                if bar.is_some() {
+                    break;
+                }
+                sleep(LOCATE_RETRY);
+                bar = self.find_address_bar(hwnd, browser);
+            }
+            // SAFETY: `bar` is a live UI Automation element; the pattern and
+            // value are fetched and copied out within this call.
+            unsafe {
+                let pattern: IUIAutomationValuePattern =
+                    bar?.GetCurrentPatternAs(UIA_ValuePatternId).ok()?;
+                address_from(&pattern.CurrentValue().ok()?.to_string())
+            }
+        }
+
+        fn find_address_bar(&self, hwnd: HWND, browser: Browser) -> Option<IUIAutomationElement> {
+            // SAFETY: UI Automation queries against interface pointers it just
+            // returned; a stale `hwnd` fails the first one.
+            unsafe {
+                let root = self.automation.ElementFromHandle(hwnd).ok()?;
+                match browser {
+                    Browser::Firefox => {
+                        let by_id = self
+                            .automation
+                            .CreatePropertyCondition(
+                                UIA_AutomationIdPropertyId,
+                                &VARIANT::from(FIREFOX_URLBAR_ID),
+                            )
+                            .ok()?;
+                        root.FindFirst(TreeScope_Descendants, &by_id).ok()
+                    }
+                    Browser::Chromium => {
+                        let is_edit = self
+                            .automation
+                            .CreatePropertyCondition(
+                                UIA_ControlTypePropertyId,
+                                &VARIANT::from(UIA_EditControlTypeId.0),
+                            )
+                            .ok()?;
+                        // Tree order puts the toolbar ahead of the page, so the
+                        // first text box is the omnibox. Checked anyway: a text
+                        // box the page itself drew must never pass for the address.
+                        let candidate = root.FindFirst(TreeScope_Descendants, &is_edit).ok()?;
+                        let is_document = self
+                            .automation
+                            .CreatePropertyCondition(
+                                UIA_ControlTypePropertyId,
+                                &VARIANT::from(UIA_DocumentControlTypeId.0),
+                            )
+                            .ok()?;
+                        let in_page = match root.FindFirst(TreeScope_Descendants, &is_document) {
+                            Ok(document) => self.is_inside(&candidate, &document, &root),
+                            Err(_) => false,
+                        };
+                        (!in_page).then_some(candidate)
+                    }
+                }
+            }
+        }
+
+        /// Whether `element` sits somewhere under `ancestor`. Anything too
+        /// deep to settle counts as inside, so an unclear answer never lets a
+        /// page's text box be read as the address.
+        unsafe fn is_inside(
+            &self,
+            element: &IUIAutomationElement,
+            ancestor: &IUIAutomationElement,
+            root: &IUIAutomationElement,
+        ) -> bool {
+            let Ok(walker) = self.automation.RawViewWalker() else {
+                return true;
+            };
+            let same = |a: &IUIAutomationElement, b: &IUIAutomationElement| {
+                self.automation
+                    .CompareElements(a, b)
+                    .map(|same| same.as_bool())
+                    .unwrap_or(false)
+            };
+            let mut current = element.clone();
+            for _ in 0..MAX_ANCESTOR_DEPTH {
+                let Ok(parent) = walker.GetParentElement(&current) else {
+                    return false;
+                };
+                if same(&parent, ancestor) {
+                    return true;
+                }
+                if same(&parent, root) {
+                    return false;
+                }
+                current = parent;
+            }
+            true
+        }
+
         /// Puts the caret in `field` with any existing text selected, so what
         /// is typed next replaces it rather than being appended to it.
         fn focus_field(&self, hwnd: HWND, field: FormField) -> Result<(), String> {
@@ -436,6 +638,12 @@ mod platform {
         })
     }
 
+    /// The address a browser window shows, or `None` when it can't be read.
+    pub fn browser_address(handle: isize, browser: Browser) -> Option<String> {
+        let hwnd = HWND(handle as *mut std::ffi::c_void);
+        Uia::new().ok()?.address(hwnd, browser)
+    }
+
     pub fn foreground_window() -> Option<CapturedWindow> {
         // SAFETY: plain Win32 queries against a handle the OS just returned;
         // none of them retain anything or transfer ownership.
@@ -469,6 +677,11 @@ mod platform {
             return Err("Could not bring the target window back to the front".into());
         }
         sleep(FOCUS_SETTLE);
+
+        if let Some(browser) = target.browser.filter(|_| target.url.is_some()) {
+            let current = Uia::new()?.address(hwnd, browser);
+            check_address(target, current.as_deref())?;
+        }
 
         // Created on the first `Focus` step, so COM is only touched when
         // there is a field to find.
@@ -613,9 +826,13 @@ mod platform {
 
 #[cfg(not(windows))]
 mod platform {
-    use super::{AutoTypeStep, CapturedWindow, FormLayout, Target};
+    use super::{AutoTypeStep, Browser, CapturedWindow, FormLayout, Target};
 
     pub fn foreground_window() -> Option<CapturedWindow> {
+        None
+    }
+
+    pub fn browser_address(_handle: isize, _browser: Browser) -> Option<String> {
         None
     }
 
@@ -631,15 +848,81 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::{
-        check_target, pick_fields, AutoTypeStep, FieldInfo, FieldPicks, FormField, FormLayout,
-        Target,
+        address_from, browser_for, check_address, check_target, pick_fields, AutoTypeStep, Browser,
+        FieldInfo, FieldPicks, FormField, FormLayout, Target,
     };
+
+    #[test]
+    fn recognises_browsers_by_executable_whatever_the_case() {
+        assert_eq!(browser_for("chrome.exe"), Some(Browser::Chromium));
+        assert_eq!(browser_for("MSEDGE.EXE"), Some(Browser::Chromium));
+        assert_eq!(browser_for("brave.exe"), Some(Browser::Chromium));
+        assert_eq!(browser_for("firefox.exe"), Some(Browser::Firefox));
+        assert_eq!(browser_for("LibreWolf.exe"), Some(Browser::Firefox));
+    }
+
+    #[test]
+    fn treats_everything_else_as_not_a_browser() {
+        assert_eq!(browser_for("notepad.exe"), None);
+        assert_eq!(browser_for(""), None);
+        // Close isn't enough: the address bar lookup is specific to each family.
+        assert_eq!(browser_for("chrome_proxy.exe"), None);
+    }
+
+    #[test]
+    fn reads_an_address_as_the_bar_shows_it() {
+        assert_eq!(
+            address_from("  github.com/login  "),
+            Some("github.com/login".to_string())
+        );
+        assert_eq!(
+            address_from("https://accounts.google.com/"),
+            Some("https://accounts.google.com/".to_string())
+        );
+    }
+
+    #[test]
+    fn reads_no_address_from_an_empty_bar_or_search_terms() {
+        assert_eq!(address_from(""), None);
+        assert_eq!(address_from("   "), None);
+        assert_eq!(address_from("github login page"), None);
+    }
 
     fn github_tab() -> Target {
         Target {
             handle: 42,
             title: "Sign in to GitHub - Firefox".into(),
+            browser: Some(Browser::Firefox),
+            url: Some("https://github.com/login".into()),
         }
+    }
+
+    #[test]
+    fn accepts_a_page_still_at_the_address_it_was_matched_on() {
+        assert_eq!(
+            check_address(&github_tab(), Some("https://github.com/login")),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn stops_when_the_page_navigated_elsewhere_or_the_address_went_unreadable() {
+        let expected = Err("The page's address changed; auto-type was stopped".to_string());
+        assert_eq!(
+            check_address(&github_tab(), Some("https://evil.example")),
+            expected
+        );
+        assert_eq!(check_address(&github_tab(), None), expected);
+    }
+
+    #[test]
+    fn has_nothing_to_check_when_no_address_was_read() {
+        let notepad = Target {
+            url: None,
+            browser: None,
+            ..github_tab()
+        };
+        assert_eq!(check_address(&notepad, Some("anything")), Ok(()));
     }
 
     #[test]

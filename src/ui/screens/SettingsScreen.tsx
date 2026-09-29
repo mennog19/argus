@@ -1,4 +1,5 @@
 import { EffectiveSettings } from "../../application/settings";
+import { SettingsImportResult } from "../../application/settings-transfer-service";
 import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 import { AppearanceSection } from "./settings/AppearanceSection";
@@ -24,7 +25,7 @@ interface SettingsScreenProps {
   mergeError: string | undefined;
   onOpenMergeWizard: () => void;
   onExportSettings: () => Promise<string | undefined>;
-  onImportSettings: () => Promise<string | undefined>;
+  onImportSettings: () => Promise<SettingsImportResult | undefined>;
 }
 
 export function SettingsScreen({

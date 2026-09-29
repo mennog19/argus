@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
 import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
+import { SettingsImportResult } from "../../application/settings-transfer-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { useClipboardCopy } from "../use-clipboard-copy";
@@ -12,6 +13,7 @@ import {
   collectAllEntries,
   entriesOf,
   EntryWithGroup,
+  fieldReferencesOf,
   flattenGroupOptions,
   searchEntries,
 } from "../vault-browsing";
@@ -51,7 +53,7 @@ interface VaultShellProps {
     newPassword: string,
   ) => Promise<MasterPasswordChangeResult>;
   onExportSettings: () => Promise<string | undefined>;
-  onImportSettings: () => Promise<string | undefined>;
+  onImportSettings: () => Promise<SettingsImportResult | undefined>;
   /** Replaces the in-memory vault without writing the file — used for the
    * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
   onVaultChange: (vault: Vault) => void;
@@ -90,6 +92,7 @@ export function VaultShell({
   const [revealed, setRevealed] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("none");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocusRequest, setSearchFocusRequest] = useState(0);
   const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
   const merge = useMergeFlow(mergeSource, filePath);
   const commands = vaultCommands(vault, onSave);
@@ -108,6 +111,7 @@ export function VaultShell({
     () => collectAllEntries(rootGroup, excludeFromBrowsing),
     [rootGroup, excludeFromBrowsing],
   );
+  const references = useMemo(() => fieldReferencesOf(rootGroup), [rootGroup]);
 
   // Falls back to "All Items" if the selected group no longer exists (e.g.
   // it, or an ancestor of it, was just deleted).
@@ -143,6 +147,33 @@ export function VaultShell({
   const groupOptions = flattenGroupOptions(rootGroup, excludeFromBrowsing).map((option) =>
     option.id === rootGroup.id.toString() ? { ...option, label: "No Group" } : option,
   );
+  const mergeInProgress = merge.filePath !== undefined;
+
+  // Ctrl+F (Cmd+F on macOS) jumps straight to the search box from anywhere in
+  // the unlocked vault. A merge in progress is left alone rather than
+  // silently abandoned.
+  useEffect(() => {
+    if (mergeInProgress) {
+      return;
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      const modifier = event.ctrlKey || event.metaKey;
+      if (!modifier || event.altKey || event.shiftKey || event.key.toLowerCase() !== "f") {
+        return;
+      }
+      event.preventDefault();
+      setView("vault");
+      if (isRecycleBinSelected) {
+        // The recycle bin has no entry list, so there'd be no box to focus.
+        setSelectedGroupId(ALL_ITEMS);
+        setSelectedEntryId(undefined);
+      }
+      setSearchFocusRequest((request) => request + 1);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mergeInProgress, isRecycleBinSelected]);
+
   const newEntryGroupId =
     effectiveGroupId === ALL_ITEMS ? rootGroup.id.toString() : effectiveGroupId;
 
@@ -249,6 +280,7 @@ export function VaultShell({
     return (
       <EntryDetail
         entryWithGroup={selected}
+        references={references}
         urlOpener={urlOpener}
         clipboard={clipboard}
         clipboardClearSeconds={clipboardClearSeconds}
@@ -297,9 +329,11 @@ export function VaultShell({
             <EntryListPanel
               heading={effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}
               entries={visibleEntries}
+              references={references}
               selectedEntryId={selectedEntryId}
               draggingEntryId={draggingEntryId}
               searchQuery={searchQuery}
+              searchFocusRequest={searchFocusRequest}
               onSearchChange={setSearchQuery}
               entrySort={entrySort}
               onSortChange={(sort) => onSettingChange("entrySort", sort)}

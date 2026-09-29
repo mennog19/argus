@@ -177,6 +177,16 @@ export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
 
 export const DEFAULT_CLIPBOARD_CLEAR_SECONDS = 20;
 
+/**
+ * Longest clipboard clear delay Argus accepts: 10 minutes. A copied password
+ * left on the clipboard for longer is the leak the clear exists to prevent,
+ * and an imported settings file mustn't be able to set it to days.
+ */
+export const MAX_CLIPBOARD_CLEAR_SECONDS = 600;
+
+/** Longest idle timeout Argus accepts: 24 hours. Blank (off) is still allowed. */
+export const MAX_IDLE_TIMEOUT_MINUTES = 24 * 60;
+
 /** Every setting a user can change, i.e. everything but the recency list. */
 export type ConfigurableSetting = Exclude<keyof AppSettings, "recentVaults">;
 

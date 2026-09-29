@@ -5,6 +5,8 @@ interface NumberStepperFieldProps {
   label: string;
   /** `undefined` renders as an empty box. */
   value: number | undefined;
+  /** Largest value the box offers; the caller still clamps what it receives. */
+  max: number;
   /** Spoken names for the two stepper buttons, e.g. "Increase clipboard clear seconds". */
   increaseLabel: string;
   decreaseLabel: string;
@@ -17,6 +19,7 @@ export function NumberStepperField({
   id,
   label,
   value,
+  max,
   increaseLabel,
   decreaseLabel,
   onInput,
@@ -32,6 +35,7 @@ export function NumberStepperField({
           id={id}
           type="number"
           min={1}
+          max={max}
           className="field-input"
           value={value ?? ""}
           onChange={(event) => onInput(event.target.value)}

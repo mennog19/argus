@@ -10,7 +10,10 @@ import {
   SettingsStore,
   withSetting,
 } from "../application/settings";
-import { SettingsTransferService } from "../application/settings-transfer-service";
+import {
+  SettingsImportResult,
+  SettingsTransferService,
+} from "../application/settings-transfer-service";
 import { SettingChangeHandler } from "./setting-change";
 
 export interface AppSettingsState {
@@ -34,7 +37,7 @@ export interface AppSettingsState {
    * surfaces as an error on the settings screen instead of leaving the app
    * showing settings that would be gone again on the next launch.
    */
-  readonly importSettings: () => Promise<string | undefined>;
+  readonly importSettings: () => Promise<SettingsImportResult | undefined>;
 }
 
 /**
@@ -92,7 +95,7 @@ export function useAppSettings(
       }
       await store.save(imported.settings);
       setSettings(imported.settings);
-      return imported.filePath;
+      return { filePath: imported.filePath, keptContentProtection: imported.keptContentProtection };
     },
   };
 }

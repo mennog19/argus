@@ -143,9 +143,9 @@ describe("withSetting", () => {
   it("overwrites a value that was already stored", () => {
     const stored: AppSettings = { recentVaults: [], generatorPolicy: { length: 8 } };
 
-    const result = withSetting(stored, "generatorPolicy", { mode: "passphrase", wordCount: 5 });
+    const result = withSetting(stored, "generatorPolicy", { length: 30, useSymbols: true });
 
-    expect(result.generatorPolicy).toEqual({ mode: "passphrase", wordCount: 5 });
+    expect(result.generatorPolicy).toEqual({ length: 30, useSymbols: true });
   });
 
   it("records a custom accent hue", () => {

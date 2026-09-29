@@ -1,3 +1,4 @@
+import { SettingsImportResult } from "../../../src/application/settings-transfer-service";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -87,7 +88,7 @@ function renderShell(
     entryFieldVisibility?: EntryFieldVisibility;
     entrySort?: EntrySortId;
     onExportSettings?: () => Promise<string | undefined>;
-    onImportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<SettingsImportResult | undefined>;
     onVaultChange?: (vault: Vault) => void;
     mergeSource?: VaultMergeSource;
   } = {},
@@ -258,6 +259,100 @@ describe("VaultShell", () => {
     expect(screen.getByLabelText("Search entries")).toHaveValue("");
   });
 
+  describe("Ctrl+F", () => {
+    it("focuses the search box and selects what's in it, so typing replaces the old query", async () => {
+      const user = userEvent.setup();
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "GitHub" }));
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Mail" }));
+
+      renderShell(vault);
+      const search = screen.getByLabelText("Search entries");
+      await user.type(search, "old");
+      act(() => search.blur());
+      expect(search).not.toHaveFocus();
+
+      await user.keyboard("{Control>}f{/Control}");
+      expect(search).toHaveFocus();
+      await user.keyboard("mail");
+
+      expect(search).toHaveValue("mail");
+      expect(screen.getByText("Mail")).toBeInTheDocument();
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+    });
+
+    it("works with Cmd on macOS too", async () => {
+      const user = userEvent.setup();
+      renderShell(Vault.create("Mine"));
+
+      await user.keyboard("{Meta>}F{/Meta}");
+
+      expect(screen.getByLabelText("Search entries")).toHaveFocus();
+    });
+
+    it("stops the webview's own find-in-page from opening", () => {
+      renderShell(Vault.create("Mine"));
+
+      const event = createEvent.keyDown(document, { key: "f", ctrlKey: true });
+      fireEvent(document, event);
+
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("ignores F on its own and with Shift or Alt held", async () => {
+      const user = userEvent.setup();
+      renderShell(Vault.create("Mine"));
+
+      await user.keyboard("f");
+      await user.keyboard("{Control>}{Shift>}f{/Shift}{/Control}");
+      await user.keyboard("{Control>}{Alt>}f{/Alt}{/Control}");
+
+      expect(screen.getByLabelText("Search entries")).not.toHaveFocus();
+    });
+
+    it("switches back to the vault from another view", async () => {
+      const user = userEvent.setup();
+      renderShell(Vault.create("Mine"));
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+
+      await user.keyboard("{Control>}f{/Control}");
+
+      expect(screen.getByLabelText("Search entries")).toHaveFocus();
+    });
+
+    it("leaves the recycle bin for All Items, which has a search box", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      vault = vault.deleteEntry(entry.id);
+      renderShell(vault);
+      await user.click(screen.getByText("Recycle Bin"));
+
+      await user.keyboard("{Control>}f{/Control}");
+
+      expect(screen.getByRole("heading", { name: "All Items" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Search entries")).toHaveFocus();
+    });
+
+    it("does nothing while a merge is in progress, so the merge isn't abandoned", async () => {
+      const user = userEvent.setup();
+      const mergeSource = fakeMergeSource({
+        pickFile: vi.fn().mockResolvedValue("C:/vaults/other.kdbx"),
+      });
+      renderShell(Vault.create("Mine"), { mergeSource });
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      const event = createEvent.keyDown(document, { key: "f", ctrlKey: true });
+      fireEvent(document, event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.getByRole("dialog", { name: /merge another vault in/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    });
+  });
+
   it("selects an entry and shows its read-only detail", async () => {
     const user = userEvent.setup();
     const entry = Entry.create({
@@ -307,9 +402,12 @@ describe("VaultShell", () => {
     expect(screen.queryByText("Custom fields")).not.toBeInTheDocument();
   });
 
-  it("opens the entry's URL via the UrlOpener when clicked", async () => {
+  it.each([
+    ["https://github.com", "https://github.com"],
+    ["github.com/login", "https://github.com/login"],
+  ])("opens the entry's URL %s via the UrlOpener as %s when clicked", async (url, opened) => {
     const user = userEvent.setup();
-    const entry = Entry.create({ title: "GitHub", url: "https://github.com" });
+    const entry = Entry.create({ title: "GitHub", url });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
     const urlOpener = fakeUrlOpener();
@@ -334,9 +432,10 @@ describe("VaultShell", () => {
     );
 
     await user.click(screen.getByText("GitHub"));
-    await user.click(screen.getByText("https://github.com"));
+    // Shown the way it's stored; only the address handed to the browser changes.
+    await user.click(screen.getByText(url));
 
-    expect(urlOpener.open).toHaveBeenCalledWith("https://github.com");
+    expect(urlOpener.open).toHaveBeenCalledWith(opened);
   });
 
   it("toggles password reveal for the selected entry, masked by default", async () => {
@@ -412,6 +511,37 @@ describe("VaultShell", () => {
     await user.click(screen.getByRole("button", { name: "Copy password" }));
 
     expect(writeText).toHaveBeenCalledWith("s3cret!");
+  });
+
+  it("shows and copies what a linked entry's {REF:…} fields point at, but edits the reference", async () => {
+    const target = Entry.create({
+      title: "Main",
+      username: "octocat",
+      password: new Password("s3cret!"),
+    });
+    const ref = target.id.toString().replace(/-/g, "").toUpperCase();
+    const linked = Entry.create({
+      title: "Linked",
+      username: `{REF:U@I:${ref}}`,
+      password: new Password(`{REF:P@I:${ref}}`),
+    });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, target);
+    vault = vault.addEntry(vault.rootGroup.id, linked);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }) });
+    const linkedRow = screen.getByText("Linked").closest("button") as HTMLButtonElement;
+    expect(linkedRow).toHaveTextContent("octocat");
+    expect(screen.queryByText(/\{REF:/)).not.toBeInTheDocument();
+
+    await user.click(linkedRow);
+    await user.click(screen.getByRole("button", { name: "Copy password" }));
+    expect(writeText).toHaveBeenCalledWith("s3cret!");
+
+    await user.click(screen.getByRole("button", { name: "Edit entry" }));
+    expect(screen.getByLabelText("Username")).toHaveValue(`{REF:U@I:${ref}}`);
   });
 
   it("does not clear the clipboard from a stale copy once a newer value has been copied", async () => {
@@ -1230,11 +1360,11 @@ describe("VaultShell", () => {
       });
 
       await user.click(screen.getByRole("button", { name: "Password generator" }));
-      await user.click(screen.getByRole("button", { name: "Passphrase" }));
+      await user.click(screen.getByRole("checkbox", { name: /symbols/i }));
 
       expect(onSettingChange).toHaveBeenCalledWith(
         "generatorPolicy",
-        expect.objectContaining({ mode: "passphrase" }),
+        expect.objectContaining({ useSymbols: true }),
       );
     });
 
@@ -1339,11 +1469,11 @@ describe("VaultShell", () => {
       await user.click(screen.getByRole("button", { name: "Settings" }));
       await user.click(screen.getByRole("button", { name: /change master password/i }));
       await user.type(screen.getByLabelText("Current password"), "old-pw");
-      await user.type(screen.getByLabelText("New password"), "new-password");
-      await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+      await user.type(screen.getByLabelText("New password"), "New-password1");
+      await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
-      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-password");
+      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "New-password1");
     });
 
     it("picks a file first, then asks for its password in a dialog over the settings screen", async () => {

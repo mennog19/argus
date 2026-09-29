@@ -11,18 +11,21 @@ export {
   autoTypeMatches,
   autoTypeMatchScore,
   autoTypeSiteName,
+  autoTypeTitleMismatches,
   AUTO_TYPE_MATCH_SCORES,
   type AutoTypeMatch,
+  type AutoTypeTarget,
 } from "./auto-type-match";
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";
 export { Entry, type EntryFields, type EntryTimes } from "./entry";
 export { Icon, type IconKind } from "./icon";
 export { EntryId } from "./entry-id";
+export { openableUrl } from "./entry-url";
+export { FieldReferences, isFieldReference } from "./field-references";
 export { matchesSearchQuery } from "./entry-search";
 export { Group } from "./group";
 export { GroupId } from "./group-id";
-export { PASSPHRASE_WORDLIST } from "./passphrase-wordlist";
 export { Password } from "./password";
 export { generatePassword, type RandomInt } from "./password-generator";
 export {
@@ -33,16 +36,13 @@ export {
   type PasswordHealthReport,
   type PasswordStrength,
 } from "./password-health";
-export { MASTER_PASSWORD_MIN_LENGTH } from "./master-password";
-export { PasswordHealthPolicy, type PasswordHealthPolicyOptions } from "./password-health-policy";
 export {
-  PASSPHRASE_SEPARATORS,
-  PASSWORD_POLICY_MODES,
-  PasswordPolicy,
-  type PassphraseSeparator,
-  type PasswordPolicyMode,
-  type PasswordPolicyOptions,
-} from "./password-policy";
+  MASTER_PASSWORD_MIN_LENGTH,
+  unmetMasterPasswordRequirements,
+  type MasterPasswordRequirement,
+} from "./master-password";
+export { PasswordHealthPolicy, type PasswordHealthPolicyOptions } from "./password-health-policy";
+export { PasswordPolicy, type PasswordPolicyOptions } from "./password-policy";
 export { Tag } from "./tag";
 export { Tags } from "./tags";
 export { generateTotpCode, type Hmac, type TotpCode } from "./totp-code";

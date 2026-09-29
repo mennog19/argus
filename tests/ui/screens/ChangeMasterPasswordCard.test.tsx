@@ -56,19 +56,19 @@ describe("ChangeMasterPasswordCard", () => {
     expect(onChangeMasterPassword).not.toHaveBeenCalled();
   });
 
-  it("rejects a new password shorter than 12 characters", async () => {
+  it("rejects a new password missing a capital, a number, or a symbol, saying which", async () => {
     const user = userEvent.setup();
     const onChangeMasterPassword = vi.fn();
     render(<ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />);
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "elevenchars");
-    await user.type(screen.getByLabelText("Confirm new password"), "elevenchars");
+    await user.type(screen.getByLabelText("New password"), "all-lowercase");
+    await user.type(screen.getByLabelText("Confirm new password"), "all-lowercase");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(
-      await screen.findByText("New password must be at least 12 characters."),
+      await screen.findByText("New password needs a capital letter and a number."),
     ).toBeInTheDocument();
     expect(onChangeMasterPassword).not.toHaveBeenCalled();
   });
@@ -90,7 +90,7 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-password");
+    await user.type(screen.getByLabelText("New password"), "New-password1");
     await user.type(screen.getByLabelText("Confirm new password"), "different");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
@@ -105,11 +105,11 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-password");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.type(screen.getByLabelText("New password"), "New-password1");
+    await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
-    expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-password");
+    expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "New-password1");
     expect(await screen.findByText("Master password changed.")).toBeInTheDocument();
     expect(screen.getByText(/backups were re-encrypted/i)).toBeInTheDocument();
     expect(screen.getByText(/copies made outside Argus/i)).toBeInTheDocument();
@@ -128,8 +128,8 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-password");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.type(screen.getByLabelText("New password"), "New-password1");
+    await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(await screen.findByText(/2 backups couldn't be re-encrypted/i)).toBeInTheDocument();
@@ -148,8 +148,8 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-password");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.type(screen.getByLabelText("New password"), "New-password1");
+    await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(
@@ -166,8 +166,8 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "wrong-pw");
-    await user.type(screen.getByLabelText("New password"), "new-password");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.type(screen.getByLabelText("New password"), "New-password1");
+    await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(await screen.findByText("Current password is incorrect.")).toBeInTheDocument();
@@ -181,8 +181,8 @@ describe("ChangeMasterPasswordCard", () => {
 
     await reveal(user);
     await user.type(screen.getByLabelText("Current password"), "old-pw");
-    await user.type(screen.getByLabelText("New password"), "new-password");
-    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.type(screen.getByLabelText("New password"), "New-password1");
+    await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
     await user.click(screen.getByRole("button", { name: /change master password/i }));
 
     expect(await screen.findByText("boom")).toBeInTheDocument();

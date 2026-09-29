@@ -5,12 +5,34 @@ import { TauriAutoTyper } from "../../src/infrastructure/tauri-auto-typer";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 describe("TauriAutoTyper", () => {
-  it("returns the window the capture command reports", async () => {
-    const window = { title: "Sign in — Firefox", processName: "firefox.exe" };
+  it("returns the window the capture command reports, address included", async () => {
+    const window = {
+      title: "Sign in — Firefox",
+      processName: "firefox.exe",
+      isBrowser: true,
+      url: "https://github.com/login",
+    };
     vi.mocked(invoke).mockResolvedValue(window);
 
     expect(await new TauriAutoTyper().captureTarget()).toEqual(window);
     expect(invoke).toHaveBeenCalledWith("auto_type_capture_target");
+  });
+
+  it("leaves the address out when the command couldn't read one", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      title: "Untitled - Notepad",
+      processName: "notepad.exe",
+      isBrowser: false,
+      url: null,
+    });
+
+    const window = await new TauriAutoTyper().captureTarget();
+
+    expect(window).toStrictEqual({
+      title: "Untitled - Notepad",
+      processName: "notepad.exe",
+      isBrowser: false,
+    });
   });
 
   it("turns the command's null into undefined, matching the port", async () => {

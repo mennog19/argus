@@ -253,6 +253,35 @@ describe("parsePortableSettings", () => {
     },
   );
 
+  it("rejects a clipboard clear delay over 10 minutes, and says what the range is", () => {
+    const raw = rawOf();
+    (raw.security as Record<string, unknown>).clipboardClearSeconds = 601;
+
+    expect(() => importRaw(raw)).toThrow(
+      "Clipboard clear seconds must be a whole number from 1 to 600.",
+    );
+  });
+
+  it("rejects an idle timeout over 24 hours, and says what the range is", () => {
+    const raw = rawOf();
+    (raw.security as Record<string, unknown>).idleTimeoutMinutes = 1441;
+
+    expect(() => importRaw(raw)).toThrow(
+      "Lock-after-inactivity minutes must be a whole number from 1 to 1440.",
+    );
+  });
+
+  it("accepts the largest allowed clipboard delay and idle timeout", () => {
+    const raw = rawOf();
+    (raw.security as Record<string, unknown>).clipboardClearSeconds = 600;
+    (raw.security as Record<string, unknown>).idleTimeoutMinutes = 1440;
+
+    expect(importRaw(raw).security).toMatchObject({
+      clipboardClearSeconds: 600,
+      idleTimeoutMinutes: 1440,
+    });
+  });
+
   it.each([0, -1, 2.5, "30", null])("rejects a clipboard clear delay of %o", (seconds) => {
     const raw = rawOf();
     (raw.security as Record<string, unknown>).clipboardClearSeconds = seconds;

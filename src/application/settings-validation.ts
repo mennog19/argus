@@ -41,18 +41,30 @@ export function parseBoolean(value: unknown, label: string): boolean {
   return value;
 }
 
-export function positiveInteger(value: unknown, label: string): number {
+/** A whole number from 1 up to `max`, when there is one. */
+export function positiveInteger(value: unknown, label: string, max?: number): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
-    throw new SettingsImportError(`${label} must be a whole number of at least 1.`);
+    throw new SettingsImportError(
+      max === undefined
+        ? `${label} must be a whole number of at least 1.`
+        : `${label} must be a whole number from 1 to ${max}.`,
+    );
+  }
+  if (max !== undefined && value > max) {
+    throw new SettingsImportError(`${label} must be a whole number from 1 to ${max}.`);
   }
   return value;
 }
 
-export function optionalPositiveInteger(value: unknown, label: string): number | undefined {
+export function optionalPositiveInteger(
+  value: unknown,
+  label: string,
+  max?: number,
+): number | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
-  return positiveInteger(value, label);
+  return positiveInteger(value, label, max);
 }
 
 export function parseAccentColor(value: unknown): AccentColor {

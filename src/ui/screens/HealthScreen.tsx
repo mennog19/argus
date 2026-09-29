@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { checkPasswordHealth, Entry, Group, PasswordHealthPolicy } from "../../domain";
+import {
+  checkPasswordHealth,
+  Entry,
+  Group,
+  isFieldReference,
+  PasswordHealthPolicy,
+} from "../../domain";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
 import { EntryWithGroup } from "../vault-browsing";
 
@@ -103,7 +109,11 @@ function HealthOverview({
   );
 }
 
-export function HealthScreen({ entries, onSelectEntry }: HealthScreenProps) {
+export function HealthScreen({ entries: allEntries, onSelectEntry }: HealthScreenProps) {
+  // A `{REF:P@…}` password is another entry's password, not one of its own:
+  // it's judged once, on the entry it points at, rather than showing up here
+  // as "reused" every time something links to it.
+  const entries = allEntries.filter(({ entry }) => !isFieldReference(entry.password.reveal()));
   const groupByEntryId = new Map(entries.map(({ entry, group }) => [entry.id.toString(), group]));
   const report = checkPasswordHealth(
     entries.map(({ entry }) => entry),

@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
-import { MASTER_PASSWORD_MIN_LENGTH } from "../../domain";
 import { MasterPasswordChangeResult } from "../../application/vault-access-service";
+import { MASTER_PASSWORD_HINT, masterPasswordRuleError } from "../master-password-rules";
 import { useAsyncAction } from "../use-async-action";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
@@ -39,8 +39,9 @@ export function ChangeMasterPasswordCard({
       fail("New password is required.");
       return;
     }
-    if (newPassword.length < MASTER_PASSWORD_MIN_LENGTH) {
-      fail(`New password must be at least ${MASTER_PASSWORD_MIN_LENGTH} characters.`);
+    const ruleError = masterPasswordRuleError("New password", newPassword);
+    if (ruleError) {
+      fail(ruleError);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -110,7 +111,7 @@ export function ChangeMasterPasswordCard({
             className="field-input"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
-            placeholder={`At least ${MASTER_PASSWORD_MIN_LENGTH} characters`}
+            placeholder={MASTER_PASSWORD_HINT}
           />
           <PasswordStrengthMeter password={newPassword} />
         </div>

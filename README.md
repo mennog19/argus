@@ -15,7 +15,7 @@ Argus is currently **Windows-only** — auto-type relies on Win32 APIs with no c
 ### Installing
 
 1. Download the `.exe` or `.msi` from the release page.
-2. Run the installer. Argus is **not code-signed**, so Windows SmartScreen will show *"Windows protected your PC"*. This is expected for an unsigned indie app, not a sign of tampering — click **More info**, then **Run anyway** to continue.
+2. Run the installer. Argus is **not code-signed**, so Windows SmartScreen will show _"Windows protected your PC"_. This is expected for an unsigned indie app, not a sign of tampering — click **More info**, then **Run anyway** to continue.
 3. Follow the installer prompts. No admin rights or extra runtime installs are required on Windows 10/11 (the WebView2 runtime ships with the OS).
 
 ### Verifying your download
@@ -31,29 +31,47 @@ and compare the output against the matching `.sha256` value published with that 
 ## Features
 
 - **Vault management** — open, create, and save `.kdbx` files; edit groups, entries, and a recycle bin for soft-deleted items.
-- **Entries** — title, username, password, URL, notes, tags, and arbitrary custom fields (including protected/hidden ones), matching KeePass conventions.
+- **Entries** — title, username, password, URL, notes, tags, and arbitrary custom fields (including protected/hidden ones), matching KeePass conventions. URLs can be typed without a scheme (`github.com/login`); they open as https.
+- **Field references** — KeePass `{REF:…}` placeholders (such as the ones KeePassXC writes when you clone an entry with "reference username and password") are resolved when shown, copied, or auto-typed. The stored entry keeps the reference, so KeePass and KeePassXC still see it as a link.
 - **TOTP** — reads and generates time-based one-time codes stored using KeePassXC's TOTP conventions.
-- **Search** — full-text search across title, username, URL, notes, tags, and custom fields.
-- **Password generator** — configurable generation policy, with shared settings and a quick-generate action.
+- **Search** — full-text search across title, username, URL, notes, tags, and custom fields. Press **Ctrl+F** anywhere in an unlocked vault to jump to the search box.
+- **Password generator** — random-character passwords with a configurable length and character sets, shared settings, and a quick-generate action.
 - **Password health check** — local-only detection of reused, weak, and fair-strength passwords across the vault. No online breach checking, and nothing ever leaves your device to compute it.
-- **Auto-type** — an opt-in, off-by-default global hotkey that types a matching entry's credentials into whichever window is focused. Windows-only, and always confirmed through a picker that names the target window before anything is typed.
-- **Clipboard auto-clear** — copied passwords are cleared from the clipboard automatically after a timeout.
+- **Auto-type** — an opt-in, off-by-default global hotkey that types a matching entry's credentials into whichever window is focused. In a browser, entries are matched on the real address in the address bar rather than the page title. Windows-only, and always confirmed through a picker that names the target window before anything is typed.
+- **Clipboard auto-clear** — copied passwords are cleared from the clipboard automatically after a timeout of up to 10 minutes.
 - **Vault merge** — reconcile a vault that was edited from two places (e.g. after using it on two machines) with a guided merge wizard.
-- **Settings transfer** — export/import app settings independently of any vault.
+- **Settings transfer** — export/import app settings independently of any vault. An imported file can never turn screen-capture protection off; only you can, from the settings screen.
 
 ## KeePass / KeePassXC compatibility
 
-Argus targets full KDBX3/KDBX4.
+Argus targets full KDBX3/KDBX4 fidelity. It edits the original KDBX document in place rather than rebuilding it, so fields Argus doesn't show — attachments, custom icons, entry history, custom data — are written back untouched. TOTP secrets use KeePassXC's conventions, and `{REF:…}` field references are kept as references.
+
+Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lanes.
 
 ## Security model
 
-- **Local-only, always.** Argus has no accounts, no sync service, and sends no telemetry. The only network request the app can ever make is an explicit, user-triggered "check for updates" that opens the GitHub Releases page in your browser — nothing happens automatically or in the background.
-- **Master password and key files.** Vaults are unlocked with a master password, a KeePass/KeePassXC key file, or both. Argus remembers the *path* of the key file each recent vault was last unlocked with (never its contents). New vaults can optionally get a key file too, either generated in KeePassXC's format or an existing file of your choosing. There is no biometric unlock in v1.
+- **Local-only, always.** Argus has no accounts, no sync service, and sends no telemetry. The app makes no network requests of its own. Opening an entry's URL hands it to your default browser.
+- **Master password and key files.** Vaults are unlocked with a master password, a KeePass/KeePassXC key file, or both. A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they already have. Argus remembers the _path_ of the key file each recent vault was last unlocked with (never its contents). New vaults can optionally get a key file too, either generated in KeePassXC's format or an existing file of your choosing. There is no biometric unlock in v1.
 - **Memory protection.** The app window uses OS-level content protection, and KDBX-protected fields (passwords, protected custom fields) follow `kdbxweb`'s in-memory protection conventions rather than being held as plain strings.
 - **Clipboard handling.** Copying a password to the clipboard starts an auto-clear timer so the secret doesn't linger there indefinitely. The clear only happens if the clipboard still holds what Argus copied, so anything you copied since is left alone. A copied secret is also cleared when the vault closes or Argus quits, and on the next launch after a crash. On Windows, copies are kept out of clipboard history (Win+V) and cloud clipboard sync.
-- **Auto-type caveats.** Auto-type simulates keystrokes into whatever window has focus, driven by Windows UI Automation to find the right fields directly (falling back to a Tab-count sequence only when it can't). It is off by default, opt-in, and always shows a picker confirming the target window before typing anything — but by nature it trusts that the focused window is the one you intend, so use it deliberately, and be aware that any other process capable of reading keystrokes/UI Automation on your machine could observe it, same as with any auto-type feature.
+- **Crafted files.** A vault's key-derivation settings are stored unencrypted in its header, so a malicious `.kdbx` could ask for enough Argon2 work to freeze or crash the app. Argus refuses to open a file that asks for more than 1 GiB of memory, 1000 iterations, or 64 lanes.
+- **Saving.** Saves are atomic: the vault is written to a new, randomly named temporary file next to it (`.<vault>.<random>.tmp`), flushed to disk, then renamed over the original. The temporary file is created fresh and never follows a symlink, and it's removed if the save fails. If Argus is killed mid-save, one stray temporary file can be left behind; it is safe to delete.
+- **Auto-type caveats.** Auto-type simulates keystrokes into whatever window has focus, using Windows UI Automation to find the username and password fields. If it can't find them it types nothing. It is off by default, opt-in, and always shows a picker confirming the target window before typing anything.
+  - A web page chooses its own title, so a phishing page can call itself "github.com – Sign in". For Chrome, Edge, Brave, Vivaldi, Opera, Firefox and Firefox forks, Argus reads the address bar instead: an entry with a URL is only offered when its host matches the page's address (or the page is on a subdomain of it). The picker warns when a page's title names entries its address rules out, and the address is checked again right before typing.
+  - For other apps, and for a browser whose address bar can't be read, matching falls back to the window title. The picker marks those matches as "Title only" so you know to check the target yourself.
+  - Any other process that can read keystrokes or UI Automation on your machine could observe auto-type, as with any auto-type feature.
 - **Unsigned binaries.** Releases are not code-signed (see [Verifying your download](#verifying-your-download) for how to confirm integrity via checksums instead).
 - Argus has **not** had an independent third-party security audit yet.
+
+## Known limitations
+
+- **Windows only.** Auto-type and the clipboard protections use Win32 APIs.
+- **No updater yet.** New versions have to be downloaded from the Releases page by hand.
+- **Field references are read-only links.** Argus resolves `{REF:…}` placeholders but has no UI for creating them.
+- **AES-KDF isn't capped.** The key-derivation limits above cover Argon2 (KDBX4). A KDBX3 file using AES-KDF with a huge round count can still make unlocking very slow.
+- **No biometric unlock, no browser extension, no breach checking.**
+
+## Building from source
 
 ### 1. Install prerequisites
 
@@ -123,12 +141,7 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-End-to-end tests use Playwright against the Vite dev server. They need a browser downloaded once:
-
-```powershell
-pnpm exec playwright install chromium
-pnpm test:e2e
-```
+End-to-end tests (Playwright against the Vite dev server) are planned but not set up yet.
 
 ## Recommended IDE Setup
 

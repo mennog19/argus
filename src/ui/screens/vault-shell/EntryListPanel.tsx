@@ -1,4 +1,5 @@
-import { Entry } from "../../../domain";
+import { useEffect, useRef } from "react";
+import { Entry, FieldReferences } from "../../../domain";
 import { EntrySortId } from "../../../application/settings";
 import { ENTRY_DRAG_TYPE } from "../../entry-drag";
 import { EntryAvatar } from "../../entry-icons/EntryAvatar";
@@ -9,9 +10,17 @@ import { EntrySortMenu } from "../EntrySortMenu";
 interface EntryListPanelProps {
   heading: string | undefined;
   entries: readonly EntryWithGroup[];
+  /** Resolves `{REF:…}` in the title and username each row shows. */
+  references: FieldReferences;
   selectedEntryId: string | undefined;
   draggingEntryId: string | undefined;
   searchQuery: string;
+  /**
+   * Bumped by the shell each time Ctrl+F is pressed. Any value above 0 focuses
+   * the search box, on mount too, so pressing it from another view lands the
+   * caret in the box that view switches to.
+   */
+  searchFocusRequest: number;
   onSearchChange: (query: string) => void;
   entrySort: EntrySortId;
   onSortChange: (sort: EntrySortId) => void;
@@ -24,9 +33,11 @@ interface EntryListPanelProps {
 export function EntryListPanel({
   heading,
   entries,
+  references,
   selectedEntryId,
   draggingEntryId,
   searchQuery,
+  searchFocusRequest,
   onSearchChange,
   entrySort,
   onSortChange,
@@ -37,6 +48,14 @@ export function EntryListPanel({
 }: EntryListPanelProps) {
   const trimmedQuery = searchQuery.trim();
   const isSearching = trimmedQuery !== "";
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchFocusRequest > 0) {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }
+  }, [searchFocusRequest]);
 
   return (
     <div className="entry-list-panel">
@@ -49,6 +68,7 @@ export function EntryListPanel({
       <div className="entry-search">
         <SearchIcon size={14} />
         <input
+          ref={searchInputRef}
           type="text"
           className="entry-search-input"
           placeholder="Search entries…"
@@ -94,8 +114,10 @@ export function EntryListPanel({
             >
               <EntryAvatar entry={entry} />
               <div className="entry-row-text">
-                <div className="entry-row-title">{entry.title || "(untitled)"}</div>
-                <div className="entry-row-username">{entry.username}</div>
+                <div className="entry-row-title">
+                  {references.resolve(entry.title) || "(untitled)"}
+                </div>
+                <div className="entry-row-username">{references.resolve(entry.username)}</div>
               </div>
             </button>
           );

@@ -185,8 +185,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -229,7 +229,7 @@ describe("App", () => {
       />,
     );
 
-    await user.type(await screen.findByLabelText("Master password"), "hunter2-long");
+    await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -266,13 +266,13 @@ describe("App", () => {
       />,
     );
 
-    await user.type(await screen.findByLabelText("Master password"), "hunter2-long");
+    await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
     expect(vaultAccessService.openVaultAtPath).toHaveBeenCalledWith(
       "C:/vaults/a.kdbx",
-      "hunter2-long",
+      "Hunter2-long",
       "C:/keys/a.keyx",
     );
     expect(settingsStore.save).toHaveBeenCalledWith({
@@ -344,7 +344,7 @@ describe("App", () => {
       />,
     );
 
-    await user.type(await screen.findByLabelText("Master password"), "hunter2-long");
+    await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -412,8 +412,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -447,8 +447,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: /new entry/i }));
@@ -463,8 +463,8 @@ describe("App", () => {
     async function createVaultAndOpenSettings(user: ReturnType<typeof userEvent.setup>) {
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -500,16 +500,16 @@ describe("App", () => {
       );
 
       await createVaultAndOpenSettings(user);
-      await user.type(screen.getByLabelText("Current password"), "hunter2-long");
-      await user.type(screen.getByLabelText("New password"), "hunter3-long");
-      await user.type(screen.getByLabelText("Confirm new password"), "hunter3-long");
+      await user.type(screen.getByLabelText("Current password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("New password"), "Hunter3-long");
+      await user.type(screen.getByLabelText("Confirm new password"), "Hunter3-long");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
       expect(changeMasterPassword).toHaveBeenCalledWith(
         expect.anything(),
         "C:/vaults/personal.kdbx",
-        "hunter2-long",
-        "hunter3-long",
+        "Hunter2-long",
+        "Hunter3-long",
       );
       expect(await screen.findByText("Master password changed.")).toBeInTheDocument();
     });
@@ -543,9 +543,9 @@ describe("App", () => {
       );
 
       await createVaultAndOpenSettings(user);
-      await user.type(screen.getByLabelText("Current password"), "hunter2-long");
-      await user.type(screen.getByLabelText("New password"), "hunter3-long");
-      await user.type(screen.getByLabelText("Confirm new password"), "hunter3-long");
+      await user.type(screen.getByLabelText("Current password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("New password"), "Hunter3-long");
+      await user.type(screen.getByLabelText("Confirm new password"), "Hunter3-long");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
       // Nothing reached the file, so the card must not claim otherwise —
@@ -587,8 +587,8 @@ describe("App", () => {
 
       await createVaultAndOpenSettings(user);
       await user.type(screen.getByLabelText("Current password"), "wrong");
-      await user.type(screen.getByLabelText("New password"), "hunter3-long");
-      await user.type(screen.getByLabelText("Confirm new password"), "hunter3-long");
+      await user.type(screen.getByLabelText("New password"), "Hunter3-long");
+      await user.type(screen.getByLabelText("Confirm new password"), "Hunter3-long");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
       expect(await screen.findByText("Current password is incorrect.")).toBeInTheDocument();
@@ -626,9 +626,9 @@ describe("App", () => {
       );
 
       await createVaultAndOpenSettings(user);
-      await user.type(screen.getByLabelText("Current password"), "hunter2-long");
-      await user.type(screen.getByLabelText("New password"), "hunter3-long");
-      await user.type(screen.getByLabelText("Confirm new password"), "hunter3-long");
+      await user.type(screen.getByLabelText("Current password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("New password"), "Hunter3-long");
+      await user.type(screen.getByLabelText("Confirm new password"), "Hunter3-long");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
       expect(
@@ -664,15 +664,15 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Password generator" }));
-    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+    await user.click(screen.getByRole("checkbox", { name: /symbols/i }));
 
     expect(settingsStore.save).toHaveBeenCalledWith(
-      expect.objectContaining({ generatorPolicy: expect.objectContaining({ mode: "passphrase" }) }),
+      expect.objectContaining({ generatorPolicy: expect.objectContaining({ useSymbols: true }) }),
     );
   });
 
@@ -703,8 +703,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -744,12 +744,12 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Password generator" }));
-    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+    await user.click(screen.getByRole("checkbox", { name: /symbols/i }));
 
     expect(await screen.findByRole("heading", { name: "Password Generator" })).toBeInTheDocument();
   });
@@ -782,8 +782,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: /new entry/i }));
@@ -824,8 +824,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: /new entry/i }));
@@ -868,8 +868,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: /new entry/i }));
@@ -914,8 +914,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: /new entry/i }));
@@ -957,8 +957,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -996,8 +996,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -1037,8 +1037,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -1079,8 +1079,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -1119,8 +1119,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Sort entries (Vault order)" }));
@@ -1162,8 +1162,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByText("Mail"));
@@ -1203,8 +1203,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -1243,8 +1243,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -1286,8 +1286,8 @@ describe("App", () => {
 
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -1333,8 +1333,8 @@ describe("App", () => {
 
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -1384,8 +1384,8 @@ describe("App", () => {
 
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -1436,8 +1436,8 @@ describe("App", () => {
 
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -1489,8 +1489,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -1536,8 +1536,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: /create new vault/i }));
     await user.type(screen.getByLabelText("Vault name"), "Personal");
-    await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-    await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
@@ -1547,8 +1547,8 @@ describe("App", () => {
     async function openSettings(user: ReturnType<typeof userEvent.setup>) {
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
       await user.click(await screen.findByRole("button", { name: "Settings" }));
     }
@@ -1729,8 +1729,8 @@ describe("App", () => {
 
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
       await user.type(screen.getByLabelText("Vault name"), "Personal");
-      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
-      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
       await user.click(await screen.findByRole("button", { name: "Settings" }));
@@ -1791,6 +1791,33 @@ describe("App", () => {
         { kind: "submit" },
       ]);
       expect(screen.queryByRole("dialog", { name: "Auto-type" })).not.toBeInTheDocument();
+    });
+
+    it("matches and types a linked entry by the values its {REF:…} fields point at", async () => {
+      const user = userEvent.setup();
+      const githubRef = GITHUB.id.toString().replace(/-/g, "").toUpperCase();
+      const linked = Entry.create({
+        title: "Work login",
+        username: `{REF:U@I:${githubRef}}`,
+        url: `{REF:A@I:${githubRef}}`,
+      });
+      let vault = vaultWithGithub();
+      vault = vault.addEntry(vault.rootGroup.id, linked);
+      const autoTyper = fakeAutoTyper({
+        captureTarget: vi
+          .fn()
+          .mockResolvedValue({ title: "github.com — Firefox", processName: "firefox.exe" }),
+      });
+      const { globalHotkey } = await enableAutoType(user, { autoTyper, vault });
+      await pressHotkey(globalHotkey);
+
+      await user.click(await screen.findByRole("option", { name: /Work login/ }));
+
+      expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
+        { kind: "focus", field: "username" },
+        { kind: "text", text: "menno" },
+        { kind: "submit" },
+      ]);
     });
 
     it("closes the picker when it is cancelled", async () => {

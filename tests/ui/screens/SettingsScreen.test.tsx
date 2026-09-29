@@ -1,3 +1,4 @@
+import { SettingsImportResult } from "../../../src/application/settings-transfer-service";
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -44,7 +45,7 @@ function renderSettings(
     onOpenMergeWizard?: () => void;
     mergeError?: string;
     onExportSettings?: () => Promise<string | undefined>;
-    onImportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<SettingsImportResult | undefined>;
   } = {},
 ) {
   const onChangeMasterPassword =
@@ -174,6 +175,40 @@ describe("SettingsScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: /decrease clipboard clear seconds/i }));
 
     expect(onSettingChange).toHaveBeenLastCalledWith("clipboardClearSeconds", 1);
+  });
+
+  it("caps the clipboard clear delay at 10 minutes, typed or stepped", () => {
+    const { onSettingChange } = renderSettings({ clipboardClearSeconds: 600 });
+    const input = screen.getByLabelText(/clear clipboard after/i);
+    expect(input).toHaveAttribute("max", "600");
+
+    fireEvent.change(input, { target: { value: "86400" } });
+    expect(onSettingChange).toHaveBeenLastCalledWith("clipboardClearSeconds", 600);
+
+    fireEvent.click(screen.getByRole("button", { name: /increase clipboard clear seconds/i }));
+    expect(onSettingChange).toHaveBeenLastCalledWith("clipboardClearSeconds", 600);
+  });
+
+  it("caps the idle timeout at 24 hours, typed or stepped", () => {
+    const { onSettingChange } = renderSettings({
+      autoLock: { idleTimeoutMinutes: 1440, lockOnMinimize: false, lockOnSleep: false },
+    });
+    const input = screen.getByLabelText(/lock after inactivity/i);
+    expect(input).toHaveAttribute("max", "1440");
+
+    fireEvent.change(input, { target: { value: "100000" } });
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
+      expect.objectContaining({ idleTimeoutMinutes: 1440 }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /increase lock-after-inactivity minutes/i }),
+    );
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
+      expect.objectContaining({ idleTimeoutMinutes: 1440 }),
+    );
   });
 
   it("shows a blank idle timeout and unchecked toggles by default", () => {
@@ -362,11 +397,11 @@ describe("SettingsScreen", () => {
 
       await user.click(screen.getByRole("button", { name: /change master password/i }));
       await user.type(screen.getByLabelText("Current password"), "old-pw");
-      await user.type(screen.getByLabelText("New password"), "new-password");
-      await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+      await user.type(screen.getByLabelText("New password"), "New-password1");
+      await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
-      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-password");
+      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "New-password1");
     });
   });
 
