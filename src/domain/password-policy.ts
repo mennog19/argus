@@ -1,5 +1,8 @@
-export type PasswordPolicyMode = "characters" | "passphrase";
-export type PassphraseSeparator = "-" | "_" | " " | ".";
+export const PASSWORD_POLICY_MODES = ["characters", "passphrase"] as const;
+export type PasswordPolicyMode = (typeof PASSWORD_POLICY_MODES)[number];
+
+export const PASSPHRASE_SEPARATORS = ["-", "_", " ", "."] as const;
+export type PassphraseSeparator = (typeof PASSPHRASE_SEPARATORS)[number];
 
 export interface PasswordPolicyOptions {
   mode?: PasswordPolicyMode;

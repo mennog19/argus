@@ -115,7 +115,15 @@ export const DEFAULT_ENTRY_FIELD_VISIBILITY: EntryFieldVisibility = {
  * order stored in the `.kdbx` file and shown by KeePass/KeePassXC, in which a
  * newly added or moved entry lands at the end of its group.
  */
-export type EntrySortId = "manual" | "title-asc" | "title-desc" | "accessed-desc" | "accessed-asc";
+export const ENTRY_SORT_IDS = [
+  "manual",
+  "title-asc",
+  "title-desc",
+  "accessed-desc",
+  "accessed-asc",
+] as const;
+
+export type EntrySortId = (typeof ENTRY_SORT_IDS)[number];
 
 export const DEFAULT_ENTRY_SORT: EntrySortId = "manual";
 

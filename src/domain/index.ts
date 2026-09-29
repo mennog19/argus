@@ -36,6 +36,8 @@ export {
 export { MASTER_PASSWORD_MIN_LENGTH } from "./master-password";
 export { PasswordHealthPolicy, type PasswordHealthPolicyOptions } from "./password-health-policy";
 export {
+  PASSPHRASE_SEPARATORS,
+  PASSWORD_POLICY_MODES,
   PasswordPolicy,
   type PassphraseSeparator,
   type PasswordPolicyMode,
