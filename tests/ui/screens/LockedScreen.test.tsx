@@ -10,6 +10,7 @@ function fakeService(overrides: Partial<VaultAccessService> = {}): VaultAccessSe
     openExistingVault: vi.fn(),
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
+    pickKeyFile: vi.fn(),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -46,8 +47,65 @@ describe("LockedScreen", () => {
     await user.type(screen.getByLabelText("Master password"), "hunter2");
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
-    expect(service.openVaultAtPath).toHaveBeenCalledWith("C:/vaults/personal.kdbx", "hunter2");
-    expect(onUnlocked).toHaveBeenCalledWith(vault);
+    expect(service.openVaultAtPath).toHaveBeenCalledWith(
+      "C:/vaults/personal.kdbx",
+      "hunter2",
+      undefined,
+    );
+    expect(onUnlocked).toHaveBeenCalledWith(vault, undefined);
+  });
+
+  it("unlocks with the remembered key file and reports which one it used", async () => {
+    const user = userEvent.setup();
+    const vault = Vault.create("Mine");
+    const onUnlocked = vi.fn();
+    const service = fakeService({ openVaultAtPath: vi.fn().mockResolvedValue(vault) });
+
+    render(
+      <LockedScreen
+        filePath="C:/vaults/personal.kdbx"
+        initialKeyFilePath="C:/keys/personal.keyx"
+        vaultAccessService={service}
+        onUnlocked={onUnlocked}
+        onChooseDifferentVault={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Key file: personal.keyx")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Master password"), "hunter2{Enter}");
+
+    expect(service.openVaultAtPath).toHaveBeenCalledWith(
+      "C:/vaults/personal.kdbx",
+      "hunter2",
+      "C:/keys/personal.keyx",
+    );
+    expect(onUnlocked).toHaveBeenCalledWith(vault, "C:/keys/personal.keyx");
+  });
+
+  it("unlocks with a key file chosen on the spot", async () => {
+    const user = userEvent.setup();
+    const service = fakeService({
+      pickKeyFile: vi.fn().mockResolvedValue("C:/keys/personal.keyx"),
+      openVaultAtPath: vi.fn().mockResolvedValue(Vault.create("Mine")),
+    });
+
+    render(
+      <LockedScreen
+        filePath="C:/vaults/personal.kdbx"
+        vaultAccessService={service}
+        onUnlocked={vi.fn()}
+        onChooseDifferentVault={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Use a key file…" }));
+    await user.click(screen.getByRole("button", { name: "Unlock" }));
+
+    expect(service.openVaultAtPath).toHaveBeenCalledWith(
+      "C:/vaults/personal.kdbx",
+      "",
+      "C:/keys/personal.keyx",
+    );
   });
 
   it("unlocks when Enter is pressed in the password field", async () => {
@@ -67,7 +125,7 @@ describe("LockedScreen", () => {
 
     await user.type(screen.getByLabelText("Master password"), "hunter2{Enter}");
 
-    expect(onUnlocked).toHaveBeenCalledWith(vault);
+    expect(onUnlocked).toHaveBeenCalledWith(vault, undefined);
   });
 
   it("does not unlock on other key presses", async () => {

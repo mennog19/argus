@@ -81,4 +81,30 @@ describe("TauriVaultFileDialog", () => {
       expect(await dialog.pickPathForNewVault("Vault")).toBeUndefined();
     });
   });
+
+  describe("pickKeyFile", () => {
+    it("resolves the chosen path, offering key-file extensions but allowing any file", async () => {
+      vi.mocked(open).mockResolvedValue("C:/keys/mine.keyx");
+      const dialog = new TauriVaultFileDialog();
+
+      const result = await dialog.pickKeyFile();
+
+      expect(result).toBe("C:/keys/mine.keyx");
+      expect(open).toHaveBeenCalledWith({
+        filters: [
+          { name: "Key File", extensions: ["keyx", "key"] },
+          { name: "All Files", extensions: ["*"] },
+        ],
+        multiple: false,
+        directory: false,
+      });
+    });
+
+    it("resolves undefined when the dialog is cancelled", async () => {
+      vi.mocked(open).mockResolvedValue(null);
+      const dialog = new TauriVaultFileDialog();
+
+      expect(await dialog.pickKeyFile()).toBeUndefined();
+    });
+  });
 });

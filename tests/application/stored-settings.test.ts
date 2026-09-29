@@ -79,6 +79,19 @@ describe("parseStoredSettings", () => {
     expect(result.recentVaults).toEqual([good, good]);
   });
 
+  it("keeps a recent vault's key file path, dropping one that isn't a string", () => {
+    const good = { path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" };
+
+    const result = parse({
+      recentVaults: [
+        { ...good, keyFilePath: "C:/keys/a.keyx" },
+        { ...good, keyFilePath: 7 },
+      ],
+    });
+
+    expect(result.recentVaults).toStrictEqual([{ ...good, keyFilePath: "C:/keys/a.keyx" }, good]);
+  });
+
   it("drops malformed fields while keeping the valid ones", () => {
     const result = parse({
       ...FULL_SETTINGS,

@@ -6,11 +6,13 @@ import { VaultMergeSource } from "../../../src/application/vault-merge-source";
 import { MergeUnlockDialog } from "../../../src/ui/screens/MergeUnlockDialog";
 
 const FILE_PATH = "C:/vaults/other.kdbx";
+const KEY_FILE_PATH = "C:/keys/other.keyx";
 
 function renderDialog(overrides: Partial<VaultMergeSource> = {}) {
   const sourceVault = Vault.create("Theirs");
   const mergeSource: VaultMergeSource = {
     pickFile: vi.fn().mockResolvedValue(FILE_PATH),
+    pickKeyFile: vi.fn().mockResolvedValue(KEY_FILE_PATH),
     openFile: vi.fn().mockResolvedValue(sourceVault),
     ...overrides,
   };
@@ -43,8 +45,19 @@ describe("MergeUnlockDialog", () => {
     await user.type(screen.getByLabelText("Its master password"), "hunter2");
     await user.click(screen.getByRole("button", { name: /unlock & compare/i }));
 
-    expect(mergeSource.openFile).toHaveBeenCalledWith(FILE_PATH, "hunter2");
+    expect(mergeSource.openFile).toHaveBeenCalledWith(FILE_PATH, "hunter2", undefined);
     await vi.waitFor(() => expect(onUnlocked).toHaveBeenCalledWith(sourceVault));
+  });
+
+  it("opens the picked file with a key file too, when one is chosen", async () => {
+    const user = userEvent.setup();
+    const { mergeSource } = renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "Use a key file…" }));
+    await user.type(screen.getByLabelText("Its master password"), "hunter2");
+    await user.click(screen.getByRole("button", { name: /unlock & compare/i }));
+
+    expect(mergeSource.openFile).toHaveBeenCalledWith(FILE_PATH, "hunter2", KEY_FILE_PATH);
   });
 
   it("reports a failure to open the file and stays open", async () => {

@@ -5,6 +5,7 @@ import { MASTER_PASSWORD_MIN_LENGTH } from "../../domain";
 import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename, formatRelativeTime } from "../format";
+import { KeyFileField } from "./KeyFileField";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 interface WelcomeScreenProps {
@@ -25,6 +26,7 @@ export function WelcomeScreen({
   const [mode, setMode] = useState<Mode>("idle");
   const { busy, error, run, fail, clearError } = useAsyncAction();
   const [openPassword, setOpenPassword] = useState("");
+  const [openKeyFilePath, setOpenKeyFilePath] = useState<string | undefined>(undefined);
   const [createName, setCreateName] = useState("");
   const [createPassword, setCreatePassword] = useState("");
   const [createConfirmPassword, setCreateConfirmPassword] = useState("");
@@ -33,6 +35,7 @@ export function WelcomeScreen({
     setMode("idle");
     clearError();
     setOpenPassword("");
+    setOpenKeyFilePath(undefined);
     setCreateName("");
     setCreatePassword("");
     setCreateConfirmPassword("");
@@ -43,7 +46,7 @@ export function WelcomeScreen({
     await run(async () => {
       // Undefined means the user cancelled the file dialog — nothing opened,
       // nothing to report.
-      const opened = await vaultAccessService.openExistingVault(openPassword);
+      const opened = await vaultAccessService.openExistingVault(openPassword, openKeyFilePath);
       if (opened) {
         onOpened(opened);
       }
@@ -111,6 +114,12 @@ export function WelcomeScreen({
               placeholder="Master password"
             />
           </div>
+          <KeyFileField
+            keyFilePath={openKeyFilePath}
+            onPick={() => vaultAccessService.pickKeyFile()}
+            onChange={setOpenKeyFilePath}
+            disabled={busy}
+          />
           {error && <div className="field-error">{error}</div>}
           <button type="submit" className="btn-primary" disabled={busy}>
             Choose file & Unlock

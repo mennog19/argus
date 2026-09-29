@@ -6,7 +6,7 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 
 ## Should fix
 
-- [ ] **Key files aren't supported.** Vaults protected with a KeePass/KeePassXC key file can't be opened. Either support them or say so clearly in the README and in the error message.
+- [x] **Key files aren't supported.** Vaults protected with a KeePass/KeePassXC key file can't be opened. Either support them or say so clearly in the README and in the error message.
 
 ## Release engineering
 

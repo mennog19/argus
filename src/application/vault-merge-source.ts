@@ -17,6 +17,8 @@ export interface VaultMergeSource {
    * cancels instead of throwing, mirroring `VaultAccessService.openExistingVault`.
    */
   pickFile(): Promise<string | undefined>;
-  /** Reads and decrypts `filePath`. Throws if the password is wrong. */
-  openFile(filePath: string, masterPassword: string): Promise<Vault>;
+  /** Prompts for the file's key file, if it needs one. `undefined` on cancel. */
+  pickKeyFile(): Promise<string | undefined>;
+  /** Reads and decrypts `filePath`. Throws if the password or key file is wrong. */
+  openFile(filePath: string, masterPassword: string, keyFilePath?: string): Promise<Vault>;
 }

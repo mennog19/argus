@@ -33,12 +33,30 @@ async function createFixtureBytes(): Promise<ArrayBuffer> {
   return db.save();
 }
 
+/**
+ * A vault keyed the way KeePassXC keys one with a key file: `password` null
+ * means key-file-only, with no password part in the composite key at all.
+ */
+async function createKeyFileFixtureBytes(
+  password: string | null,
+  keyFile: Uint8Array,
+): Promise<ArrayBuffer> {
+  configureKdbxCrypto();
+  const passwordPart = password === null ? null : ProtectedValue.fromString(password);
+  return Kdbx.create(new Credentials(passwordPart, keyFile), "Key File Vault").save();
+}
+
+/** A standalone copy, the way `FileStorage.readFile` hands file contents over. */
+function bufferOf(bytes: Uint8Array): ArrayBuffer {
+  return bytes.slice().buffer;
+}
+
 describe("KdbxVaultRepository", () => {
   it("opens a real kdbx4/argon2 file and maps its contents", async () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
 
-    const session = await repository.openVault(bytes, MASTER_PASSWORD);
+    const session = await repository.openVault(bytes, { password: MASTER_PASSWORD });
 
     expect(session.vault.name).toBe("Fixture Vault");
     expect(session.vault.rootGroup.entries.map((e) => e.title).sort()).toEqual([
@@ -53,7 +71,7 @@ describe("KdbxVaultRepository", () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
 
-    await expect(repository.openVault(bytes, "wrong password")).rejects.toThrow(
+    await expect(repository.openVault(bytes, { password: "wrong password" })).rejects.toThrow(
       "Incorrect password",
     );
   });
@@ -62,7 +80,7 @@ describe("KdbxVaultRepository", () => {
     const notAVault = new TextEncoder().encode("not a kdbx file").buffer;
     const repository = new KdbxVaultRepository();
 
-    const failure = repository.openVault(notAVault, MASTER_PASSWORD);
+    const failure = repository.openVault(notAVault, { password: MASTER_PASSWORD });
 
     await expect(failure).rejects.toThrow();
     await expect(failure).rejects.not.toThrow("Incorrect password");
@@ -71,7 +89,7 @@ describe("KdbxVaultRepository", () => {
   it("round-trips edits while preserving untouched fields the domain model doesn't expose", async () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
-    const session = await repository.openVault(bytes, MASTER_PASSWORD);
+    const session = await repository.openVault(bytes, { password: MASTER_PASSWORD });
 
     const willChange = session.vault.rootGroup.entries.find((e) => e.title === "Will Change")!;
 
@@ -83,7 +101,9 @@ describe("KdbxVaultRepository", () => {
 
     const savedBytes = await session.save(updatedVault);
 
-    const reopened = (await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD)).vault;
+    const reopened = (
+      await new KdbxVaultRepository().openVault(savedBytes, { password: MASTER_PASSWORD })
+    ).vault;
 
     const reopenedUntouched = reopened.rootGroup.entries.find((e) => e.title === "Untouched Site")!;
     expect(reopenedUntouched.username).toBe("someone");
@@ -108,7 +128,7 @@ describe("KdbxVaultRepository", () => {
 
   it("round-trips an emptied recycle bin without the deleted items remaining in the saved file", async () => {
     const bytes = await createFixtureBytes();
-    const session = await new KdbxVaultRepository().openVault(bytes, MASTER_PASSWORD);
+    const session = await new KdbxVaultRepository().openVault(bytes, { password: MASTER_PASSWORD });
 
     const willChange = session.vault.rootGroup.entries.find((e) => e.title === "Will Change")!;
     const subGroup = session.vault.rootGroup.groups.find((g) => g.name === "Sub Group")!;
@@ -116,12 +136,15 @@ describe("KdbxVaultRepository", () => {
       session.vault.deleteEntry(willChange.id).deleteGroup(subGroup.id),
     );
 
-    const binnedSession = await new KdbxVaultRepository().openVault(binnedBytes, MASTER_PASSWORD);
+    const binnedSession = await new KdbxVaultRepository().openVault(binnedBytes, {
+      password: MASTER_PASSWORD,
+    });
     expect(binnedSession.vault.recycleBin?.entries.map((e) => e.title)).toEqual(["Will Change"]);
     const emptiedBytes = await binnedSession.save(binnedSession.vault.emptyRecycleBin());
 
-    const reopened = (await new KdbxVaultRepository().openVault(emptiedBytes, MASTER_PASSWORD))
-      .vault;
+    const reopened = (
+      await new KdbxVaultRepository().openVault(emptiedBytes, { password: MASTER_PASSWORD })
+    ).vault;
     expect(reopened.recycleBin?.entries).toEqual([]);
     expect(reopened.recycleBin?.groups).toEqual([]);
 
@@ -146,7 +169,9 @@ describe("KdbxVaultRepository", () => {
     expect(session.vault.rootGroup.entries).toEqual([]);
 
     const savedBytes = await session.save(session.vault);
-    const reopened = (await new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD)).vault;
+    const reopened = (
+      await new KdbxVaultRepository().openVault(savedBytes, { password: MASTER_PASSWORD })
+    ).vault;
     expect(reopened.name).toBe("Brand New Vault");
   });
 
@@ -170,16 +195,16 @@ describe("KdbxVaultRepository", () => {
     it("re-keys the vault so it can only be reopened with the new password", async () => {
       const bytes = await createFixtureBytes();
       const repository = new KdbxVaultRepository();
-      const session = await repository.openVault(bytes, MASTER_PASSWORD);
+      const session = await repository.openVault(bytes, { password: MASTER_PASSWORD });
 
       await session.changeMasterPassword(MASTER_PASSWORD, "new master password");
       const savedBytes = await session.save(session.vault);
 
       await expect(
-        new KdbxVaultRepository().openVault(savedBytes, MASTER_PASSWORD),
+        new KdbxVaultRepository().openVault(savedBytes, { password: MASTER_PASSWORD }),
       ).rejects.toThrow();
       const reopened = (
-        await new KdbxVaultRepository().openVault(savedBytes, "new master password")
+        await new KdbxVaultRepository().openVault(savedBytes, { password: "new master password" })
       ).vault;
       expect(reopened.name).toBe("Fixture Vault");
     });
@@ -187,7 +212,7 @@ describe("KdbxVaultRepository", () => {
     it("rejects with IncorrectMasterPasswordError when the current password is wrong", async () => {
       const bytes = await createFixtureBytes();
       const repository = new KdbxVaultRepository();
-      const session = await repository.openVault(bytes, MASTER_PASSWORD);
+      const session = await repository.openVault(bytes, { password: MASTER_PASSWORD });
 
       await expect(
         session.changeMasterPassword("wrong password", "new master password"),
@@ -201,15 +226,16 @@ describe("KdbxVaultRepository", () => {
 
       const rekeyed = await new KdbxVaultRepository().rekeyFile(
         bytes,
-        MASTER_PASSWORD,
+        { password: MASTER_PASSWORD },
         "new master password",
       );
 
-      await expect(new KdbxVaultRepository().openVault(rekeyed, MASTER_PASSWORD)).rejects.toThrow(
-        "Incorrect password",
-      );
-      const reopened = (await new KdbxVaultRepository().openVault(rekeyed, "new master password"))
-        .vault;
+      await expect(
+        new KdbxVaultRepository().openVault(rekeyed, { password: MASTER_PASSWORD }),
+      ).rejects.toThrow("Incorrect password");
+      const reopened = (
+        await new KdbxVaultRepository().openVault(rekeyed, { password: "new master password" })
+      ).vault;
       expect(reopened.name).toBe("Fixture Vault");
       expect(reopened.rootGroup.entries.map((e) => e.title).sort()).toEqual([
         "Untouched Site",
@@ -221,8 +247,150 @@ describe("KdbxVaultRepository", () => {
       const bytes = await createFixtureBytes();
 
       await expect(
-        new KdbxVaultRepository().rekeyFile(bytes, "wrong password", "new master password"),
+        new KdbxVaultRepository().rekeyFile(
+          bytes,
+          { password: "wrong password" },
+          "new master password",
+        ),
       ).rejects.toThrow("Incorrect password");
+    });
+
+    it("keeps the key file part of the key, replacing only the password", async () => {
+      const keyFile = await Credentials.createRandomKeyFile(2);
+      const bytes = await createKeyFileFixtureBytes(MASTER_PASSWORD, keyFile);
+
+      const rekeyed = await new KdbxVaultRepository().rekeyFile(
+        bytes,
+        { password: MASTER_PASSWORD, keyFile: bufferOf(keyFile) },
+        "new master password",
+      );
+
+      await expect(
+        new KdbxVaultRepository().openVault(rekeyed, { password: "new master password" }),
+      ).rejects.toThrow("Incorrect password");
+      const reopened = await new KdbxVaultRepository().openVault(rekeyed, {
+        password: "new master password",
+        keyFile: bufferOf(keyFile),
+      });
+      expect(reopened.vault.name).toBe("Key File Vault");
+    });
+  });
+
+  describe("key files", () => {
+    it("opens a vault that needs both a password and a KeePassXC-style XML key file", async () => {
+      const keyFile = await Credentials.createRandomKeyFile(2);
+      const bytes = await createKeyFileFixtureBytes(MASTER_PASSWORD, keyFile);
+
+      const session = await new KdbxVaultRepository().openVault(bytes, {
+        password: MASTER_PASSWORD,
+        keyFile: bufferOf(keyFile),
+      });
+
+      expect(session.vault.name).toBe("Key File Vault");
+    });
+
+    it("opens a vault whose key file is an arbitrary file rather than a key-file format", async () => {
+      const keyFile = new TextEncoder().encode("a photo, a PDF, anything at all");
+      const bytes = await createKeyFileFixtureBytes(MASTER_PASSWORD, keyFile);
+
+      const session = await new KdbxVaultRepository().openVault(bytes, {
+        password: MASTER_PASSWORD,
+        keyFile: bufferOf(keyFile),
+      });
+
+      expect(session.vault.name).toBe("Key File Vault");
+    });
+
+    it("opens a key-file-only vault when the password is left empty", async () => {
+      const keyFile = await Credentials.createRandomKeyFile(2);
+      const bytes = await createKeyFileFixtureBytes(null, keyFile);
+
+      const session = await new KdbxVaultRepository().openVault(bytes, {
+        password: "",
+        keyFile: bufferOf(keyFile),
+      });
+
+      expect(session.vault.name).toBe("Key File Vault");
+    });
+
+    it("hints at a key file when a vault that needs one is opened without it", async () => {
+      const keyFile = await Credentials.createRandomKeyFile(2);
+      const bytes = await createKeyFileFixtureBytes(MASTER_PASSWORD, keyFile);
+
+      await expect(
+        new KdbxVaultRepository().openVault(bytes, { password: MASTER_PASSWORD }),
+      ).rejects.toThrow("Incorrect password. If this vault uses a key file, choose it as well.");
+    });
+
+    it("blames the password or key file when the wrong key file is given", async () => {
+      const bytes = await createKeyFileFixtureBytes(
+        MASTER_PASSWORD,
+        await Credentials.createRandomKeyFile(2),
+      );
+      const otherKeyFile = await Credentials.createRandomKeyFile(2);
+
+      await expect(
+        new KdbxVaultRepository().openVault(bytes, {
+          password: MASTER_PASSWORD,
+          keyFile: bufferOf(otherKeyFile),
+        }),
+      ).rejects.toThrow("Incorrect password or key file.");
+    });
+
+    it("rejects a key file that claims a key-file format but is malformed", async () => {
+      const bytes = await createFixtureBytes();
+      const malformed = new TextEncoder().encode(
+        "<KeyFile><Meta><Version>9.0</Version></Meta><Key><Data>AA==</Data></Key></KeyFile>",
+      );
+
+      await expect(
+        new KdbxVaultRepository().openVault(bytes, {
+          password: MASTER_PASSWORD,
+          keyFile: bufferOf(malformed),
+        }),
+      ).rejects.toThrow("That key file couldn't be read. Is it the right file?");
+    });
+
+    it("keeps the key file when the master password changes", async () => {
+      const keyFile = await Credentials.createRandomKeyFile(2);
+      const bytes = await createKeyFileFixtureBytes(MASTER_PASSWORD, keyFile);
+      const session = await new KdbxVaultRepository().openVault(bytes, {
+        password: MASTER_PASSWORD,
+        keyFile: bufferOf(keyFile),
+      });
+
+      await session.changeMasterPassword(MASTER_PASSWORD, "new master password");
+      const savedBytes = await session.save(session.vault);
+
+      await expect(
+        new KdbxVaultRepository().openVault(savedBytes, { password: "new master password" }),
+      ).rejects.toThrow("Incorrect password");
+      const reopened = await new KdbxVaultRepository().openVault(savedBytes, {
+        password: "new master password",
+        keyFile: bufferOf(keyFile),
+      });
+      expect(reopened.vault.name).toBe("Key File Vault");
+    });
+
+    it("treats a key-file-only vault's current password as the empty one", async () => {
+      const keyFile = await Credentials.createRandomKeyFile(2);
+      const bytes = await createKeyFileFixtureBytes(null, keyFile);
+      const session = await new KdbxVaultRepository().openVault(bytes, {
+        password: "",
+        keyFile: bufferOf(keyFile),
+      });
+
+      await expect(session.changeMasterPassword("anything", "new master password")).rejects.toThrow(
+        "Current password is incorrect.",
+      );
+      await session.changeMasterPassword("", "new master password");
+      const savedBytes = await session.save(session.vault);
+
+      const reopened = await new KdbxVaultRepository().openVault(savedBytes, {
+        password: "new master password",
+        keyFile: bufferOf(keyFile),
+      });
+      expect(reopened.vault.name).toBe("Key File Vault");
     });
   });
 });

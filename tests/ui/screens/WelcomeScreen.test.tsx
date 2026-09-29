@@ -11,6 +11,7 @@ function fakeService(overrides: Partial<VaultAccessService> = {}): VaultAccessSe
     openExistingVault: vi.fn(),
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
+    pickKeyFile: vi.fn(),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -72,8 +73,52 @@ describe("WelcomeScreen", () => {
       await user.type(screen.getByLabelText("Master password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose file & unlock/i }));
 
-      expect(service.openExistingVault).toHaveBeenCalledWith("hunter2-long");
+      expect(service.openExistingVault).toHaveBeenCalledWith("hunter2-long", undefined);
       expect(onOpened).toHaveBeenCalledWith(opened);
+    });
+
+    it("opens the vault with a key file when one is chosen", async () => {
+      const user = userEvent.setup();
+      const service = fakeService({
+        pickKeyFile: vi.fn().mockResolvedValue("C:/keys/mine.keyx"),
+        openExistingVault: vi.fn().mockResolvedValue(undefined),
+      });
+
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={service}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /open existing vault/i }));
+      await user.click(screen.getByRole("button", { name: "Use a key file…" }));
+      await user.click(screen.getByRole("button", { name: /choose file & unlock/i }));
+
+      expect(service.openExistingVault).toHaveBeenCalledWith("", "C:/keys/mine.keyx");
+    });
+
+    it("forgets the chosen key file on Back", async () => {
+      const user = userEvent.setup();
+      const service = fakeService({ pickKeyFile: vi.fn().mockResolvedValue("C:/keys/mine.keyx") });
+
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={service}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /open existing vault/i }));
+      await user.click(screen.getByRole("button", { name: "Use a key file…" }));
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      await user.click(screen.getByRole("button", { name: /open existing vault/i }));
+
+      expect(screen.queryByText("Key file: mine.keyx")).not.toBeInTheDocument();
     });
 
     it("does nothing when the user cancels the file dialog", async () => {

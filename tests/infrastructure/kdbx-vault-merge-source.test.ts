@@ -8,10 +8,10 @@ import { KdbxVaultMergeSource } from "../../src/infrastructure/kdbx-vault-merge-
 
 const MASTER_PASSWORD = "correct horse battery staple";
 
-async function createFixtureBytes(): Promise<ArrayBuffer> {
+async function createFixtureBytes(keyFile?: Uint8Array): Promise<ArrayBuffer> {
   configureKdbxCrypto();
   const db = Kdbx.create(
-    new Credentials(ProtectedValue.fromString(MASTER_PASSWORD)),
+    new Credentials(ProtectedValue.fromString(MASTER_PASSWORD), keyFile),
     "Source Vault",
   );
   const entry = db.createEntry(db.getDefaultGroup());
@@ -23,6 +23,7 @@ function fakeDialog(overrides: Partial<VaultFileDialog> = {}): VaultFileDialog {
   return {
     pickVaultToOpen: vi.fn(),
     pickPathForNewVault: vi.fn(),
+    pickKeyFile: vi.fn(),
     ...overrides,
   };
 }
@@ -60,6 +61,13 @@ describe("KdbxVaultMergeSource", () => {
     expect(await source.pickFile()).toBe("C:/vaults/other.kdbx");
   });
 
+  it("returns the chosen key file path from the key file dialog", async () => {
+    const dialog = fakeDialog({ pickKeyFile: vi.fn().mockResolvedValue("C:/keys/other.keyx") });
+    const source = new KdbxVaultMergeSource(dialog, fakeFileStorage());
+
+    expect(await source.pickKeyFile()).toBe("C:/keys/other.keyx");
+  });
+
   it("reads and decrypts the given file", async () => {
     const bytes = await createFixtureBytes();
     const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(bytes) });
@@ -70,6 +78,28 @@ describe("KdbxVaultMergeSource", () => {
     expect(fileStorage.readFile).toHaveBeenCalledWith("C:/vaults/other.kdbx");
     expect(vault.name).toBe("Source Vault");
     expect(vault.rootGroup.entries[0]?.title).toBe("Imported Site");
+  });
+
+  it("reads the key file too when one is given, and unlocks with it", async () => {
+    const keyFile = await Credentials.createRandomKeyFile(2);
+    const bytes = await createFixtureBytes(keyFile);
+    const files: Record<string, ArrayBuffer> = {
+      "C:/vaults/other.kdbx": bytes,
+      "C:/keys/other.keyx": keyFile.slice().buffer,
+    };
+    const fileStorage = fakeFileStorage({
+      readFile: vi.fn((path: string) => Promise.resolve(files[path])),
+    });
+    const source = new KdbxVaultMergeSource(fakeDialog(), fileStorage);
+
+    const vault = await source.openFile(
+      "C:/vaults/other.kdbx",
+      MASTER_PASSWORD,
+      "C:/keys/other.keyx",
+    );
+
+    expect(fileStorage.readFile).toHaveBeenCalledWith("C:/keys/other.keyx");
+    expect(vault.name).toBe("Source Vault");
   });
 
   it("propagates a wrong-password rejection instead of returning a vault", async () => {

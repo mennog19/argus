@@ -21,7 +21,7 @@ describe("recordVaultOpened", () => {
   it("adds a path to an empty list", () => {
     const openedAt = new Date("2026-01-01T00:00:00.000Z");
 
-    const result = recordVaultOpened(DEFAULT_SETTINGS, "C:/vaults/a.kdbx", openedAt);
+    const result = recordVaultOpened(DEFAULT_SETTINGS, { path: "C:/vaults/a.kdbx" }, openedAt);
 
     expect(result.recentVaults).toEqual([
       { path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" },
@@ -37,7 +37,7 @@ describe("recordVaultOpened", () => {
     };
     const openedAt = new Date("2026-01-02T00:00:00.000Z");
 
-    const result = recordVaultOpened(settings, "C:/vaults/b.kdbx", openedAt);
+    const result = recordVaultOpened(settings, { path: "C:/vaults/b.kdbx" }, openedAt);
 
     expect(result.recentVaults).toEqual([
       { path: "C:/vaults/b.kdbx", lastOpenedAt: "2026-01-02T00:00:00.000Z" },
@@ -55,7 +55,7 @@ describe("recordVaultOpened", () => {
 
     const result = recordVaultOpened(
       settings,
-      "C:/vaults/c.kdbx",
+      { path: "C:/vaults/c.kdbx" },
       new Date("2026-01-04T00:00:00.000Z"),
       2,
     );
@@ -66,8 +66,42 @@ describe("recordVaultOpened", () => {
     ]);
   });
 
+  it("remembers the key file a vault was unlocked with", () => {
+    const openedAt = new Date("2026-01-01T00:00:00.000Z");
+
+    const result = recordVaultOpened(
+      DEFAULT_SETTINGS,
+      { path: "C:/vaults/a.kdbx", keyFilePath: "C:/keys/a.keyx" },
+      openedAt,
+    );
+
+    expect(result.recentVaults).toEqual([
+      {
+        path: "C:/vaults/a.kdbx",
+        lastOpenedAt: "2026-01-01T00:00:00.000Z",
+        keyFilePath: "C:/keys/a.keyx",
+      },
+    ]);
+  });
+
+  it("forgets a vault's key file once it's unlocked without one", () => {
+    const settings: AppSettings = {
+      recentVaults: [
+        {
+          path: "C:/vaults/a.kdbx",
+          lastOpenedAt: "2026-01-01T00:00:00.000Z",
+          keyFilePath: "C:/keys/a.keyx",
+        },
+      ],
+    };
+
+    const result = recordVaultOpened(settings, { path: "C:/vaults/a.kdbx" });
+
+    expect(result.recentVaults[0]).not.toHaveProperty("keyFilePath");
+  });
+
   it("defaults openedAt to now and maxEntries to 5 when not provided", () => {
-    const result = recordVaultOpened(DEFAULT_SETTINGS, "C:/vaults/a.kdbx");
+    const result = recordVaultOpened(DEFAULT_SETTINGS, { path: "C:/vaults/a.kdbx" });
 
     expect(result.recentVaults).toHaveLength(1);
     expect(new Date(result.recentVaults[0].lastOpenedAt).getTime()).not.toBeNaN();

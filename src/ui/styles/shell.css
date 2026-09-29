@@ -427,6 +427,25 @@ input[type="radio"]:checked::after {
   text-decoration: underline;
 }
 
+.key-file-choose {
+  align-self: flex-start;
+}
+
+.key-file-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.key-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .recent-vaults {
   display: flex;
   flex-direction: column;

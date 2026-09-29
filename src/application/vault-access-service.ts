@@ -1,11 +1,13 @@
 import { Vault } from "../domain";
 import { FileStorage } from "./file-storage";
 import { VaultFileDialog } from "./vault-file-dialog";
-import { VaultRepository, VaultSession } from "./vault-repository";
+import { VaultKey, VaultRepository, VaultSession } from "./vault-repository";
 
 export interface OpenedVault {
   vault: Vault;
   filePath: string;
+  /** The key file it was unlocked with, if any. */
+  keyFilePath?: string;
 }
 
 export interface VaultFileInfo {
@@ -54,6 +56,11 @@ export class VaultAccessService {
   private readonly lastKnownMtime = new Map<string, number>();
   /** The vault currently open, if any. Argus shows one vault at a time. */
   private session: VaultSession | undefined;
+  /**
+   * The key file the open vault was unlocked with, if it has one. Kept for
+   * re-keying its backups, which need the same key file to open.
+   */
+  private keyFile: ArrayBuffer | undefined;
 
   constructor(
     private readonly repository: VaultRepository,
@@ -61,16 +68,23 @@ export class VaultAccessService {
     private readonly fileStorage: FileStorage,
   ) {}
 
-  async openExistingVault(masterPassword: string): Promise<OpenedVault | undefined> {
+  /** Prompts for a key file. Resolves to `undefined` when the user cancels. */
+  pickKeyFile(): Promise<string | undefined> {
+    return this.dialog.pickKeyFile();
+  }
+
+  /** `keyFilePath` is for vaults that need a key file as well as (or instead of) a password. */
+  async openExistingVault(
+    masterPassword: string,
+    keyFilePath?: string,
+  ): Promise<OpenedVault | undefined> {
     const filePath = await this.dialog.pickVaultToOpen();
     if (!filePath) {
       return undefined;
     }
 
-    const fileBytes = await this.fileStorage.readFile(filePath);
-    this.session = await this.repository.openVault(fileBytes, masterPassword);
-    await this.rememberMtime(filePath);
-    return { vault: this.session.vault, filePath };
+    const vault = await this.unlock(filePath, masterPassword, keyFilePath);
+    return { vault, filePath, keyFilePath };
   }
 
   async createNewVault(name: string, masterPassword: string): Promise<OpenedVault | undefined> {
@@ -83,6 +97,7 @@ export class VaultAccessService {
     const fileBytes = await session.save(session.vault);
     await this.fileStorage.writeFile(filePath, fileBytes);
     this.session = session;
+    this.keyFile = undefined;
     await this.rememberMtime(filePath);
     return { vault: session.vault, filePath };
   }
@@ -91,11 +106,38 @@ export class VaultAccessService {
    * Re-opens a previously-opened vault at a known path without prompting the
    * file dialog again, for unlocking a remembered/recent vault.
    */
-  async openVaultAtPath(filePath: string, masterPassword: string): Promise<Vault> {
+  openVaultAtPath(filePath: string, masterPassword: string, keyFilePath?: string): Promise<Vault> {
+    return this.unlock(filePath, masterPassword, keyFilePath);
+  }
+
+  private async unlock(
+    filePath: string,
+    masterPassword: string,
+    keyFilePath: string | undefined,
+  ): Promise<Vault> {
     const fileBytes = await this.fileStorage.readFile(filePath);
-    this.session = await this.repository.openVault(fileBytes, masterPassword);
+    const keyFile = keyFilePath === undefined ? undefined : await this.readKeyFile(keyFilePath);
+    this.session = await this.repository.openVault(fileBytes, {
+      password: masterPassword,
+      keyFile,
+    });
+    this.keyFile = keyFile;
     await this.rememberMtime(filePath);
     return this.session.vault;
+  }
+
+  /**
+   * A remembered key file can have been moved or deleted since, and the raw
+   * filesystem error for that says nothing about which file it was.
+   */
+  private async readKeyFile(keyFilePath: string): Promise<ArrayBuffer> {
+    try {
+      return await this.fileStorage.readFile(keyFilePath);
+    } catch (cause) {
+      throw new Error(`Couldn't read the key file at ${keyFilePath}. Choose it again.`, {
+        cause,
+      });
+    }
   }
 
   /**
@@ -106,6 +148,7 @@ export class VaultAccessService {
    */
   closeVault(): void {
     this.session = undefined;
+    this.keyFile = undefined;
   }
 
   /**
@@ -198,6 +241,7 @@ export class VaultAccessService {
     newMasterPassword: string,
   ): Promise<MasterPasswordChangeResult> {
     const result: MasterPasswordChangeResult = { removedBackups: [], unprotectedBackups: [] };
+    const currentKey: VaultKey = { password: currentMasterPassword, keyFile: this.keyFile };
     for (const suffix of BACKUP_SUFFIXES) {
       const backupPath = filePath + suffix;
       try {
@@ -212,11 +256,7 @@ export class VaultAccessService {
 
       try {
         const oldBytes = await this.fileStorage.readFile(backupPath);
-        const newBytes = await this.repository.rekeyFile(
-          oldBytes,
-          currentMasterPassword,
-          newMasterPassword,
-        );
+        const newBytes = await this.repository.rekeyFile(oldBytes, currentKey, newMasterPassword);
         await this.fileStorage.writeFile(backupPath, newBytes);
       } catch {
         try {

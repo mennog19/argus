@@ -4,6 +4,7 @@ import {
   ConfigurableSetting,
   DEFAULT_SETTINGS,
   EffectiveSettings,
+  OpenedVaultLocation,
   recordVaultOpened,
   resolveSettings,
   SettingsStore,
@@ -25,8 +26,8 @@ export interface AppSettingsState {
    * the user was doing.
    */
   readonly changeSetting: SettingChangeHandler;
-  /** Moves `filePath` to the top of the recent-vaults list; also best-effort. */
-  readonly recordVaultOpened: (filePath: string) => Promise<void>;
+  /** Moves the vault to the top of the recent-vaults list; also best-effort. */
+  readonly recordVaultOpened: (opened: OpenedVaultLocation) => Promise<void>;
   readonly exportSettings: () => Promise<string | undefined>;
   /**
    * Persists the imported settings before applying them, so a failed write
@@ -82,7 +83,7 @@ export function useAppSettings(
     settings,
     effective,
     changeSetting,
-    recordVaultOpened: (filePath) => saveBestEffort(recordVaultOpened(settings, filePath)),
+    recordVaultOpened: (opened) => saveBestEffort(recordVaultOpened(settings, opened)),
     exportSettings: () => transfer.exportSettings(settings),
     importSettings: async () => {
       const imported = await transfer.importSettings(settings);

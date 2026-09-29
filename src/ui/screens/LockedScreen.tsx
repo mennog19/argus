@@ -5,27 +5,33 @@ import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename } from "../format";
 import { EyeIcon, EyeOffIcon } from "../icons";
+import { KeyFileField } from "./KeyFileField";
 
 interface LockedScreenProps {
   filePath: string;
+  /** The key file this vault was last unlocked with, pre-selected if any. */
+  initialKeyFilePath?: string;
   vaultAccessService: VaultAccessService;
-  onUnlocked: (vault: Vault) => void;
+  onUnlocked: (vault: Vault, keyFilePath: string | undefined) => void;
   onChooseDifferentVault: () => void;
 }
 
 export function LockedScreen({
   filePath,
+  initialKeyFilePath,
   vaultAccessService,
   onUnlocked,
   onChooseDifferentVault,
 }: LockedScreenProps) {
   const [password, setPassword] = useState("");
+  const [keyFilePath, setKeyFilePath] = useState(initialKeyFilePath);
   const [revealed, setRevealed] = useState(false);
   const { busy, error, run } = useAsyncAction();
 
   async function handleUnlock() {
     await run(async () => {
-      onUnlocked(await vaultAccessService.openVaultAtPath(filePath, password));
+      const vault = await vaultAccessService.openVaultAtPath(filePath, password, keyFilePath);
+      onUnlocked(vault, keyFilePath);
     }, "Failed to unlock vault.");
   }
 
@@ -64,6 +70,12 @@ export function LockedScreen({
             {revealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
           </button>
         </div>
+        <KeyFileField
+          keyFilePath={keyFilePath}
+          onPick={() => vaultAccessService.pickKeyFile()}
+          onChange={setKeyFilePath}
+          disabled={busy}
+        />
         {error && <div className="field-error">{error}</div>}
         <button
           type="button"
