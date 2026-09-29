@@ -5,6 +5,8 @@ import {
   EntryFieldVisibility,
   GROUP_DELETE_MODES,
   GroupDeleteMode,
+  MAX_CLIPBOARD_CLEAR_SECONDS,
+  MAX_IDLE_TIMEOUT_MINUTES,
   resolveSettings,
   THEMES,
   Theme,
@@ -156,12 +158,14 @@ export function parsePortableSettings(text: string): PortableSettings {
       idleTimeoutMinutes: optionalPositiveInteger(
         security.idleTimeoutMinutes,
         "Lock-after-inactivity minutes",
+        MAX_IDLE_TIMEOUT_MINUTES,
       ),
       lockOnMinimize: parseBoolean(security.lockOnMinimize, "Lock when minimized"),
       lockOnSleep: parseBoolean(security.lockOnSleep, "Lock when the system sleeps"),
       clipboardClearSeconds: positiveInteger(
         security.clipboardClearSeconds,
         "Clipboard clear seconds",
+        MAX_CLIPBOARD_CLEAR_SECONDS,
       ),
       contentProtection: parseBoolean(security.contentProtection, "Screen-capture protection"),
     },

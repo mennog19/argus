@@ -1,3 +1,4 @@
+import { SettingsImportResult } from "../../../src/application/settings-transfer-service";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,7 +7,7 @@ import { SettingsTransferCard } from "../../../src/ui/screens/SettingsTransferCa
 function renderCard(
   overrides: {
     onExportSettings?: () => Promise<string | undefined>;
-    onImportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<SettingsImportResult | undefined>;
   } = {},
 ) {
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
@@ -41,7 +42,10 @@ describe("SettingsTransferCard", () => {
   it("imports and names the file it read", async () => {
     const user = userEvent.setup();
     const { onImportSettings } = renderCard({
-      onImportSettings: vi.fn().mockResolvedValue("C:/share/from-a-friend.json"),
+      onImportSettings: vi.fn().mockResolvedValue({
+        filePath: "C:/share/from-a-friend.json",
+        keptContentProtection: false,
+      }),
     });
 
     await user.click(importButton());
@@ -49,6 +53,25 @@ describe("SettingsTransferCard", () => {
     expect(onImportSettings).toHaveBeenCalled();
     expect(
       await screen.findByText("Settings imported from from-a-friend.json."),
+    ).toBeInTheDocument();
+  });
+
+  it("says when screen-capture protection was kept on despite the file", async () => {
+    const user = userEvent.setup();
+    renderCard({
+      onImportSettings: vi.fn().mockResolvedValue({
+        filePath: "C:/share/from-a-friend.json",
+        keptContentProtection: true,
+      }),
+    });
+
+    await user.click(importButton());
+
+    expect(
+      await screen.findByText(
+        "Settings imported from from-a-friend.json. The file turns screen-capture protection " +
+          "off, so that was left on. Switch it off under Security if you meant to.",
+      ),
     ).toBeInTheDocument();
   });
 

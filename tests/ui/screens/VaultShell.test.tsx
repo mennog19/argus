@@ -1,3 +1,4 @@
+import { SettingsImportResult } from "../../../src/application/settings-transfer-service";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -87,7 +88,7 @@ function renderShell(
     entryFieldVisibility?: EntryFieldVisibility;
     entrySort?: EntrySortId;
     onExportSettings?: () => Promise<string | undefined>;
-    onImportSettings?: () => Promise<string | undefined>;
+    onImportSettings?: () => Promise<SettingsImportResult | undefined>;
     onVaultChange?: (vault: Vault) => void;
     mergeSource?: VaultMergeSource;
   } = {},

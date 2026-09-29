@@ -6,6 +6,8 @@ import {
   DEFAULT_SETTINGS,
   ENTRY_SORT_IDS,
   GROUP_DELETE_MODES,
+  MAX_CLIPBOARD_CLEAR_SECONDS,
+  MAX_IDLE_TIMEOUT_MINUTES,
   RecentVaultEntry,
   THEMES,
 } from "./settings";
@@ -44,7 +46,7 @@ export function parseStoredSettings(text: string): AppSettings {
     recentVaults: parseRecentVaults(raw.recentVaults),
     generatorPolicy: lenient(raw.generatorPolicy, parseGeneratorPolicy),
     clipboardClearSeconds: lenient(raw.clipboardClearSeconds, (value) =>
-      positiveInteger(value, "clipboardClearSeconds"),
+      positiveInteger(value, "clipboardClearSeconds", MAX_CLIPBOARD_CLEAR_SECONDS),
     ),
     autoLock: lenient(raw.autoLock, parseAutoLock),
     autoType: lenient(raw.autoType, parseAutoType),
@@ -96,7 +98,11 @@ function parseAutoLock(value: unknown): AutoLockSettings {
     throw new SettingsImportError("autoLock is malformed.");
   }
   return {
-    idleTimeoutMinutes: optionalPositiveInteger(value.idleTimeoutMinutes, "idleTimeoutMinutes"),
+    idleTimeoutMinutes: optionalPositiveInteger(
+      value.idleTimeoutMinutes,
+      "idleTimeoutMinutes",
+      MAX_IDLE_TIMEOUT_MINUTES,
+    ),
     lockOnMinimize: parseBoolean(value.lockOnMinimize, "lockOnMinimize"),
     lockOnSleep: parseBoolean(value.lockOnSleep, "lockOnSleep"),
   };
@@ -124,7 +130,8 @@ function parseGeneratorPolicy(value: unknown): PasswordPolicyOptions {
     useLowercase: field("useLowercase", (flag) => parseBoolean(flag, "useLowercase")),
     useDigits: field("useDigits", (flag) => parseBoolean(flag, "useDigits")),
     useSymbols: field("useSymbols", (flag) => parseBoolean(flag, "useSymbols")),
-    excludeAmbiguous: field("excludeAmbiguous", (flag) => parseBoolean(flag, "excludeAmbiguous")),  };
+    excludeAmbiguous: field("excludeAmbiguous", (flag) => parseBoolean(flag, "excludeAmbiguous")),
+  };
   // Individually valid fields can still combine into a policy the generator
   // refuses (e.g. every character set turned off); this throws for those.
   new PasswordPolicy(options);

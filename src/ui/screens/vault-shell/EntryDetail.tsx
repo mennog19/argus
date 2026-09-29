@@ -44,10 +44,7 @@ export function EntryDetail({
   onDelete,
 }: EntryDetailProps) {
   const { entry: storedEntry, group } = entryWithGroup;
-  const entry = useMemo(
-    () => references.resolveEntry(storedEntry),
-    [references, storedEntry],
-  );
+  const entry = useMemo(() => references.resolveEntry(storedEntry), [references, storedEntry]);
   const totpConfig = useMemo(() => totpConfigFromCustomFields(entry.customFields), [entry]);
   // The raw TOTP fields have their own card above; only hide them from the
   // generic list once they've actually been parsed into a usable config, so

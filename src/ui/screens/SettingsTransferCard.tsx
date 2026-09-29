@@ -1,12 +1,21 @@
 import { useState } from "react";
+import { SettingsImportResult } from "../../application/settings-transfer-service";
 import { useAsyncAction } from "../use-async-action";
 import { basename } from "../format";
 
 interface SettingsTransferCardProps {
   /** Resolves to the file written, or `undefined` if the user cancelled. */
   onExportSettings: () => Promise<string | undefined>;
-  /** Resolves to the file read, or `undefined` if the user cancelled. */
-  onImportSettings: () => Promise<string | undefined>;
+  /** Resolves to what was imported, or `undefined` if the user cancelled. */
+  onImportSettings: () => Promise<SettingsImportResult | undefined>;
+}
+
+function importedMessage({ filePath, keptContentProtection }: SettingsImportResult): string {
+  const imported = `Settings imported from ${basename(filePath)}.`;
+  return keptContentProtection
+    ? `${imported} The file turns screen-capture protection off, so that was left on. ` +
+        "Switch it off under Security if you meant to."
+    : imported;
 }
 
 export function SettingsTransferCard({
@@ -16,18 +25,18 @@ export function SettingsTransferCard({
   const [status, setStatus] = useState<string | undefined>(undefined);
   const { busy, error, run: runAction } = useAsyncAction();
 
-  async function run(
-    transfer: () => Promise<string | undefined>,
-    succeeded: (filePath: string) => string,
+  async function run<T>(
+    transfer: () => Promise<T | undefined>,
+    succeeded: (result: T) => string,
     failed: string,
   ) {
     setStatus(undefined);
     await runAction(async () => {
       // Undefined means the user cancelled the file dialog, which is neither
       // a success to report nor a failure to explain.
-      const filePath = await transfer();
-      if (filePath) {
-        setStatus(succeeded(filePath));
+      const result = await transfer();
+      if (result) {
+        setStatus(succeeded(result));
       }
     }, failed);
   }
@@ -58,13 +67,7 @@ export function SettingsTransferCard({
           type="button"
           className="btn-secondary"
           disabled={busy}
-          onClick={() =>
-            void run(
-              onImportSettings,
-              (filePath) => `Settings imported from ${basename(filePath)}.`,
-              "Failed to import settings.",
-            )
-          }
+          onClick={() => void run(onImportSettings, importedMessage, "Failed to import settings.")}
         >
           Import settings…
         </button>

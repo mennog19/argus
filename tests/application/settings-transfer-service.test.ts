@@ -94,6 +94,50 @@ describe("SettingsTransferService", () => {
       expect(fileStorage.readFile).toHaveBeenCalledWith("C:/share/from-a-friend.json");
     });
 
+    it("never lets a file turn screen-capture protection off, and says it kept it on", async () => {
+      const text = serializePortableSettings(
+        toPortableSettings({ ...SETTINGS, contentProtection: false }),
+      );
+      const dialog = fakeDialog({
+        pickFileToImport: vi.fn().mockResolvedValue("C:/share/from-a-friend.json"),
+      });
+      const service = new SettingsTransferService(
+        dialog,
+        fakeFileStorage({ readFile: vi.fn().mockResolvedValue(bytesOf(text)) }),
+      );
+
+      const imported = await service.importSettings(DEFAULT_SETTINGS);
+
+      expect(imported?.settings.contentProtection).toBe(true);
+      expect(imported?.settings.theme).toBe("light");
+      expect(imported?.keptContentProtection).toBe(true);
+    });
+
+    it.each([
+      ["already off here", false, false],
+      ["turned on by the file", false, true],
+      ["left on by the file", true, true],
+    ])("applies the file's protection setting when it is %s", async (_label, current, fromFile) => {
+      const text = serializePortableSettings(
+        toPortableSettings({ ...SETTINGS, contentProtection: fromFile }),
+      );
+      const dialog = fakeDialog({
+        pickFileToImport: vi.fn().mockResolvedValue("C:/share/from-a-friend.json"),
+      });
+      const service = new SettingsTransferService(
+        dialog,
+        fakeFileStorage({ readFile: vi.fn().mockResolvedValue(bytesOf(text)) }),
+      );
+
+      const imported = await service.importSettings({
+        ...DEFAULT_SETTINGS,
+        contentProtection: current,
+      });
+
+      expect(imported?.settings.contentProtection).toBe(fromFile);
+      expect(imported?.keptContentProtection).toBe(false);
+    });
+
     it("keeps the importing machine's own recent vaults", async () => {
       const text = serializePortableSettings(toPortableSettings(SETTINGS));
       const dialog = fakeDialog({

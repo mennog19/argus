@@ -1,4 +1,8 @@
-import { AutoLockSettings } from "../../../application/settings";
+import {
+  AutoLockSettings,
+  MAX_CLIPBOARD_CLEAR_SECONDS,
+  MAX_IDLE_TIMEOUT_MINUTES,
+} from "../../../application/settings";
 import { NumberStepperField } from "./NumberStepperField";
 import { SettingChangeHandler } from "../../setting-change";
 
@@ -9,9 +13,10 @@ interface SecuritySectionProps {
   onSettingChange: SettingChangeHandler;
 }
 
-function parsePositiveInteger(raw: string): number | undefined {
+/** A typed whole number of at least 1, capped at `max` rather than rejected above it. */
+function parsePositiveInteger(raw: string, max: number): number | undefined {
   const value = Number(raw);
-  return Number.isInteger(value) && value >= 1 ? value : undefined;
+  return Number.isInteger(value) && value >= 1 ? Math.min(value, max) : undefined;
 }
 
 export function SecuritySection({
@@ -29,7 +34,7 @@ export function SecuritySection({
       updateAutoLock({ idleTimeoutMinutes: undefined });
       return;
     }
-    const minutes = parsePositiveInteger(raw);
+    const minutes = parsePositiveInteger(raw, MAX_IDLE_TIMEOUT_MINUTES);
     if (minutes !== undefined) {
       updateAutoLock({ idleTimeoutMinutes: minutes });
     }
@@ -39,7 +44,9 @@ export function SecuritySection({
   function stepIdleTimeout(direction: 1 | -1) {
     const current = autoLock.idleTimeoutMinutes;
     if (direction === 1) {
-      updateAutoLock({ idleTimeoutMinutes: (current ?? 0) + 1 });
+      updateAutoLock({
+        idleTimeoutMinutes: Math.min((current ?? 0) + 1, MAX_IDLE_TIMEOUT_MINUTES),
+      });
       return;
     }
     if (current === undefined) {
@@ -49,7 +56,7 @@ export function SecuritySection({
   }
 
   function inputClipboardClearSeconds(raw: string) {
-    const seconds = parsePositiveInteger(raw);
+    const seconds = parsePositiveInteger(raw, MAX_CLIPBOARD_CLEAR_SECONDS);
     if (seconds !== undefined) {
       onSettingChange("clipboardClearSeconds", seconds);
     }
@@ -63,6 +70,7 @@ export function SecuritySection({
           id="settings-idle-timeout"
           label="Lock after inactivity (minutes, blank = never)"
           value={autoLock.idleTimeoutMinutes}
+          max={MAX_IDLE_TIMEOUT_MINUTES}
           increaseLabel="Increase lock-after-inactivity minutes"
           decreaseLabel="Decrease lock-after-inactivity minutes"
           onInput={inputIdleTimeout}
@@ -72,11 +80,15 @@ export function SecuritySection({
           id="settings-clipboard-clear-seconds"
           label="Clear clipboard after (seconds)"
           value={clipboardClearSeconds}
+          max={MAX_CLIPBOARD_CLEAR_SECONDS}
           increaseLabel="Increase clipboard clear seconds"
           decreaseLabel="Decrease clipboard clear seconds"
           onInput={inputClipboardClearSeconds}
           onStep={(direction) =>
-            onSettingChange("clipboardClearSeconds", Math.max(1, clipboardClearSeconds + direction))
+            onSettingChange(
+              "clipboardClearSeconds",
+              Math.min(MAX_CLIPBOARD_CLEAR_SECONDS, Math.max(1, clipboardClearSeconds + direction)),
+            )
           }
         />
         <label className="detail-field-row" htmlFor="settings-lock-minimize">

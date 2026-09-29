@@ -3,6 +3,7 @@ import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
 import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
+import { SettingsImportResult } from "../../application/settings-transfer-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { useClipboardCopy } from "../use-clipboard-copy";
@@ -52,7 +53,7 @@ interface VaultShellProps {
     newPassword: string,
   ) => Promise<MasterPasswordChangeResult>;
   onExportSettings: () => Promise<string | undefined>;
-  onImportSettings: () => Promise<string | undefined>;
+  onImportSettings: () => Promise<SettingsImportResult | undefined>;
   /** Replaces the in-memory vault without writing the file — used for the
    * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
   onVaultChange: (vault: Vault) => void;

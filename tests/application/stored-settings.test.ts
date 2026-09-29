@@ -109,6 +109,11 @@ describe("parseStoredSettings", () => {
     });
   });
 
+  it("drops a clipboard clear delay over 10 minutes", () => {
+    expect(parse({ clipboardClearSeconds: 601 }).clipboardClearSeconds).toBeUndefined();
+    expect(parse({ clipboardClearSeconds: 600 }).clipboardClearSeconds).toBe(600);
+  });
+
   describe("autoLock", () => {
     it("accepts a missing or null idle timeout as disabled", () => {
       expect(parse({ autoLock: { lockOnMinimize: false, lockOnSleep: true } }).autoLock).toEqual({
@@ -124,6 +129,10 @@ describe("parseStoredSettings", () => {
     it.each([
       ["a non-object", true],
       ["a bad idle timeout", { idleTimeoutMinutes: 1.5, lockOnMinimize: true, lockOnSleep: true }],
+      [
+        "an idle timeout over 24 hours",
+        { idleTimeoutMinutes: 1441, lockOnMinimize: true, lockOnSleep: true },
+      ],
       ["a missing flag", { lockOnMinimize: true }],
     ])("drops %s", (_label, autoLock) => {
       expect(parse({ autoLock }).autoLock).toBeUndefined();
