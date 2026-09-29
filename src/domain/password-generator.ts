@@ -1,4 +1,3 @@
-import { PASSPHRASE_WORDLIST } from "./passphrase-wordlist";
 import { Password } from "./password";
 import { PasswordPolicy } from "./password-policy";
 
@@ -30,14 +29,6 @@ export function generatePassword(
   policy: PasswordPolicy,
   randomInt: RandomInt = cryptoRandomInt,
 ): Password {
-  const value =
-    policy.mode === "passphrase"
-      ? generatePassphrase(policy, randomInt)
-      : generateCharacterPassword(policy, randomInt);
-  return new Password(value);
-}
-
-function generateCharacterPassword(policy: PasswordPolicy, randomInt: RandomInt): string {
   const pools = policy.characterPools();
   const combinedPool = pools.join("");
   const chars: string[] = [];
@@ -54,15 +45,7 @@ function generateCharacterPassword(policy: PasswordPolicy, randomInt: RandomInt)
     chars.push(combinedPool[randomInt(combinedPool.length)]);
   }
 
-  return shuffle(chars, randomInt).join("");
-}
-
-function generatePassphrase(policy: PasswordPolicy, randomInt: RandomInt): string {
-  const words = Array.from(
-    { length: policy.wordCount },
-    () => PASSPHRASE_WORDLIST[randomInt(PASSPHRASE_WORDLIST.length)],
-  );
-  return words.join(policy.separator);
+  return new Password(shuffle(chars, randomInt).join(""));
 }
 
 function shuffle(items: readonly string[], randomInt: RandomInt): string[] {

@@ -5,15 +5,12 @@ import { parseStoredSettings } from "../../src/application/stored-settings";
 const FULL_SETTINGS: AppSettings = {
   recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
   generatorPolicy: {
-    mode: "passphrase",
     length: 24,
     useUppercase: true,
     useLowercase: true,
     useDigits: false,
     useSymbols: true,
     excludeAmbiguous: true,
-    wordCount: 6,
-    separator: ".",
   },
   clipboardClearSeconds: 45,
   autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: true, lockOnSleep: false },
@@ -149,13 +146,16 @@ describe("parseStoredSettings", () => {
       expect(parse({ generatorPolicy: { length: 32 } }).generatorPolicy).toEqual({ length: 32 });
     });
 
+    it("ignores the passphrase keys an older build saved, keeping the rest of the policy", () => {
+      const generatorPolicy = { mode: "passphrase", wordCount: 6, separator: ".", length: 20 };
+
+      expect(parse({ generatorPolicy }).generatorPolicy).toEqual({ length: 20 });
+    });
+
     it.each([
       ["a non-object", "strong"],
-      ["an unknown mode", { mode: "emoji" }],
       ["a bad length", { length: -1 }],
       ["a non-boolean character-set flag", { useDigits: "no" }],
-      ["a bad word count", { mode: "passphrase", wordCount: 0 }],
-      ["an unknown separator", { separator: "+" }],
       [
         "a policy with every character set off",
         { useUppercase: false, useLowercase: false, useDigits: false, useSymbols: false },

@@ -5,20 +5,12 @@ describe("PasswordPolicy", () => {
   it("defaults to a 16-character policy using upper/lower/digits", () => {
     const policy = new PasswordPolicy();
 
-    expect(policy.mode).toBe("characters");
     expect(policy.length).toBe(16);
     expect(policy.useUppercase).toBe(true);
     expect(policy.useLowercase).toBe(true);
     expect(policy.useDigits).toBe(true);
     expect(policy.useSymbols).toBe(false);
     expect(policy.excludeAmbiguous).toBe(false);
-  });
-
-  it("defaults passphrase settings to 4 words joined with a hyphen", () => {
-    const policy = new PasswordPolicy({ mode: "passphrase" });
-
-    expect(policy.wordCount).toBe(4);
-    expect(policy.separator).toBe("-");
   });
 
   it("accepts explicit overrides", () => {
@@ -35,12 +27,12 @@ describe("PasswordPolicy", () => {
     expect(policy.excludeAmbiguous).toBe(true);
   });
 
-  it("rejects a non-positive length in character mode", () => {
+  it("rejects a non-positive length", () => {
     expect(() => new PasswordPolicy({ length: 0 })).toThrow("length must be a positive integer");
     expect(() => new PasswordPolicy({ length: -5 })).toThrow("length must be a positive integer");
   });
 
-  it("rejects a fractional length in character mode", () => {
+  it("rejects a fractional length", () => {
     expect(() => new PasswordPolicy({ length: 8.5 })).toThrow("length must be a positive integer");
   });
 
@@ -54,32 +46,6 @@ describe("PasswordPolicy", () => {
           useSymbols: false,
         }),
     ).toThrow("At least one character set must be enabled");
-  });
-
-  it("rejects a non-positive word count in passphrase mode", () => {
-    expect(() => new PasswordPolicy({ mode: "passphrase", wordCount: 0 })).toThrow(
-      "wordCount must be a positive integer",
-    );
-  });
-
-  it("rejects a fractional word count in passphrase mode", () => {
-    expect(() => new PasswordPolicy({ mode: "passphrase", wordCount: 2.5 })).toThrow(
-      "wordCount must be a positive integer",
-    );
-  });
-
-  it("does not validate character-set/length rules in passphrase mode", () => {
-    expect(
-      () =>
-        new PasswordPolicy({
-          mode: "passphrase",
-          length: 0,
-          useUppercase: false,
-          useLowercase: false,
-          useDigits: false,
-          useSymbols: false,
-        }),
-    ).not.toThrow();
   });
 
   describe("characterPools", () => {
@@ -117,12 +83,6 @@ describe("PasswordPolicy", () => {
       expect(digits).not.toContain("0");
       expect(digits).not.toContain("1");
       expect(symbols).toBe("!@#$%^&*()-_=+[]{}<>?");
-    });
-
-    it("returns an empty array in passphrase mode", () => {
-      const policy = new PasswordPolicy({ mode: "passphrase" });
-
-      expect(policy.characterPools()).toEqual([]);
     });
   });
 });

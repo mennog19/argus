@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { ClipboardWriter } from "../../application/clipboard";
-import {
-  generatePassword,
-  PassphraseSeparator,
-  PasswordPolicy,
-  PasswordPolicyMode,
-  PasswordPolicyOptions,
-} from "../../domain";
+import { generatePassword, PasswordPolicy, PasswordPolicyOptions } from "../../domain";
 import { CopyIcon, RefreshIcon } from "../icons";
 
 interface GeneratorScreenProps {
@@ -17,13 +11,6 @@ interface GeneratorScreenProps {
 
 /** How long the "Copied" confirmation stays up next to the button. */
 const COPIED_LABEL_MS = 1500;
-
-const SEPARATORS: readonly { value: PassphraseSeparator; label: string }[] = [
-  { value: "-", label: "Hyphen (-)" },
-  { value: "_", label: "Underscore (_)" },
-  { value: " ", label: "Space" },
-  { value: ".", label: "Period (.)" },
-];
 
 export function GeneratorScreen({
   policyOptions,
@@ -41,7 +28,7 @@ export function GeneratorScreen({
   }, [copied]);
 
   // `PasswordPolicy`'s constructor already rejects invalid combinations (e.g.
-  // every character set disabled, or a length/word count below 1) — reuse
+  // every character set disabled, or a length below 1) — reuse
   // that instead of re-deriving the same rules here, and just ignore an
   // update that would produce one.
   function applyPolicy(patch: Partial<PasswordPolicyOptions>) {
@@ -65,10 +52,6 @@ export function GeneratorScreen({
   async function copyPassword() {
     await clipboardWriter.writeText(password);
     setCopied(true);
-  }
-
-  function setMode(mode: PasswordPolicyMode) {
-    applyPolicy({ mode });
   }
 
   return (
@@ -99,117 +82,62 @@ export function GeneratorScreen({
           </div>
         </div>
 
-        <div className="generator-mode-toggle" role="group" aria-label="Generator mode">
-          <button
-            type="button"
-            className={`btn-secondary${policy.mode === "characters" ? " active" : ""}`}
-            onClick={() => setMode("characters")}
-          >
-            Characters
-          </button>
-          <button
-            type="button"
-            className={`btn-secondary${policy.mode === "passphrase" ? " active" : ""}`}
-            onClick={() => setMode("passphrase")}
-          >
-            Passphrase
-          </button>
+        <div className="generator-options">
+          <div className="field-group">
+            <label className="field-label" htmlFor="generator-length">
+              Length: {policy.length}
+            </label>
+            <input
+              id="generator-length"
+              type="range"
+              min={4}
+              max={64}
+              value={policy.length}
+              onChange={(event) => applyPolicy({ length: Number(event.target.value) })}
+            />
+          </div>
+
+          <label className="generator-checkbox">
+            <input
+              type="checkbox"
+              checked={policy.useUppercase}
+              onChange={(event) => applyPolicy({ useUppercase: event.target.checked })}
+            />
+            Uppercase (A-Z)
+          </label>
+          <label className="generator-checkbox">
+            <input
+              type="checkbox"
+              checked={policy.useLowercase}
+              onChange={(event) => applyPolicy({ useLowercase: event.target.checked })}
+            />
+            Lowercase (a-z)
+          </label>
+          <label className="generator-checkbox">
+            <input
+              type="checkbox"
+              checked={policy.useDigits}
+              onChange={(event) => applyPolicy({ useDigits: event.target.checked })}
+            />
+            Digits (0-9)
+          </label>
+          <label className="generator-checkbox">
+            <input
+              type="checkbox"
+              checked={policy.useSymbols}
+              onChange={(event) => applyPolicy({ useSymbols: event.target.checked })}
+            />
+            Symbols (!@#$…)
+          </label>
+          <label className="generator-checkbox">
+            <input
+              type="checkbox"
+              checked={policy.excludeAmbiguous}
+              onChange={(event) => applyPolicy({ excludeAmbiguous: event.target.checked })}
+            />
+            Exclude ambiguous characters (I, l, 1, O, 0, o)
+          </label>
         </div>
-
-        {policy.mode === "characters" ? (
-          <div className="generator-options">
-            <div className="field-group">
-              <label className="field-label" htmlFor="generator-length">
-                Length: {policy.length}
-              </label>
-              <input
-                id="generator-length"
-                type="range"
-                min={4}
-                max={64}
-                value={policy.length}
-                onChange={(event) => applyPolicy({ length: Number(event.target.value) })}
-              />
-            </div>
-
-            <label className="generator-checkbox">
-              <input
-                type="checkbox"
-                checked={policy.useUppercase}
-                onChange={(event) => applyPolicy({ useUppercase: event.target.checked })}
-              />
-              Uppercase (A-Z)
-            </label>
-            <label className="generator-checkbox">
-              <input
-                type="checkbox"
-                checked={policy.useLowercase}
-                onChange={(event) => applyPolicy({ useLowercase: event.target.checked })}
-              />
-              Lowercase (a-z)
-            </label>
-            <label className="generator-checkbox">
-              <input
-                type="checkbox"
-                checked={policy.useDigits}
-                onChange={(event) => applyPolicy({ useDigits: event.target.checked })}
-              />
-              Digits (0-9)
-            </label>
-            <label className="generator-checkbox">
-              <input
-                type="checkbox"
-                checked={policy.useSymbols}
-                onChange={(event) => applyPolicy({ useSymbols: event.target.checked })}
-              />
-              Symbols (!@#$…)
-            </label>
-            <label className="generator-checkbox">
-              <input
-                type="checkbox"
-                checked={policy.excludeAmbiguous}
-                onChange={(event) => applyPolicy({ excludeAmbiguous: event.target.checked })}
-              />
-              Exclude ambiguous characters (I, l, 1, O, 0, o)
-            </label>
-          </div>
-        ) : (
-          <div className="generator-options">
-            <div className="field-group">
-              <label className="field-label" htmlFor="generator-word-count">
-                Word count: {policy.wordCount}
-              </label>
-              <input
-                id="generator-word-count"
-                type="range"
-                min={1}
-                max={10}
-                value={policy.wordCount}
-                onChange={(event) => applyPolicy({ wordCount: Number(event.target.value) })}
-              />
-            </div>
-
-            <div className="field-group">
-              <label className="field-label" htmlFor="generator-separator">
-                Separator
-              </label>
-              <select
-                id="generator-separator"
-                className="field-select"
-                value={policy.separator}
-                onChange={(event) =>
-                  applyPolicy({ separator: event.target.value as PassphraseSeparator })
-                }
-              >
-                {SEPARATORS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

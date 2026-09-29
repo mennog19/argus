@@ -1,9 +1,4 @@
-import {
-  PASSPHRASE_SEPARATORS,
-  PASSWORD_POLICY_MODES,
-  PasswordPolicy,
-  PasswordPolicyOptions,
-} from "../domain";
+import { PasswordPolicy, PasswordPolicyOptions } from "../domain";
 import {
   AppSettings,
   AutoLockSettings,
@@ -120,17 +115,16 @@ function parseGeneratorPolicy(value: unknown): PasswordPolicyOptions {
   }
   const field = <T>(key: string, parse: (value: unknown) => T): T | undefined =>
     value[key] === undefined ? undefined : parse(value[key]);
+  // Keys this build doesn't know are dropped rather than rejected: settings
+  // from a build that still had the passphrase mode keep their character
+  // settings instead of losing the whole policy.
   const options: PasswordPolicyOptions = {
-    mode: field("mode", (mode) => oneOf(mode, PASSWORD_POLICY_MODES, "mode")),
     length: field("length", (length) => positiveInteger(length, "length")),
     useUppercase: field("useUppercase", (flag) => parseBoolean(flag, "useUppercase")),
     useLowercase: field("useLowercase", (flag) => parseBoolean(flag, "useLowercase")),
     useDigits: field("useDigits", (flag) => parseBoolean(flag, "useDigits")),
     useSymbols: field("useSymbols", (flag) => parseBoolean(flag, "useSymbols")),
-    excludeAmbiguous: field("excludeAmbiguous", (flag) => parseBoolean(flag, "excludeAmbiguous")),
-    wordCount: field("wordCount", (count) => positiveInteger(count, "wordCount")),
-    separator: field("separator", (sep) => oneOf(sep, PASSPHRASE_SEPARATORS, "separator")),
-  };
+    excludeAmbiguous: field("excludeAmbiguous", (flag) => parseBoolean(flag, "excludeAmbiguous")),  };
   // Individually valid fields can still combine into a policy the generator
   // refuses (e.g. every character set turned off); this throws for those.
   new PasswordPolicy(options);

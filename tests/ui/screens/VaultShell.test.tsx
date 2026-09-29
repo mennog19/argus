@@ -1359,11 +1359,11 @@ describe("VaultShell", () => {
       });
 
       await user.click(screen.getByRole("button", { name: "Password generator" }));
-      await user.click(screen.getByRole("button", { name: "Passphrase" }));
+      await user.click(screen.getByRole("checkbox", { name: /symbols/i }));
 
       expect(onSettingChange).toHaveBeenCalledWith(
         "generatorPolicy",
-        expect.objectContaining({ mode: "passphrase" }),
+        expect.objectContaining({ useSymbols: true }),
       );
     });
 

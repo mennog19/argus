@@ -24,7 +24,6 @@ export { FieldReferences, isFieldReference } from "./field-references";
 export { matchesSearchQuery } from "./entry-search";
 export { Group } from "./group";
 export { GroupId } from "./group-id";
-export { PASSPHRASE_WORDLIST } from "./passphrase-wordlist";
 export { Password } from "./password";
 export { generatePassword, type RandomInt } from "./password-generator";
 export {
@@ -37,14 +36,7 @@ export {
 } from "./password-health";
 export { MASTER_PASSWORD_MIN_LENGTH } from "./master-password";
 export { PasswordHealthPolicy, type PasswordHealthPolicyOptions } from "./password-health-policy";
-export {
-  PASSPHRASE_SEPARATORS,
-  PASSWORD_POLICY_MODES,
-  PasswordPolicy,
-  type PassphraseSeparator,
-  type PasswordPolicyMode,
-  type PasswordPolicyOptions,
-} from "./password-policy";
+export { PasswordPolicy, type PasswordPolicyOptions } from "./password-policy";
 export { Tag } from "./tag";
 export { Tags } from "./tags";
 export { generateTotpCode, type Hmac, type TotpCode } from "./totp-code";

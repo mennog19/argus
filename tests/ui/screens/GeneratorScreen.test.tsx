@@ -18,23 +18,13 @@ function renderGenerator(policyOptions: PasswordPolicyOptions = {}) {
 }
 
 describe("GeneratorScreen", () => {
-  it("generates a password of the default length in character mode on mount", () => {
+  it("generates a password of the default length on mount", () => {
     renderGenerator();
 
     expect(document.querySelector(".generator-password")?.textContent).toHaveLength(16);
     expect(screen.getByLabelText(/^Length/)).toHaveValue("16");
     expect(screen.getByRole("checkbox", { name: /uppercase/i })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /symbols/i })).not.toBeChecked();
-    expect(screen.queryByLabelText(/^Word count/)).not.toBeInTheDocument();
-  });
-
-  it("shows word count and separator controls instead when the policy's mode is 'passphrase'", () => {
-    renderGenerator({ mode: "passphrase" });
-
-    expect(screen.getByLabelText(/^Word count/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Separator")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/^Length/)).not.toBeInTheDocument();
-    expect(document.querySelector(".generator-password")?.textContent?.split("-")).toHaveLength(4);
   });
 
   it("regenerates a new password of the same length when Regenerate is clicked", async () => {
@@ -158,38 +148,11 @@ describe("GeneratorScreen", () => {
     );
   });
 
-  it("reports switching to passphrase mode via the mode toggle", async () => {
-    const user = userEvent.setup();
-    const { onPolicyChange } = renderGenerator();
+  it("offers no passphrase mode, only character-based passwords", () => {
+    renderGenerator();
 
-    await user.click(screen.getByRole("button", { name: "Passphrase" }));
-
-    expect(onPolicyChange).toHaveBeenCalledWith(expect.objectContaining({ mode: "passphrase" }));
-  });
-
-  it("reports switching back to character mode via the mode toggle", async () => {
-    const user = userEvent.setup();
-    const { onPolicyChange } = renderGenerator({ mode: "passphrase" });
-
-    await user.click(screen.getByRole("button", { name: "Characters" }));
-
-    expect(onPolicyChange).toHaveBeenCalledWith(expect.objectContaining({ mode: "characters" }));
-  });
-
-  it("changes the passphrase word count and separator", () => {
-    const { onPolicyChange } = renderGenerator({
-      mode: "passphrase",
-      wordCount: 4,
-      separator: "-",
-    });
-
-    fireEvent.change(screen.getByLabelText("Separator"), { target: { value: "." } });
-
-    expect(onPolicyChange).toHaveBeenCalledWith(expect.objectContaining({ separator: "." }));
-    expect(document.querySelector(".generator-password")?.textContent?.split(".")).toHaveLength(4);
-
-    fireEvent.change(screen.getByLabelText(/^Word count/), { target: { value: "6" } });
-
-    expect(onPolicyChange).toHaveBeenCalledWith(expect.objectContaining({ wordCount: 6 }));
+    expect(screen.queryByRole("button", { name: "Passphrase" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Word count/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Separator")).not.toBeInTheDocument();
   });
 });

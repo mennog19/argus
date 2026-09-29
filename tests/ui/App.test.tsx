@@ -669,10 +669,10 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Password generator" }));
-    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+    await user.click(screen.getByRole("checkbox", { name: /symbols/i }));
 
     expect(settingsStore.save).toHaveBeenCalledWith(
-      expect.objectContaining({ generatorPolicy: expect.objectContaining({ mode: "passphrase" }) }),
+      expect.objectContaining({ generatorPolicy: expect.objectContaining({ useSymbols: true }) }),
     );
   });
 
@@ -749,7 +749,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
     await user.click(await screen.findByRole("button", { name: "Password generator" }));
-    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+    await user.click(screen.getByRole("checkbox", { name: /symbols/i }));
 
     expect(await screen.findByRole("heading", { name: "Password Generator" })).toBeInTheDocument();
   });
