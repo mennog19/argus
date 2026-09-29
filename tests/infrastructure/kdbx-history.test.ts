@@ -104,7 +104,7 @@ describe("trimHistory", () => {
     const db = createDb();
     db.meta.historyMaxSize = 1500;
     const entry = db.createEntry(db.getDefaultGroup());
-    const shared = await db.createBinary(new Uint8Array(400));
+    const shared = await db.createBinary(new Uint8Array(400).buffer);
 
     entry.fields.set("Title", "raw");
     entry.fields.set("Password", ProtectedValue.fromString("p".repeat(100)));
