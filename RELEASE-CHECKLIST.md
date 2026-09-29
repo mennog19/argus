@@ -6,7 +6,6 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 
 ## Should fix
 
-- [ ] **Entry history grows forever.** `pushHistory()` runs on every edit, but `meta.historyMaxItems` and `historyMaxSize` are never applied, so vaults keep getting bigger.
 - [ ] **The settings file isn't validated when it's loaded.** [json-settings-store.ts](src/infrastructure/json-settings-store.ts#L22) just casts `JSON.parse` to `AppSettings`. A file like `{}` would leave `recentVaults` undefined and crash startup. Run it through the same validation the settings import uses, or merge it with the defaults.
 - [ ] **Key files aren't supported.** Vaults protected with a KeePass/KeePassXC key file can't be opened. Either support them or say so clearly in the README and in the error message.
 

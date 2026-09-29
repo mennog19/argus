@@ -296,6 +296,26 @@ describe("applyVaultToKdbx", () => {
     expect(savedEntry.tags).toEqual(["keep"]);
   });
 
+  it("trims an edited entry's history to historyMaxItems but leaves unedited entries alone", () => {
+    const db = createDb();
+    db.meta.historyMaxItems = 2;
+    for (const title of ["Edited", "Untouched"]) {
+      const kdbxEntry = db.createEntry(db.getDefaultGroup());
+      kdbxEntry.fields.set("Title", title);
+      for (let i = 0; i < 4; i++) {
+        kdbxEntry.pushHistory();
+      }
+    }
+
+    const vault = vaultFromKdbx(db);
+    const edited = vault.rootGroup.entries.find((e) => e.title === "Edited")!;
+    applyVaultToKdbx(db, vault.updateEntry(edited.update({ title: "Edited again" })));
+
+    const [editedKdbx, untouchedKdbx] = db.getDefaultGroup().entries;
+    expect(editedKdbx.history).toHaveLength(2);
+    expect(untouchedKdbx.history).toHaveLength(4);
+  });
+
   it("moves a removed top-level entry into the recycle bin", () => {
     const db = createDb();
     const entry = db.createEntry(db.getDefaultGroup());
