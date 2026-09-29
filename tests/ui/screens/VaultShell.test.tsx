@@ -258,6 +258,100 @@ describe("VaultShell", () => {
     expect(screen.getByLabelText("Search entries")).toHaveValue("");
   });
 
+  describe("Ctrl+F", () => {
+    it("focuses the search box and selects what's in it, so typing replaces the old query", async () => {
+      const user = userEvent.setup();
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "GitHub" }));
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Mail" }));
+
+      renderShell(vault);
+      const search = screen.getByLabelText("Search entries");
+      await user.type(search, "old");
+      act(() => search.blur());
+      expect(search).not.toHaveFocus();
+
+      await user.keyboard("{Control>}f{/Control}");
+      expect(search).toHaveFocus();
+      await user.keyboard("mail");
+
+      expect(search).toHaveValue("mail");
+      expect(screen.getByText("Mail")).toBeInTheDocument();
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+    });
+
+    it("works with Cmd on macOS too", async () => {
+      const user = userEvent.setup();
+      renderShell(Vault.create("Mine"));
+
+      await user.keyboard("{Meta>}F{/Meta}");
+
+      expect(screen.getByLabelText("Search entries")).toHaveFocus();
+    });
+
+    it("stops the webview's own find-in-page from opening", () => {
+      renderShell(Vault.create("Mine"));
+
+      const event = createEvent.keyDown(document, { key: "f", ctrlKey: true });
+      fireEvent(document, event);
+
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("ignores F on its own and with Shift or Alt held", async () => {
+      const user = userEvent.setup();
+      renderShell(Vault.create("Mine"));
+
+      await user.keyboard("f");
+      await user.keyboard("{Control>}{Shift>}f{/Shift}{/Control}");
+      await user.keyboard("{Control>}{Alt>}f{/Alt}{/Control}");
+
+      expect(screen.getByLabelText("Search entries")).not.toHaveFocus();
+    });
+
+    it("switches back to the vault from another view", async () => {
+      const user = userEvent.setup();
+      renderShell(Vault.create("Mine"));
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+
+      await user.keyboard("{Control>}f{/Control}");
+
+      expect(screen.getByLabelText("Search entries")).toHaveFocus();
+    });
+
+    it("leaves the recycle bin for All Items, which has a search box", async () => {
+      const user = userEvent.setup();
+      const entry = Entry.create({ title: "Old Site" });
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, entry);
+      vault = vault.deleteEntry(entry.id);
+      renderShell(vault);
+      await user.click(screen.getByText("Recycle Bin"));
+
+      await user.keyboard("{Control>}f{/Control}");
+
+      expect(screen.getByRole("heading", { name: "All Items" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Search entries")).toHaveFocus();
+    });
+
+    it("does nothing while a merge is in progress, so the merge isn't abandoned", async () => {
+      const user = userEvent.setup();
+      const mergeSource = fakeMergeSource({
+        pickFile: vi.fn().mockResolvedValue("C:/vaults/other.kdbx"),
+      });
+      renderShell(Vault.create("Mine"), { mergeSource });
+      await user.click(screen.getByRole("button", { name: "Settings" }));
+      await user.click(screen.getByRole("button", { name: /merge another vault in/i }));
+
+      const event = createEvent.keyDown(document, { key: "f", ctrlKey: true });
+      fireEvent(document, event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.getByRole("dialog", { name: /merge another vault in/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    });
+  });
+
   it("selects an entry and shows its read-only detail", async () => {
     const user = userEvent.setup();
     const entry = Entry.create({

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Entry } from "../../../domain";
 import { EntrySortId } from "../../../application/settings";
 import { ENTRY_DRAG_TYPE } from "../../entry-drag";
@@ -12,6 +13,12 @@ interface EntryListPanelProps {
   selectedEntryId: string | undefined;
   draggingEntryId: string | undefined;
   searchQuery: string;
+  /**
+   * Bumped by the shell each time Ctrl+F is pressed. Any value above 0 focuses
+   * the search box, on mount too, so pressing it from another view lands the
+   * caret in the box that view switches to.
+   */
+  searchFocusRequest: number;
   onSearchChange: (query: string) => void;
   entrySort: EntrySortId;
   onSortChange: (sort: EntrySortId) => void;
@@ -27,6 +34,7 @@ export function EntryListPanel({
   selectedEntryId,
   draggingEntryId,
   searchQuery,
+  searchFocusRequest,
   onSearchChange,
   entrySort,
   onSortChange,
@@ -37,6 +45,14 @@ export function EntryListPanel({
 }: EntryListPanelProps) {
   const trimmedQuery = searchQuery.trim();
   const isSearching = trimmedQuery !== "";
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchFocusRequest > 0) {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }
+  }, [searchFocusRequest]);
 
   return (
     <div className="entry-list-panel">
@@ -49,6 +65,7 @@ export function EntryListPanel({
       <div className="entry-search">
         <SearchIcon size={14} />
         <input
+          ref={searchInputRef}
           type="text"
           className="entry-search-input"
           placeholder="Search entries…"
