@@ -3635,6 +3635,35 @@ input[type="radio"]:checked::after {
   color: var(--color-text-dimmer);
 }
 
+.auto-type-address strong {
+  color: var(--color-text);
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.auto-type-warning {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.auto-type-match-badge {
+  margin-left: auto;
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-success) 16%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.auto-type-match-badge.weak {
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+}
+
 .auto-type-empty {
   padding: 14px;
   border: 1px dashed var(--color-border-strong);

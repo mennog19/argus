@@ -11,8 +11,10 @@ export {
   autoTypeMatches,
   autoTypeMatchScore,
   autoTypeSiteName,
+  autoTypeTitleMismatches,
   AUTO_TYPE_MATCH_SCORES,
   type AutoTypeMatch,
+  type AutoTypeTarget,
 } from "./auto-type-match";
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";

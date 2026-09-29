@@ -6,6 +6,7 @@ import { Entry, FormLayout, Password } from "../../src/domain";
 const WINDOW: ForegroundWindow = {
   title: "Sign in to GitHub — Mozilla Firefox",
   processName: "firefox.exe",
+  isBrowser: false,
 };
 
 function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
@@ -34,7 +35,11 @@ describe("AutoTypeService.capture", () => {
 
     const request = await service.capture([unrelated, entry]);
 
-    expect(request).toEqual({ window: WINDOW, matches: [{ entry, score: 2 }] });
+    expect(request).toEqual({
+      window: WINDOW,
+      matches: [{ entry, score: 2, verified: false }],
+      titleMismatches: [],
+    });
   });
 
   it("returns a request with no matches rather than nothing, so the user still sees the target", async () => {
@@ -42,7 +47,24 @@ describe("AutoTypeService.capture", () => {
 
     const request = await service.capture([Entry.create({ title: "Bank" })]);
 
-    expect(request).toEqual({ window: WINDOW, matches: [] });
+    expect(request).toEqual({ window: WINDOW, matches: [], titleMismatches: [] });
+  });
+
+  it("matches a browser on its real address, and flags entries its title claims but its address rules out", async () => {
+    const entry = githubEntry();
+    const phishing: ForegroundWindow = {
+      title: "Sign in to GitHub — Google Chrome",
+      processName: "chrome.exe",
+      isBrowser: true,
+      url: "https://github.evil.example/login",
+    };
+    const service = new AutoTypeService(
+      fakeAutoTyper({ captureTarget: vi.fn().mockResolvedValue(phishing) }),
+    );
+
+    const request = await service.capture([entry]);
+
+    expect(request).toEqual({ window: phishing, matches: [], titleMismatches: [entry] });
   });
 
   it("returns undefined when there is no window to type into", async () => {

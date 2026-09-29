@@ -1,7 +1,30 @@
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { AutoTypeRequest } from "../../application/auto-type-service";
-import { Entry } from "../../domain";
+import { autoTypeHost, Entry } from "../../domain";
 import { EntryAvatar } from "../entry-icons/EntryAvatar";
+
+/**
+ * The warning, if any, a request deserves before anyone picks from it:
+ * either the page's title contradicts its address, or the address couldn't
+ * be read and everything shown rests on a title the page chose itself.
+ */
+function addressWarning({ window: target, titleMismatches }: AutoTypeRequest): string | undefined {
+  if (target.url !== undefined && titleMismatches.length > 0) {
+    const named = titleMismatches.map((entry) => entry.title || "(untitled)").join(", ");
+    return (
+      `This page's title points at ${named}, but its address is ` +
+      `${autoTypeHost(target.url) || "something else"}. It may be a fake sign-in page, ` +
+      "so those entries aren't offered here."
+    );
+  }
+  if (target.isBrowser && target.url === undefined) {
+    return (
+      "Argus couldn't read this browser's address bar, so these matches come from the page's " +
+      "title, which any page can set. Check the address before you pick."
+    );
+  }
+  return undefined;
+}
 
 interface AutoTypePickerProps {
   request: AutoTypeRequest;
@@ -21,6 +44,8 @@ interface AutoTypePickerProps {
  */
 export function AutoTypePicker({ request, onTypeInto, onCancel }: AutoTypePickerProps) {
   const { window: target, matches } = request;
+  const warning = addressWarning(request);
+  const address = target.url === undefined ? "" : autoTypeHost(target.url);
   const [selected, setSelected] = useState(0);
   const [shown, setShown] = useState(request);
   const listRef = useRef<HTMLUListElement>(null);
@@ -69,6 +94,16 @@ export function AutoTypePicker({ request, onTypeInto, onCancel }: AutoTypePicker
             <span className="auto-type-process"> · {target.processName}</span>
           )}
         </p>
+        {address !== "" && (
+          <p className="auto-type-address">
+            Address: <strong>{address}</strong>
+          </p>
+        )}
+        {warning && (
+          <p className="auto-type-warning" role="alert">
+            {warning}
+          </p>
+        )}
 
         {matches.length === 0 ? (
           <p className="auto-type-empty">
@@ -85,7 +120,7 @@ export function AutoTypePicker({ request, onTypeInto, onCancel }: AutoTypePicker
             aria-activedescendant={`auto-type-match-${selected}`}
             onKeyDown={handleKeyDown}
           >
-            {matches.map(({ entry }, index) => (
+            {matches.map(({ entry, verified }, index) => (
               <li
                 key={entry.id.toString()}
                 id={`auto-type-match-${index}`}
@@ -105,6 +140,15 @@ export function AutoTypePicker({ request, onTypeInto, onCancel }: AutoTypePicker
                     {entry.username || "no username"}
                   </span>
                 </span>
+                {/* Only a browser has an address to check against; for any
+                    other app a title match is all there ever is. */}
+                {target.isBrowser && (
+                  <span
+                    className={verified ? "auto-type-match-badge" : "auto-type-match-badge weak"}
+                  >
+                    {verified ? "Address match" : "Title only"}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

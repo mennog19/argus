@@ -1,4 +1,10 @@
-import { AutoTypeMatch, autoTypeMatches, autoTypeSteps, Entry } from "../domain";
+import {
+  AutoTypeMatch,
+  autoTypeMatches,
+  autoTypeSteps,
+  autoTypeTitleMismatches,
+  Entry,
+} from "../domain";
 import { AutoTyper, ForegroundWindow } from "./auto-type";
 
 /** A pending auto-type: the window the user was in, and what might fit it. */
@@ -6,6 +12,11 @@ export interface AutoTypeRequest {
   readonly window: ForegroundWindow;
   /** Ranked by `autoTypeMatches`; empty when nothing in the vault looks related. */
   readonly matches: readonly AutoTypeMatch[];
+  /**
+   * Entries the page's title names but its real address rules out — the
+   * signature of a phishing page. See `autoTypeTitleMismatches`.
+   */
+  readonly titleMismatches: readonly Entry[];
 }
 
 /**
@@ -21,7 +32,8 @@ export class AutoTypeService {
   constructor(private readonly autoTyper: AutoTyper) {}
 
   /**
-   * Captures the foreground window and ranks `entries` against its title.
+   * Captures the foreground window and ranks `entries` against its address
+   * when it's a browser that could be read, or its title otherwise.
    * Returns undefined when there is no window to type into, which is how a
    * hotkey press with Argus itself in front ends up a no-op.
    */
@@ -30,7 +42,11 @@ export class AutoTypeService {
     if (!window) {
       return undefined;
     }
-    return { window, matches: autoTypeMatches(entries, window.title) };
+    return {
+      window,
+      matches: autoTypeMatches(entries, window),
+      titleMismatches: autoTypeTitleMismatches(entries, window),
+    };
   }
 
   /**

@@ -1,11 +1,15 @@
-import { AutoTypeStep, FormLayout } from "../domain";
+import { AutoTypeStep, AutoTypeTarget, FormLayout } from "../domain";
 
 /** The window that was focused when the auto-type hotkey was pressed. */
-export interface ForegroundWindow {
-  /** The window's caption — for a browser, usually "<page title> — <browser>". */
-  readonly title: string;
+export interface ForegroundWindow extends AutoTypeTarget {
   /** The owning executable, e.g. `chrome.exe`. Shown so the user can see where input will land. */
   readonly processName: string;
+  /**
+   * The window belongs to a web browser Argus knows how to read the address
+   * bar of. When this is true but `url` is missing, the address couldn't be
+   * read and matching fell back to the page's own, forgeable title.
+   */
+  readonly isBrowser: boolean;
 }
 
 /**

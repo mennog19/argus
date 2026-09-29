@@ -11,7 +11,11 @@ const SETTINGS: AutoTypeSettings = {
   hotkey: "CommandOrControl+Shift+A",
 };
 
-const WINDOW: ForegroundWindow = { title: "GitHub — Firefox", processName: "firefox.exe" };
+const WINDOW: ForegroundWindow = {
+  title: "GitHub — Firefox",
+  processName: "firefox.exe",
+  isBrowser: false,
+};
 
 const ENTRY = Entry.create({
   title: "GitHub",
@@ -120,7 +124,8 @@ describe("useAutoType", () => {
     // Score 2: the window title carries the site name, not the full host.
     expect(result.current.request).toEqual({
       window: WINDOW,
-      matches: [{ entry: ENTRY, score: 2 }],
+      matches: [{ entry: ENTRY, score: 2, verified: false }],
+      titleMismatches: [],
     });
   });
 

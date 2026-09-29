@@ -2,6 +2,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { AutoTyper, ForegroundWindow } from "../application/auto-type";
 import { AutoTypeStep, FormLayout } from "../domain";
 
+/** `ForegroundWindow` as `auto_type_capture_target` serializes it. */
+interface CapturedWindow {
+  readonly title: string;
+  readonly processName: string;
+  readonly isBrowser: boolean;
+  readonly url: string | null;
+}
+
 /**
  * `AutoTyper` backed by the `auto_type_capture_target` / `auto_type_inspect_target` /
  * `auto_type_send` Tauri commands, which wrap the OS input APIs (`SendInput`
@@ -13,8 +21,13 @@ import { AutoTypeStep, FormLayout } from "../domain";
  */
 export class TauriAutoTyper implements AutoTyper {
   async captureTarget(): Promise<ForegroundWindow | undefined> {
-    const window = await invoke<ForegroundWindow | null>("auto_type_capture_target");
-    return window ?? undefined;
+    const window = await invoke<CapturedWindow | null>("auto_type_capture_target");
+    if (!window) {
+      return undefined;
+    }
+    const { url, ...rest } = window;
+    // Rust's `None` arrives as null; the port only knows "absent".
+    return url === null ? rest : { ...rest, url };
   }
 
   async inspectTarget(): Promise<FormLayout> {
