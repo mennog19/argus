@@ -362,11 +362,11 @@ describe("SettingsScreen", () => {
 
       await user.click(screen.getByRole("button", { name: /change master password/i }));
       await user.type(screen.getByLabelText("Current password"), "old-pw");
-      await user.type(screen.getByLabelText("New password"), "new-password");
-      await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+      await user.type(screen.getByLabelText("New password"), "New-password1");
+      await user.type(screen.getByLabelText("Confirm new password"), "New-password1");
       await user.click(screen.getByRole("button", { name: /change master password/i }));
 
-      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-password");
+      expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "New-password1");
     });
   });
 

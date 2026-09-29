@@ -34,7 +34,11 @@ export {
   type PasswordHealthReport,
   type PasswordStrength,
 } from "./password-health";
-export { MASTER_PASSWORD_MIN_LENGTH } from "./master-password";
+export {
+  MASTER_PASSWORD_MIN_LENGTH,
+  unmetMasterPasswordRequirements,
+  type MasterPasswordRequirement,
+} from "./master-password";
 export { PasswordHealthPolicy, type PasswordHealthPolicyOptions } from "./password-health-policy";
 export { PasswordPolicy, type PasswordPolicyOptions } from "./password-policy";
 export { Tag } from "./tag";

@@ -115,9 +115,7 @@ export class FieldReferences {
       if (depth >= MAX_DEPTH) {
         return reference;
       }
-      const found = this.entries.find((entry) =>
-        matches(entry, searchIn.toUpperCase(), text),
-      );
+      const found = this.entries.find((entry) => matches(entry, searchIn.toUpperCase(), text));
       if (!found) {
         return reference;
       }

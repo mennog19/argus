@@ -94,7 +94,7 @@ describe("KdbxVaultRepository", () => {
     const willChange = session.vault.rootGroup.entries.find((e) => e.title === "Will Change")!;
 
     const updated = willChange.update({
-      password: new Password("new-password"),
+      password: new Password("New-password1"),
       customFields: new CustomFields([new CustomField("2FA", "enabled", true)]),
     });
     const updatedVault = session.vault.updateEntry(updated);
@@ -111,7 +111,7 @@ describe("KdbxVaultRepository", () => {
     expect(reopenedUntouched.customFields.get("Recovery Codes")?.value).toBe("1111-2222");
 
     const reopenedChanged = reopened.rootGroup.entries.find((e) => e.title === "Will Change")!;
-    expect(reopenedChanged.password.reveal()).toBe("new-password");
+    expect(reopenedChanged.password.reveal()).toBe("New-password1");
     expect(reopenedChanged.customFields.get("2FA")?.value).toBe("enabled");
 
     // Confirm the untouched KdbxEntry object's icon (a field the domain model
