@@ -13,6 +13,7 @@ export interface FileStorage {
   /** Size of the file at `path`, in bytes. */
   size(path: string): Promise<number>;
   copyFile(source: string, destination: string): Promise<void>;
+  removeFile(path: string): Promise<void>;
   /**
    * Asks the OS layer for access to `basePath + suffix` before it is read or
    * written. Needed for the rolling-backup paths the app derives itself

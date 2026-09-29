@@ -1,10 +1,20 @@
 import { FormEvent, useState } from "react";
 import { MASTER_PASSWORD_MIN_LENGTH } from "../../domain";
+import { MasterPasswordChangeResult } from "../../application/vault-access-service";
 import { useAsyncAction } from "../use-async-action";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 interface ChangeMasterPasswordCardProps {
-  onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  onChangeMasterPassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<MasterPasswordChangeResult>;
+}
+
+function removedBackupsNote(paths: string[]): string {
+  return paths.length === 1
+    ? "1 backup couldn't be re-encrypted and was deleted."
+    : `${paths.length} backups couldn't be re-encrypted and were deleted.`;
 }
 
 export function ChangeMasterPasswordCard({
@@ -15,11 +25,11 @@ export function ChangeMasterPasswordCard({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { busy, error, run, fail } = useAsyncAction();
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<MasterPasswordChangeResult | undefined>(undefined);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setSuccess(false);
+    setSuccess(undefined);
 
     if (currentPassword.length === 0) {
       fail("Current password is required.");
@@ -41,15 +51,15 @@ export function ChangeMasterPasswordCard({
     // Only on a confirmed success: the vault file is re-encrypted by this, so
     // claiming it changed when it didn't leaves the user with a password that
     // doesn't open their vault.
-    const changed = await run(
-      () => onChangeMasterPassword(currentPassword, newPassword),
-      "Failed to change master password.",
-    );
+    let result: MasterPasswordChangeResult | undefined;
+    const changed = await run(async () => {
+      result = await onChangeMasterPassword(currentPassword, newPassword);
+    }, "Failed to change master password.");
     if (changed) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setSuccess(true);
+      setSuccess(result);
     }
   }
 
@@ -118,9 +128,28 @@ export function ChangeMasterPasswordCard({
           />
         </div>
         {error && <div className="field-error">{error}</div>}
-        {success && <div className="field-success">Master password changed.</div>}
+        {success && (
+          <>
+            <div className="field-success">Master password changed.</div>
+            <div className="danger-zone-row-hint">
+              The vault&apos;s .bak backups were re-encrypted with the new password too.
+              {success.removedBackups.length > 0 &&
+                ` ${removedBackupsNote(success.removedBackups)}`}
+            </div>
+            {success.unprotectedBackups.length > 0 && (
+              <div className="field-error">
+                These backups could not be re-encrypted or deleted and may still open with the old
+                password. Delete them yourself: {success.unprotectedBackups.join(", ")}
+              </div>
+            )}
+            <div className="danger-zone-row-hint">
+              Copies made outside Argus, such as cloud sync version history or files you copied
+              yourself, still open with the old password.
+            </div>
+          </>
+        )}
         <button type="submit" className="btn-danger" disabled={busy}>
-          Change master password
+          {busy ? "Re-encrypting…" : "Change master password"}
         </button>
       </form>
     </div>

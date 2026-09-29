@@ -1,10 +1,14 @@
+import { MasterPasswordChangeResult } from "../../../application/vault-access-service";
 import { ChangeMasterPasswordCard } from "../ChangeMasterPasswordCard";
 
 interface DangerZoneSectionProps {
   /** Why the last merge attempt never got started, e.g. the picked file is this vault. */
   mergeError: string | undefined;
   onOpenMergeWizard: () => void;
-  onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  onChangeMasterPassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<MasterPasswordChangeResult>;
 }
 
 export function DangerZoneSection({

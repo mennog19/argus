@@ -56,6 +56,24 @@ describe("TauriVaultFileDialog", () => {
       );
     });
 
+    it("strips trailing dots and spaces, which Windows would drop silently", async () => {
+      vi.mocked(save).mockResolvedValue(null);
+      const dialog = new TauriVaultFileDialog();
+
+      await dialog.pickPathForNewVault("Taxes. .");
+
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "Taxes.kdbx" }));
+    });
+
+    it("falls back to a default name when nothing usable is left", async () => {
+      vi.mocked(save).mockResolvedValue(null);
+      const dialog = new TauriVaultFileDialog();
+
+      await dialog.pickPathForNewVault(" . ");
+
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "Vault.kdbx" }));
+    });
+
     it("resolves undefined when the dialog is cancelled", async () => {
       vi.mocked(save).mockResolvedValue(null);
       const dialog = new TauriVaultFileDialog();

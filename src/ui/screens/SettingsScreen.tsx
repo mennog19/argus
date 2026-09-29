@@ -1,5 +1,5 @@
 import { EffectiveSettings } from "../../application/settings";
-import { VaultFileInfo } from "../../application/vault-access-service";
+import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 import { AppearanceSection } from "./settings/AppearanceSection";
 import { AutoTypeSection } from "./settings/AutoTypeSection";
@@ -16,7 +16,10 @@ interface SettingsScreenProps {
   entryCount: number;
   settings: EffectiveSettings;
   onSettingChange: SettingChangeHandler;
-  onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  onChangeMasterPassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<MasterPasswordChangeResult>;
   /** Why the last merge attempt never got started, e.g. the picked file is this vault. */
   mergeError: string | undefined;
   onOpenMergeWizard: () => void;

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Vault } from "../domain";
 import { ClipboardWriter } from "../application/clipboard";
 import {
+  MasterPasswordChangeResult,
   OpenedVault,
   VaultAccessService,
   VaultFileInfo,
@@ -158,11 +159,19 @@ function App({
     filePath: string,
     currentPassword: string,
     newPassword: string,
-  ) {
-    await writeReportingConflicts({ nextVault: vault, filePath }, () =>
-      vaultAccessService.changeMasterPassword(vault, filePath, currentPassword, newPassword),
-    );
+  ): Promise<MasterPasswordChangeResult> {
+    let result: MasterPasswordChangeResult | undefined;
+    await writeReportingConflicts({ nextVault: vault, filePath }, async () => {
+      result = await vaultAccessService.changeMasterPassword(
+        vault,
+        filePath,
+        currentPassword,
+        newPassword,
+      );
+    });
     void refreshFileInfo(filePath);
+    // `writeReportingConflicts` only resolves once the write above has.
+    return result!;
   }
 
   async function overwriteConflict(pending: SaveConflict) {

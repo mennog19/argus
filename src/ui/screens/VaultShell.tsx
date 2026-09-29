@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
-import { VaultFileInfo } from "../../application/vault-access-service";
+import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
@@ -46,7 +46,10 @@ interface VaultShellProps {
   onSettingChange: SettingChangeHandler;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
-  onChangeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  onChangeMasterPassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<MasterPasswordChangeResult>;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<string | undefined>;
   /** Replaces the in-memory vault without writing the file — used for the

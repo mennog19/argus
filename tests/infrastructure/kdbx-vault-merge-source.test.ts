@@ -35,6 +35,7 @@ function fakeFileStorage(overrides: Partial<FileStorage> = {}): FileStorage {
     lastModified: vi.fn(),
     size: vi.fn(),
     copyFile: vi.fn(),
+    removeFile: vi.fn(),
     grantAccess: vi.fn(),
     ...overrides,
   };

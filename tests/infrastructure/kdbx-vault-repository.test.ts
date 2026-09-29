@@ -53,7 +53,19 @@ describe("KdbxVaultRepository", () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
 
-    await expect(repository.openVault(bytes, "wrong password")).rejects.toThrow("Incorrect password");
+    await expect(repository.openVault(bytes, "wrong password")).rejects.toThrow(
+      "Incorrect password",
+    );
+  });
+
+  it("passes other load failures through rather than calling them a wrong password", async () => {
+    const notAVault = new TextEncoder().encode("not a kdbx file").buffer;
+    const repository = new KdbxVaultRepository();
+
+    const failure = repository.openVault(notAVault, MASTER_PASSWORD);
+
+    await expect(failure).rejects.toThrow();
+    await expect(failure).rejects.not.toThrow("Incorrect password");
   });
 
   it("round-trips edits while preserving untouched fields the domain model doesn't expose", async () => {
@@ -180,6 +192,37 @@ describe("KdbxVaultRepository", () => {
       await expect(
         session.changeMasterPassword("wrong password", "new master password"),
       ).rejects.toThrow("Current password is incorrect.");
+    });
+  });
+
+  describe("rekeyFile", () => {
+    it("re-encrypts a file so only the new password opens it, contents intact", async () => {
+      const bytes = await createFixtureBytes();
+
+      const rekeyed = await new KdbxVaultRepository().rekeyFile(
+        bytes,
+        MASTER_PASSWORD,
+        "new master password",
+      );
+
+      await expect(new KdbxVaultRepository().openVault(rekeyed, MASTER_PASSWORD)).rejects.toThrow(
+        "Incorrect password",
+      );
+      const reopened = (await new KdbxVaultRepository().openVault(rekeyed, "new master password"))
+        .vault;
+      expect(reopened.name).toBe("Fixture Vault");
+      expect(reopened.rootGroup.entries.map((e) => e.title).sort()).toEqual([
+        "Untouched Site",
+        "Will Change",
+      ]);
+    });
+
+    it("rejects when the current password doesn't open the file", async () => {
+      const bytes = await createFixtureBytes();
+
+      await expect(
+        new KdbxVaultRepository().rekeyFile(bytes, "wrong password", "new master password"),
+      ).rejects.toThrow("Incorrect password");
     });
   });
 });

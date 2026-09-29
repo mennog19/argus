@@ -13,6 +13,7 @@
     "fs:allow-exists",
     "fs:allow-stat",
     "fs:allow-copy-file",
+    "fs:allow-remove",
     "fs:allow-appdata-read",
     "fs:allow-appdata-write",
     "global-shortcut:allow-register",

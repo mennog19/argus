@@ -13,6 +13,7 @@ import {
   Tags,
   Vault,
 } from "../../../src/domain";
+import { MasterPasswordChangeResult } from "../../../src/application/vault-access-service";
 import {
   AccentColor,
   AutoLockSettings,
@@ -69,7 +70,10 @@ function renderShell(
   vault: Vault,
   overrides: {
     onSave?: (vault: Vault) => Promise<void>;
-    onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
+    onChangeMasterPassword?: (
+      currentPassword: string,
+      newPassword: string,
+    ) => Promise<MasterPasswordChangeResult>;
     onLock?: () => void;
     onSettingChange?: (key: string, value: unknown) => void;
     clipboardWriter?: ClipboardWriter;
@@ -90,7 +94,8 @@ function renderShell(
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
   const onChangeMasterPassword =
-    overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
+    overrides.onChangeMasterPassword ??
+    vi.fn().mockResolvedValue({ removedBackups: [], unprotectedBackups: [] });
   const onLock = overrides.onLock ?? vi.fn();
   const onSettingChange = overrides.onSettingChange ?? vi.fn();
   const clipboardWriter = overrides.clipboardWriter ?? fakeClipboardWriter();

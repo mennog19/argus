@@ -393,7 +393,9 @@ describe("App", () => {
         vault: Vault.create("Personal"),
         filePath: "C:/vaults/personal.kdbx",
       };
-      const changeMasterPassword = vi.fn().mockResolvedValue(undefined);
+      const changeMasterPassword = vi
+        .fn()
+        .mockResolvedValue({ removedBackups: [], unprotectedBackups: [] });
 
       render(
         <App

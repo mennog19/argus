@@ -18,6 +18,11 @@ type OpenFake = (fileBytes: ArrayBuffer, masterPassword: string) => Promise<Vaul
 type CreateFake = (name: string, masterPassword: string) => Promise<Vault>;
 type SaveFake = (vault: Vault) => Promise<ArrayBuffer>;
 type RekeyFake = (currentMasterPassword: string, newMasterPassword: string) => Promise<void>;
+type RekeyFileFake = (
+  fileBytes: ArrayBuffer,
+  currentMasterPassword: string,
+  newMasterPassword: string,
+) => Promise<ArrayBuffer>;
 
 function fakeRepository(
   overrides: {
@@ -25,6 +30,7 @@ function fakeRepository(
     createVault?: CreateFake;
     saveVault?: SaveFake;
     changeMasterPassword?: RekeyFake;
+    rekeyFile?: RekeyFileFake;
   } = {},
 ) {
   const saveVault = vi.fn<SaveFake>(overrides.saveVault ?? (() => Promise.resolve(emptyBytes())));
@@ -45,6 +51,7 @@ function fakeRepository(
     createVault: vi.fn(async (name: string, masterPassword: string) =>
       sessionFor(await createVault(name, masterPassword)),
     ),
+    rekeyFile: vi.fn<RekeyFileFake>(overrides.rekeyFile ?? (() => Promise.resolve(emptyBytes()))),
   } satisfies VaultRepository;
   // Only the session's mocks are merged in: overwriting `openVault` here with
   // the raw override would bypass the wrapper that builds the session.
@@ -87,6 +94,7 @@ function fakeFileStorage(overrides: Partial<FileStorage> = {}): FileStorage {
     lastModified: vi.fn().mockResolvedValue(0),
     size: vi.fn().mockResolvedValue(0),
     copyFile: vi.fn(),
+    removeFile: vi.fn(),
     grantAccess: vi.fn(),
     ...overrides,
   };
@@ -533,6 +541,134 @@ describe("VaultAccessService", () => {
       // file on disk was never written with.
       expect(repository.changeMasterPassword).not.toHaveBeenCalled();
       expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("re-encrypts every existing backup with the new password after saving the vault", async () => {
+      const vault = Vault.create("My Vault");
+      const backupBytes = new ArrayBuffer(8);
+      const rekeyedBytes = new ArrayBuffer(16);
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        rekeyFile: vi.fn().mockResolvedValue(rekeyedBytes),
+      });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(backupBytes),
+        exists: vi
+          .fn()
+          .mockImplementation((path: string) => Promise.resolve(!path.endsWith(".bak3"))),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeMasterPassword(
+        vault,
+        "C:/vaults/mine.kdbx",
+        "old pw",
+        "new pw",
+      );
+
+      expect(repository.rekeyFile).toHaveBeenCalledTimes(2);
+      expect(repository.rekeyFile).toHaveBeenCalledWith(backupBytes, "old pw", "new pw");
+      expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak1", rekeyedBytes);
+      expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak2", rekeyedBytes);
+      expect(fileStorage.writeFile).not.toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx.bak3",
+        expect.anything(),
+      );
+      // The vault itself is written first: a backup failing must not stop the
+      // password change from reaching disk.
+      const writes = vi.mocked(fileStorage.writeFile).mock.calls.map(([path]) => path);
+      expect(writes[0]).toBe("C:/vaults/mine.kdbx");
+      expect(result).toEqual({ removedBackups: [], unprotectedBackups: [] });
+    });
+
+    it("deletes a backup the old password doesn't open instead of leaving it behind", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        rekeyFile: vi
+          .fn()
+          .mockResolvedValueOnce(new ArrayBuffer(4))
+          .mockRejectedValueOnce(new Error("Incorrect password"))
+          .mockResolvedValueOnce(new ArrayBuffer(4)),
+      });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        exists: vi.fn().mockResolvedValue(true),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeMasterPassword(
+        vault,
+        "C:/vaults/mine.kdbx",
+        "old pw",
+        "new pw",
+      );
+
+      expect(fileStorage.removeFile).toHaveBeenCalledTimes(1);
+      expect(fileStorage.removeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak2");
+      expect(result).toEqual({
+        removedBackups: ["C:/vaults/mine.kdbx.bak2"],
+        unprotectedBackups: [],
+      });
+    });
+
+    it("reports a backup it couldn't get filesystem access to, without failing the change", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
+      const fileStorage = fakeFileStorage({
+        // Nothing on disk yet, so the save doesn't rotate: the only grants
+        // are the re-key pass's own.
+        grantAccess: vi
+          .fn()
+          .mockImplementation((_basePath: string, suffix: string) =>
+            suffix === ".bak3" ? Promise.reject(new Error("out of scope")) : Promise.resolve(),
+          ),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeMasterPassword(
+        vault,
+        "C:/vaults/mine.kdbx",
+        "old pw",
+        "new pw",
+      );
+
+      expect(result).toEqual({
+        removedBackups: [],
+        unprotectedBackups: ["C:/vaults/mine.kdbx.bak3"],
+      });
+    });
+
+    it("reports a backup it can neither re-key nor delete, without failing the change", async () => {
+      const vault = Vault.create("My Vault");
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        rekeyFile: vi.fn().mockRejectedValue(new Error("Incorrect password")),
+      });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        exists: vi
+          .fn()
+          .mockImplementation((path: string) =>
+            Promise.resolve(!path.endsWith(".bak2") && !path.endsWith(".bak3")),
+          ),
+        removeFile: vi.fn().mockRejectedValue(new Error("Access denied")),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeMasterPassword(
+        vault,
+        "C:/vaults/mine.kdbx",
+        "old pw",
+        "new pw",
+      );
+
+      expect(result).toEqual({
+        removedBackups: [],
+        unprotectedBackups: ["C:/vaults/mine.kdbx.bak1"],
+      });
     });
   });
 });

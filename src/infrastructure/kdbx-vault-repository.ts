@@ -43,6 +43,19 @@ function applyDefaultKdf(db: Kdbx): void {
   params.set("P", VarDictionary.ValueType.UInt32, DEFAULT_KDF.parallelism);
 }
 
+async function loadKdbx(fileBytes: ArrayBuffer, masterPassword: string): Promise<Kdbx> {
+  configureKdbxCrypto();
+  const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
+  try {
+    return await Kdbx.load(fileBytes, credentials);
+  } catch (cause) {
+    if (cause instanceof KdbxError && cause.code === Consts.ErrorCodes.InvalidKey) {
+      throw new Error("Incorrect password", { cause });
+    }
+    throw cause;
+  }
+}
+
 /** A `kdbxweb` document, held open so that unmapped fields survive a save. */
 class KdbxVaultSession implements VaultSession {
   readonly vault: Vault;
@@ -81,16 +94,17 @@ class KdbxVaultSession implements VaultSession {
 /** `kdbxweb`-backed `VaultRepository`. Stateless; each open yields a session. */
 export class KdbxVaultRepository implements VaultRepository {
   async openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<VaultSession> {
-    configureKdbxCrypto();
-    const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
-    try {
-      return new KdbxVaultSession(await Kdbx.load(fileBytes, credentials));
-    } catch (cause) {
-      if (cause instanceof KdbxError && cause.code === Consts.ErrorCodes.InvalidKey) {
-        throw new Error("Incorrect password");
-      }
-      throw cause;
-    }
+    return new KdbxVaultSession(await loadKdbx(fileBytes, masterPassword));
+  }
+
+  async rekeyFile(
+    fileBytes: ArrayBuffer,
+    currentMasterPassword: string,
+    newMasterPassword: string,
+  ): Promise<ArrayBuffer> {
+    const db = await loadKdbx(fileBytes, currentMasterPassword);
+    await db.credentials.setPassword(ProtectedValue.fromString(newMasterPassword));
+    return db.save();
   }
 
   createVault(name: string, masterPassword: string): Promise<VaultSession> {

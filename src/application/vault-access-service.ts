@@ -18,6 +18,14 @@ export interface SaveVaultOptions {
   force?: boolean;
 }
 
+/** What happened to a vault's rolling backups during a master password change. */
+export interface MasterPasswordChangeResult {
+  /** Backups that couldn't be re-keyed (e.g. the old password didn't open them), deleted instead. */
+  removedBackups: string[];
+  /** Backups that could be neither re-keyed nor deleted: may still open with the old password. */
+  unprotectedBackups: string[];
+}
+
 /**
  * Thrown by `saveVault` when the file at `filePath` was modified on disk
  * since it was last opened/saved through this service, so the caller can
@@ -155,16 +163,71 @@ export class VaultAccessService {
    * re-keying mutates the open document's credentials, so a conflict
    * discovered afterwards would leave the app holding a password the file on
    * disk has never been written with.
+   *
+   * Then re-keys the rolling backups too: they're still encrypted with the old
+   * password, and a change made because that password leaked shouldn't leave
+   * three copies of the vault it still opens. See `rekeyBackups`.
    */
   async changeMasterPassword(
     vault: Vault,
     filePath: string,
     currentMasterPassword: string,
     newMasterPassword: string,
-  ): Promise<void> {
+  ): Promise<MasterPasswordChangeResult> {
     await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
     await this.openSession().changeMasterPassword(currentMasterPassword, newMasterPassword);
     await this.saveVault(vault, filePath);
+    return this.rekeyBackups(filePath, currentMasterPassword, newMasterPassword);
+  }
+
+  /**
+   * Re-encrypts each existing backup of `filePath` under the new password.
+   * Runs only after the vault itself has been saved, and never throws: the
+   * password change has already happened by then, and reporting it as failed
+   * would leave the user not knowing which password opens their vault.
+   *
+   * A backup that can't be re-keyed -- most likely one the old password
+   * doesn't open, written by another app or left over from an earlier
+   * password -- is removed rather than left in an unknown state. One that
+   * can be neither re-keyed nor removed is reported back so the user can deal
+   * with it by hand.
+   */
+  private async rekeyBackups(
+    filePath: string,
+    currentMasterPassword: string,
+    newMasterPassword: string,
+  ): Promise<MasterPasswordChangeResult> {
+    const result: MasterPasswordChangeResult = { removedBackups: [], unprotectedBackups: [] };
+    for (const suffix of BACKUP_SUFFIXES) {
+      const backupPath = filePath + suffix;
+      try {
+        await this.fileStorage.grantAccess(filePath, suffix);
+        if (!(await this.fileStorage.exists(backupPath))) {
+          continue;
+        }
+      } catch {
+        result.unprotectedBackups.push(backupPath);
+        continue;
+      }
+
+      try {
+        const oldBytes = await this.fileStorage.readFile(backupPath);
+        const newBytes = await this.repository.rekeyFile(
+          oldBytes,
+          currentMasterPassword,
+          newMasterPassword,
+        );
+        await this.fileStorage.writeFile(backupPath, newBytes);
+      } catch {
+        try {
+          await this.fileStorage.removeFile(backupPath);
+          result.removedBackups.push(backupPath);
+        } catch {
+          result.unprotectedBackups.push(backupPath);
+        }
+      }
+    }
+    return result;
   }
 
   /**

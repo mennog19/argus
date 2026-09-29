@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { copyFile, exists, readFile, stat } from "@tauri-apps/plugin-fs";
+import { copyFile, exists, readFile, remove, stat } from "@tauri-apps/plugin-fs";
 import { FileStorage } from "../application/file-storage";
 
 /** `FileStorage` backed by Tauri's filesystem plugin. */
@@ -38,6 +38,10 @@ export class TauriFileStorage implements FileStorage {
 
   async copyFile(source: string, destination: string): Promise<void> {
     await copyFile(source, destination);
+  }
+
+  async removeFile(path: string): Promise<void> {
+    await remove(path);
   }
 
   /**

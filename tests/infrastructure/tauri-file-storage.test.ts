@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { copyFile, exists, readFile, stat } from "@tauri-apps/plugin-fs";
+import { copyFile, exists, readFile, remove, stat } from "@tauri-apps/plugin-fs";
 import { TauriFileStorage } from "../../src/infrastructure/tauri-file-storage";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -12,6 +12,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   exists: vi.fn(),
   stat: vi.fn(),
   copyFile: vi.fn(),
+  remove: vi.fn(),
 }));
 
 describe("TauriFileStorage", () => {
@@ -105,6 +106,14 @@ describe("TauriFileStorage", () => {
     await storage.copyFile("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
 
     expect(copyFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx", "C:/vaults/mine.kdbx.bak1");
+  });
+
+  it("removes a file through plugin-fs", async () => {
+    const storage = new TauriFileStorage();
+
+    await storage.removeFile("C:/vaults/mine.kdbx.bak2");
+
+    expect(remove).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak2");
   });
 
   it("grants filesystem access to a backup path through the app's own command", async () => {

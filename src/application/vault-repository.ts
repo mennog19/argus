@@ -42,4 +42,16 @@ export interface VaultSession {
 export interface VaultRepository {
   openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<VaultSession>;
   createVault(name: string, masterPassword: string): Promise<VaultSession>;
+  /**
+   * Re-encrypts a whole vault file under `newMasterPassword` without opening
+   * it as a session or mapping it through the domain model, so everything
+   * but the credentials comes back out unchanged. For re-keying the backups
+   * that sit next to a vault whose password just changed. Rejects if
+   * `currentMasterPassword` doesn't open `fileBytes`.
+   */
+  rekeyFile(
+    fileBytes: ArrayBuffer,
+    currentMasterPassword: string,
+    newMasterPassword: string,
+  ): Promise<ArrayBuffer>;
 }

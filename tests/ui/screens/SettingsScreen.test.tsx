@@ -11,7 +11,10 @@ import {
   GroupDeleteMode,
   Theme,
 } from "../../../src/application/settings";
-import { VaultFileInfo } from "../../../src/application/vault-access-service";
+import {
+  MasterPasswordChangeResult,
+  VaultFileInfo,
+} from "../../../src/application/vault-access-service";
 import { SettingsScreen } from "../../../src/ui/screens/SettingsScreen";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
@@ -34,7 +37,10 @@ function renderSettings(
     theme?: Theme;
     contentProtection?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
-    onChangeMasterPassword?: (currentPassword: string, newPassword: string) => Promise<void>;
+    onChangeMasterPassword?: (
+      currentPassword: string,
+      newPassword: string,
+    ) => Promise<MasterPasswordChangeResult>;
     onOpenMergeWizard?: () => void;
     mergeError?: string;
     onExportSettings?: () => Promise<string | undefined>;
@@ -42,7 +48,8 @@ function renderSettings(
   } = {},
 ) {
   const onChangeMasterPassword =
-    overrides.onChangeMasterPassword ?? vi.fn().mockResolvedValue(undefined);
+    overrides.onChangeMasterPassword ??
+    vi.fn().mockResolvedValue({ removedBackups: [], unprotectedBackups: [] });
   const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
   const onSettingChange = vi.fn();
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);

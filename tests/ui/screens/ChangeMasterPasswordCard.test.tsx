@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChangeMasterPasswordCard } from "../../../src/ui/screens/ChangeMasterPasswordCard";
 
+const NOTHING_LEFT_BEHIND = { removedBackups: [], unprotectedBackups: [] };
+
 async function reveal(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /change master password/i }));
 }
@@ -98,7 +100,7 @@ describe("ChangeMasterPasswordCard", () => {
 
   it("submits the current and new password, clears the form, and shows a success message", async () => {
     const user = userEvent.setup();
-    const onChangeMasterPassword = vi.fn().mockResolvedValue(undefined);
+    const onChangeMasterPassword = vi.fn().mockResolvedValue(NOTHING_LEFT_BEHIND);
     render(<ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />);
 
     await reveal(user);
@@ -109,9 +111,50 @@ describe("ChangeMasterPasswordCard", () => {
 
     expect(onChangeMasterPassword).toHaveBeenCalledWith("old-pw", "new-password");
     expect(await screen.findByText("Master password changed.")).toBeInTheDocument();
+    expect(screen.getByText(/backups were re-encrypted/i)).toBeInTheDocument();
+    expect(screen.getByText(/copies made outside Argus/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(screen.getByLabelText("New password")).toHaveValue("");
     expect(screen.getByLabelText("Confirm new password")).toHaveValue("");
+  });
+
+  it("says which backups were deleted or still need deleting by hand", async () => {
+    const user = userEvent.setup();
+    const onChangeMasterPassword = vi.fn().mockResolvedValue({
+      removedBackups: ["C:/vaults/mine.kdbx.bak2", "C:/vaults/mine.kdbx.bak3"],
+      unprotectedBackups: ["C:/vaults/mine.kdbx.bak1"],
+    });
+    render(<ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />);
+
+    await reveal(user);
+    await user.type(screen.getByLabelText("Current password"), "old-pw");
+    await user.type(screen.getByLabelText("New password"), "new-password");
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+    expect(await screen.findByText(/2 backups couldn't be re-encrypted/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Delete them yourself: C:\/vaults\/mine\.kdbx\.bak1/),
+    ).toBeInTheDocument();
+  });
+
+  it("uses the singular when only one backup was deleted", async () => {
+    const user = userEvent.setup();
+    const onChangeMasterPassword = vi.fn().mockResolvedValue({
+      removedBackups: ["C:/vaults/mine.kdbx.bak3"],
+      unprotectedBackups: [],
+    });
+    render(<ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />);
+
+    await reveal(user);
+    await user.type(screen.getByLabelText("Current password"), "old-pw");
+    await user.type(screen.getByLabelText("New password"), "new-password");
+    await user.type(screen.getByLabelText("Confirm new password"), "new-password");
+    await user.click(screen.getByRole("button", { name: /change master password/i }));
+
+    expect(
+      await screen.findByText(/1 backup couldn't be re-encrypted and was deleted\./i),
+    ).toBeInTheDocument();
   });
 
   it("shows the error message when changing the password fails", async () => {
