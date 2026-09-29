@@ -11,6 +11,7 @@ import {
   Password,
   Vault,
 } from "../domain";
+import { trimHistory } from "./kdbx-history";
 import { iconFromKdbx, writeIconToKdbx } from "./kdbx-icon";
 import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
 
@@ -184,6 +185,7 @@ function syncEntry(
   if (snapshotEntry(entry) !== snapshotEntry(entryFromKdbx(existing))) {
     existing.pushHistory();
     writeEntryFields(existing, entry, db.meta.memoryProtection);
+    trimHistory(existing, db.meta);
   }
   writeAccessTime(existing, entry);
 }
