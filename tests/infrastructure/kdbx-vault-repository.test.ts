@@ -53,7 +53,7 @@ describe("KdbxVaultRepository", () => {
     const bytes = await createFixtureBytes();
     const repository = new KdbxVaultRepository();
 
-    await expect(repository.openVault(bytes, "wrong password")).rejects.toThrow();
+    await expect(repository.openVault(bytes, "wrong password")).rejects.toThrow("Incorrect password");
   });
 
   it("round-trips edits while preserving untouched fields the domain model doesn't expose", async () => {

@@ -58,7 +58,7 @@ function fakeUrlOpener(): UrlOpener {
 }
 
 function fakeClipboardWriter(overrides: Partial<ClipboardWriter> = {}): ClipboardWriter {
-  return { writeText: vi.fn(), ...overrides };
+  return { writeText: vi.fn(), clearIfUnchanged: vi.fn(), ...overrides };
 }
 
 function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
@@ -357,12 +357,13 @@ describe("VaultShell", () => {
     const entry = Entry.create({ title: "GitHub", username: "octocat" });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
-    const writeText = vi.fn().mockResolvedValue(undefined);
+    const writeText = vi.fn().mockResolvedValue(7);
+    const clearIfUnchanged = vi.fn().mockResolvedValue(undefined);
 
     vi.useFakeTimers();
     try {
       renderShell(vault, {
-        clipboardWriter: fakeClipboardWriter({ writeText }),
+        clipboardWriter: fakeClipboardWriter({ writeText, clearIfUnchanged }),
         clipboardClearSeconds: 5,
       });
       fireEvent.click(screen.getByText("GitHub"));
@@ -387,7 +388,7 @@ describe("VaultShell", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000 - 1500);
       });
-      expect(writeText).toHaveBeenLastCalledWith("");
+      expect(clearIfUnchanged).toHaveBeenCalledExactlyOnceWith(7);
       expect(document.querySelector(".clipboard-clear-bar-fill")).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
@@ -416,12 +417,13 @@ describe("VaultShell", () => {
     });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
-    const writeText = vi.fn().mockResolvedValue(undefined);
+    const writeText = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+    const clearIfUnchanged = vi.fn().mockResolvedValue(undefined);
 
     vi.useFakeTimers();
     try {
       renderShell(vault, {
-        clipboardWriter: fakeClipboardWriter({ writeText }),
+        clipboardWriter: fakeClipboardWriter({ writeText, clearIfUnchanged }),
         clipboardClearSeconds: 5,
       });
       fireEvent.click(screen.getByText("GitHub"));
@@ -444,13 +446,13 @@ describe("VaultShell", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2000);
       });
-      expect(writeText).not.toHaveBeenLastCalledWith("");
+      expect(clearIfUnchanged).not.toHaveBeenCalled();
       expect(document.querySelectorAll(".clipboard-clear-bar-fill")).toHaveLength(1);
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(3000);
       });
-      expect(writeText).toHaveBeenLastCalledWith("");
+      expect(clearIfUnchanged).toHaveBeenCalledExactlyOnceWith(2);
       expect(document.querySelector(".clipboard-clear-bar-fill")).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();

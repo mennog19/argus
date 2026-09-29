@@ -5,5 +5,6 @@
  */
 export interface VaultFileDialog {
   pickVaultToOpen(): Promise<string | undefined>;
-  pickPathForNewVault(): Promise<string | undefined>;
+  /** `vaultName` seeds the suggested file name (`<vaultName>.kdbx`). */
+  pickPathForNewVault(vaultName: string): Promise<string | undefined>;
 }

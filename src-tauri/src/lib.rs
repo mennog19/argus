@@ -1,5 +1,6 @@
 mod atomic_write;
 mod auto_type;
+mod clipboard;
 
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
@@ -79,6 +80,8 @@ fn write_file_atomic(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    clipboard::clear_on_panic();
+
     tauri::Builder::default()
         // Must be registered first: plugins run in registration order, and a
         // second launch needs to be caught before anything else initializes.
@@ -103,15 +106,30 @@ pub fn run() {
         // password is ever checked.
         .plugin(tauri_plugin_persisted_scope::init())
         .manage(auto_type::AutoTypeState::default())
+        // A secret still on the clipboard at launch was left by a run that
+        // crashed or was killed before its auto-clear or quit could wipe it.
+        .setup(|app| {
+            clipboard::clear_any_secret(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             grant_file_access,
             write_file_atomic,
             auto_type::auto_type_capture_target,
             auto_type::auto_type_inspect_target,
-            auto_type::auto_type_send
+            auto_type::auto_type_send,
+            clipboard::clipboard_write_secret,
+            clipboard::clipboard_clear_secret
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Quitting mid-countdown must not leave the secret behind: the
+            // countdown lives in the webview, which is gone by now.
+            if let tauri::RunEvent::Exit = event {
+                clipboard::clear_any_secret(app);
+            }
+        });
 }
 
 #[cfg(test)]

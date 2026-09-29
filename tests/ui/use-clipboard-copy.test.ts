@@ -3,8 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClipboardWriter } from "../../src/application/clipboard";
 import { useClipboardCopy } from "../../src/ui/use-clipboard-copy";
 
-function fakeWriter(): ClipboardWriter & { writeText: ReturnType<typeof vi.fn> } {
-  return { writeText: vi.fn(async () => undefined) };
+/** A writer whose copies are numbered 1, 2, 3, … */
+function fakeWriter(): ClipboardWriter & {
+  writeText: ReturnType<typeof vi.fn>;
+  clearIfUnchanged: ReturnType<typeof vi.fn>;
+} {
+  let copies = 0;
+  return {
+    writeText: vi.fn(async () => ++copies),
+    clearIfUnchanged: vi.fn(async () => undefined),
+  };
 }
 
 describe("useClipboardCopy", () => {
@@ -55,7 +63,7 @@ describe("useClipboardCopy", () => {
       vi.advanceTimersByTime(20_000);
     });
 
-    expect(writer.writeText).toHaveBeenLastCalledWith("");
+    expect(writer.clearIfUnchanged).toHaveBeenCalledExactlyOnceWith(1);
     expect(result.current.clearingField).toBeUndefined();
   });
 
@@ -78,14 +86,14 @@ describe("useClipboardCopy", () => {
     act(() => {
       vi.advanceTimersByTime(1_000);
     });
-    expect(writer.writeText).not.toHaveBeenLastCalledWith("");
+    expect(writer.clearIfUnchanged).not.toHaveBeenCalled();
     expect(result.current.clearingField).toBe("password");
     expect(result.current.clearingToken).toBe(2);
 
     act(() => {
       vi.advanceTimersByTime(19_000);
     });
-    expect(writer.writeText).toHaveBeenLastCalledWith("");
+    expect(writer.clearIfUnchanged).toHaveBeenCalledExactlyOnceWith(2);
   });
 
   it("wipes an outstanding secret immediately when the vault closes", async () => {
@@ -97,7 +105,7 @@ describe("useClipboardCopy", () => {
     });
     unmount();
 
-    expect(writer.writeText).toHaveBeenLastCalledWith("");
+    expect(writer.clearIfUnchanged).toHaveBeenCalledExactlyOnceWith(1);
   });
 
   it("writes nothing on unmount when the countdown already wiped it", async () => {
@@ -110,10 +118,10 @@ describe("useClipboardCopy", () => {
     act(() => {
       vi.advanceTimersByTime(20_000);
     });
-    writer.writeText.mockClear();
+    writer.clearIfUnchanged.mockClear();
     unmount();
 
-    expect(writer.writeText).not.toHaveBeenCalled();
+    expect(writer.clearIfUnchanged).not.toHaveBeenCalled();
   });
 
   it("writes nothing on unmount when nothing was ever copied", () => {
@@ -122,7 +130,7 @@ describe("useClipboardCopy", () => {
 
     unmount();
 
-    expect(writer.writeText).not.toHaveBeenCalled();
+    expect(writer.clearIfUnchanged).not.toHaveBeenCalled();
   });
 
   it("copies through the writer it was last given", async () => {

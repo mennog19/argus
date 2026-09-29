@@ -54,7 +54,7 @@ function fakeUrlOpener(): UrlOpener {
 }
 
 function fakeClipboardWriter(): ClipboardWriter {
-  return { writeText: vi.fn() };
+  return { writeText: vi.fn(), clearIfUnchanged: vi.fn() };
 }
 
 function fakeWindowEvents(overrides: Partial<WindowEvents> = {}): WindowEvents {

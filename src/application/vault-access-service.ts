@@ -66,7 +66,7 @@ export class VaultAccessService {
   }
 
   async createNewVault(name: string, masterPassword: string): Promise<OpenedVault | undefined> {
-    const filePath = await this.dialog.pickPathForNewVault();
+    const filePath = await this.dialog.pickPathForNewVault(name);
     if (!filePath) {
       return undefined;
     }

@@ -28,6 +28,9 @@ export interface ClipboardCopy {
  * Unmounting this hook wipes immediately instead of waiting out the
  * countdown. It unmounts when the vault closes, which is exactly the moment
  * a password manager should not be leaving a password behind.
+ *
+ * Every wipe names the copy it is for, so it only empties the clipboard while
+ * that copy is still on it — never something the user copied in the meantime.
  */
 export function useClipboardCopy(writer: ClipboardWriter, clearSeconds: number): ClipboardCopy {
   const [copiedField, setCopiedField] = useState<string | undefined>(undefined);
@@ -36,8 +39,8 @@ export function useClipboardCopy(writer: ClipboardWriter, clearSeconds: number):
 
   const labelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const wipeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  /** True while a copied secret is still sitting on the clipboard unwiped. */
-  const wipePending = useRef(false);
+  /** The copy whose wipe is still to come, if any. */
+  const pendingCopy = useRef<number | undefined>(undefined);
 
   // Read through a ref so that a caller passing a fresh writer can't be
   // mistaken for an unmount and wipe the clipboard out from under itself.
@@ -50,17 +53,17 @@ export function useClipboardCopy(writer: ClipboardWriter, clearSeconds: number):
     return () => {
       clearTimeout(labelTimer.current);
       clearTimeout(wipeTimer.current);
-      if (wipePending.current) {
-        wipePending.current = false;
-        void writerRef.current.writeText("");
+      if (pendingCopy.current !== undefined) {
+        void writerRef.current.clearIfUnchanged(pendingCopy.current);
+        pendingCopy.current = undefined;
       }
     };
   }, []);
 
   const copy = useCallback(
     async (value: string, field: string) => {
-      await writerRef.current.writeText(value);
-      wipePending.current = true;
+      const copyId = await writerRef.current.writeText(value);
+      pendingCopy.current = copyId;
       setCopiedField(field);
       setClearingField(field);
       setClearingToken((current) => current + 1);
@@ -73,8 +76,8 @@ export function useClipboardCopy(writer: ClipboardWriter, clearSeconds: number):
       // here on.
       clearTimeout(wipeTimer.current);
       wipeTimer.current = setTimeout(() => {
-        wipePending.current = false;
-        void writerRef.current.writeText("");
+        pendingCopy.current = undefined;
+        void writerRef.current.clearIfUnchanged(copyId);
         setClearingField(undefined);
       }, clearSeconds * 1000);
     },

@@ -50,14 +50,10 @@ Argus targets full KDBX3/KDBX4.
 - **Local-only, always.** Argus has no accounts, no sync service, and sends no telemetry. The only network request the app can ever make is an explicit, user-triggered "check for updates" that opens the GitHub Releases page in your browser — nothing happens automatically or in the background.
 - **Master password only.** Vaults are unlocked with a master password. There is no keyfile or biometric unlock in v1 (see [Known limitations](#known-limitations)).
 - **Memory protection.** The app window uses OS-level content protection, and KDBX-protected fields (passwords, protected custom fields) follow `kdbxweb`'s in-memory protection conventions rather than being held as plain strings.
-- **Clipboard handling.** Copying a password to the clipboard starts an auto-clear timer so the secret doesn't linger there indefinitely.
+- **Clipboard handling.** Copying a password to the clipboard starts an auto-clear timer so the secret doesn't linger there indefinitely. The clear only happens if the clipboard still holds what Argus copied, so anything you copied since is left alone. A copied secret is also cleared when the vault closes or Argus quits, and on the next launch after a crash. On Windows, copies are kept out of clipboard history (Win+V) and cloud clipboard sync.
 - **Auto-type caveats.** Auto-type simulates keystrokes into whatever window has focus, driven by Windows UI Automation to find the right fields directly (falling back to a Tab-count sequence only when it can't). It is off by default, opt-in, and always shows a picker confirming the target window before typing anything — but by nature it trusts that the focused window is the one you intend, so use it deliberately, and be aware that any other process capable of reading keystrokes/UI Automation on your machine could observe it, same as with any auto-type feature.
 - **Unsigned binaries.** Releases are not code-signed (see [Verifying your download](#verifying-your-download) for how to confirm integrity via checksums instead).
 - Argus has **not** had an independent third-party security audit yet.
-
-## Build from source
-
-See [`plan.md`](plan.md) for the development roadmap and [`CLAUDE.md`](CLAUDE.md) for project structure and coding conventions.
 
 ### 1. Install prerequisites
 

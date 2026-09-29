@@ -1,4 +1,12 @@
-import { Consts, Credentials, Int64, Kdbx, ProtectedValue, VarDictionary } from "kdbxweb";
+import {
+  Consts,
+  Credentials,
+  Int64,
+  Kdbx,
+  KdbxError,
+  ProtectedValue,
+  VarDictionary,
+} from "kdbxweb";
 import {
   IncorrectMasterPasswordError,
   VaultRepository,
@@ -75,7 +83,14 @@ export class KdbxVaultRepository implements VaultRepository {
   async openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<VaultSession> {
     configureKdbxCrypto();
     const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
-    return new KdbxVaultSession(await Kdbx.load(fileBytes, credentials));
+    try {
+      return new KdbxVaultSession(await Kdbx.load(fileBytes, credentials));
+    } catch (cause) {
+      if (cause instanceof KdbxError && cause.code === Consts.ErrorCodes.InvalidKey) {
+        throw new Error("Incorrect password");
+      }
+      throw cause;
+    }
   }
 
   createVault(name: string, masterPassword: string): Promise<VaultSession> {

@@ -3,6 +3,17 @@ import { VaultFileDialog } from "../application/vault-file-dialog";
 
 const KDBX_FILTERS = [{ name: "KeePass Vault", extensions: ["kdbx"] }];
 
+/** `<name>.kdbx`, with characters Windows forbids in file names replaced. */
+function suggestedFileName(vaultName: string): string {
+  // eslint-disable-next-line no-control-regex
+  let safe = vaultName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim();
+  // Windows silently strips trailing dots and spaces from file names.
+  while (safe.endsWith(".") || safe.endsWith(" ")) {
+    safe = safe.slice(0, -1);
+  }
+  return `${safe || "Vault"}.kdbx`;
+}
+
 /** `VaultFileDialog` backed by Tauri's native file-picker plugin. */
 export class TauriVaultFileDialog implements VaultFileDialog {
   async pickVaultToOpen(): Promise<string | undefined> {
@@ -10,8 +21,8 @@ export class TauriVaultFileDialog implements VaultFileDialog {
     return path ?? undefined;
   }
 
-  async pickPathForNewVault(): Promise<string | undefined> {
-    const path = await save({ filters: KDBX_FILTERS, defaultPath: "Vault.kdbx" });
+  async pickPathForNewVault(vaultName: string): Promise<string | undefined> {
+    const path = await save({ filters: KDBX_FILTERS, defaultPath: suggestedFileName(vaultName) });
     return path ?? undefined;
   }
 }

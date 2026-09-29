@@ -11,7 +11,7 @@ function renderGenerator(policyOptions: PasswordPolicyOptions = {}) {
     <GeneratorScreen
       policyOptions={policyOptions}
       onPolicyChange={onPolicyChange}
-      clipboardWriter={{ writeText }}
+      clipboardWriter={{ writeText, clearIfUnchanged: vi.fn() }}
     />,
   );
   return { onPolicyChange, writeText, unmount: view.unmount };

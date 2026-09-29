@@ -36,20 +36,31 @@ describe("TauriVaultFileDialog", () => {
       vi.mocked(save).mockResolvedValue("C:/vaults/new.kdbx");
       const dialog = new TauriVaultFileDialog();
 
-      const result = await dialog.pickPathForNewVault();
+      const result = await dialog.pickPathForNewVault("Family");
 
       expect(result).toBe("C:/vaults/new.kdbx");
       expect(save).toHaveBeenCalledWith({
         filters: [{ name: "KeePass Vault", extensions: ["kdbx"] }],
-        defaultPath: "Vault.kdbx",
+        defaultPath: "Family.kdbx",
       });
+    });
+
+    it("replaces characters that are invalid in file names", async () => {
+      vi.mocked(save).mockResolvedValue(null);
+      const dialog = new TauriVaultFileDialog();
+
+      await dialog.pickPathForNewVault('Work: "a/b"');
+
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ defaultPath: "Work_ _a_b_.kdbx" }),
+      );
     });
 
     it("resolves undefined when the dialog is cancelled", async () => {
       vi.mocked(save).mockResolvedValue(null);
       const dialog = new TauriVaultFileDialog();
 
-      expect(await dialog.pickPathForNewVault()).toBeUndefined();
+      expect(await dialog.pickPathForNewVault("Vault")).toBeUndefined();
     });
   });
 });
