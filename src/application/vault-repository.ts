@@ -35,7 +35,12 @@ export interface VaultKey {
  * dropped when the file is rebuilt from the intentionally lossy domain model.
  */
 export interface VaultSession {
-  /** The vault as parsed when it was opened. */
+  /**
+   * The vault as the document holds it: as parsed when opened, then as of the
+   * last `save`. That includes what a save adds by itself, such as the history
+   * revision an edit pushes, so callers should carry on from this vault
+   * rather than the one they saved.
+   */
   readonly vault: Vault;
   /** Applies `vault`'s tree onto the open document and serializes it. */
   save(vault: Vault): Promise<ArrayBuffer>;

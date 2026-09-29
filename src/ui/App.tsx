@@ -149,10 +149,13 @@ function App({
   }
 
   async function saveVault(nextVault: Vault, filePath: string) {
-    await writeReportingConflicts({ nextVault, filePath }, () =>
-      vaultAccessService.saveVault(nextVault, filePath),
-    );
-    setScreen({ kind: "unlocked", vault: nextVault, filePath });
+    let saved: Vault | undefined;
+    await writeReportingConflicts({ nextVault, filePath }, async () => {
+      saved = await vaultAccessService.saveVault(nextVault, filePath);
+    });
+    // The vault as saved, so e.g. the history revision an edit pushed shows
+    // up. `writeReportingConflicts` only resolves once the write above has.
+    setScreen({ kind: "unlocked", vault: saved!, filePath });
     void refreshFileInfo(filePath);
   }
 
@@ -177,8 +180,10 @@ function App({
   }
 
   async function overwriteConflict(pending: SaveConflict) {
-    await vaultAccessService.saveVault(pending.nextVault, pending.filePath, { force: true });
-    setScreen({ kind: "unlocked", vault: pending.nextVault, filePath: pending.filePath });
+    const saved = await vaultAccessService.saveVault(pending.nextVault, pending.filePath, {
+      force: true,
+    });
+    setScreen({ kind: "unlocked", vault: saved, filePath: pending.filePath });
     setConflict(undefined);
     void refreshFileInfo(pending.filePath);
   }

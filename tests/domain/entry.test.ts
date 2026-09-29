@@ -108,3 +108,74 @@ describe("Entry", () => {
     expect(entry.times.accessedAt).toBeUndefined();
   });
 });
+
+describe("Entry history", () => {
+  const firstVersion = new Date("2026-01-01T10:00:00Z");
+  const secondVersion = new Date("2026-02-01T10:00:00Z");
+
+  function entryWithHistory() {
+    const id = EntryId.create();
+    const oldest = new Entry(id, {
+      title: "Bank",
+      password: new Password("first-pass"),
+      url: "https://old.example",
+      times: { modifiedAt: firstVersion },
+    });
+    const middle = oldest.update({
+      password: new Password("second-pass"),
+      times: { modifiedAt: secondVersion },
+    });
+    const current = middle.update({
+      title: "Bank (main)",
+      password: new Password("third-pass"),
+      notes: "current notes",
+      tags: new Tags([new Tag("finance")]),
+      customFields: new CustomFields([new CustomField("PIN", "1234", true)]),
+      icon: Icon.brand("github"),
+      history: [oldest, middle],
+    });
+    return { oldest, middle, current };
+  }
+
+  it("has no history by default", () => {
+    expect(Entry.create().history).toEqual([]);
+  });
+
+  it("keeps its history across edits", () => {
+    const { oldest, middle, current } = entryWithHistory();
+
+    expect(current.update({ title: "Renamed" }).history).toEqual([oldest, middle]);
+  });
+
+  it("restores a revision's contents, keeping its own id, times and history", () => {
+    const { oldest, current } = entryWithHistory();
+
+    const restored = current.restoreRevision(0);
+
+    expect(restored.id.equals(current.id)).toBe(true);
+    expect(restored.title).toBe("Bank");
+    expect(restored.password.reveal()).toBe("first-pass");
+    expect(restored.url).toBe("https://old.example");
+    expect(restored.notes).toBe("");
+    expect(restored.tags.values).toEqual([]);
+    expect(restored.customFields.values).toEqual([]);
+    expect(restored.icon).toBe(oldest.icon);
+    expect(restored.times).toBe(current.times);
+    expect(restored.history).toBe(current.history);
+  });
+
+  it("deletes one revision and keeps the others in order", () => {
+    const { oldest, middle, current } = entryWithHistory();
+
+    expect(current.deleteRevision(0).history).toEqual([middle]);
+    expect(current.deleteRevision(1).history).toEqual([oldest]);
+    expect(current.history).toEqual([oldest, middle]);
+  });
+
+  it("rejects a revision index it doesn't have", () => {
+    const { current } = entryWithHistory();
+
+    expect(() => current.restoreRevision(2)).toThrow("No revision 2");
+    expect(() => current.deleteRevision(-1)).toThrow("No revision -1");
+  });
+});

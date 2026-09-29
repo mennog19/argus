@@ -3,6 +3,7 @@ import {
   basename,
   formatFileSize,
   formatGroupContents,
+  formatDateTime,
   formatRelativeTime,
   formatTotpCode,
   isSamePath,
@@ -136,5 +137,19 @@ describe("formatGroupContents", () => {
 
   it("joins entries and subgroups", () => {
     expect(formatGroupContents({ entries: 3, groups: 2 })).toBe("3 entries · 2 subgroups");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("formats a date and time in the user's locale", () => {
+    const date = new Date("2026-03-12T14:05:00Z");
+
+    expect(formatDateTime(date)).toBe(
+      new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date),
+    );
+  });
+
+  it("says so when there's no date", () => {
+    expect(formatDateTime(undefined)).toBe("Unknown date");
   });
 });

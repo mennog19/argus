@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { Kdbx } from "kdbxweb";
-import { CustomField, Password, totpConfigFromCustomFields } from "../../src/domain";
+import { CustomField, Entry, Password, totpConfigFromCustomFields } from "../../src/domain";
+import { VaultSession } from "../../src/application/vault-repository";
 import { KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 import {
   KEEPASS_FIXTURE_PASSWORD,
@@ -119,6 +120,95 @@ describe.each<{ file: KeePassFixture; version: [number, number]; name: string }>
     });
     expect(unchanged(afterEntry)).toEqual(unchanged(beforeEntry));
     expect(Object.keys(afterEntry.binaries)).toEqual(["notes.txt"]);
+  });
+
+  describe("entry history", () => {
+    async function openEverything() {
+      const opened = await open();
+      const entry = opened.session.vault.rootGroup.entries.find(
+        (e) => e.title === "Everything Entry",
+      )!;
+      const id = findEntry(opened.original, "Everything Entry").uuid.id;
+      return { ...opened, entry, id };
+    }
+
+    async function saveEntry(session: VaultSession, entry: Entry) {
+      return loadRaw(await session.save(session.vault.updateEntry(entry)));
+    }
+
+    it("maps KeePass's revisions, oldest first, with their times", async () => {
+      const { entry, original } = await openEverything();
+
+      expect(entry.history.map((revision) => revision.password.reveal())).toEqual([
+        "S3cret!pass",
+        "S3cret!pass-v2",
+      ]);
+      const raw = findEntry(original, "Everything Entry").history;
+      expect(entry.history.map((revision) => revision.times.modifiedAt)).toEqual(
+        raw.map((revision) => revision.times.lastModTime),
+      );
+      expect(entry.history.every((revision) => revision.history.length === 0)).toBe(true);
+    });
+
+    it("deletes one revision from the file and leaves everything else as KeePass wrote it", async () => {
+      const { entry, original, session, id } = await openEverything();
+
+      const saved = await saveEntry(session, entry.deleteRevision(1));
+
+      const before = snapshotVault(original);
+      const after = snapshotVault(saved);
+      expect(after.entries[id].history).toEqual([before.entries[id].history[0]]);
+      expect({ ...after.entries[id], history: undefined }).toEqual({
+        ...before.entries[id],
+        history: undefined,
+      });
+      const others = (entries: typeof after.entries) =>
+        Object.entries(entries).filter(([entryId]) => entryId !== id);
+      expect(others(after.entries)).toEqual(others(before.entries));
+    });
+
+    it("restores a revision, keeping the version it replaces as the newest revision", async () => {
+      const { entry, original, session, id } = await openEverything();
+
+      const saved = await saveEntry(session, entry.restoreRevision(1));
+
+      const before = snapshotVault(original).entries[id];
+      const after = snapshotVault(saved).entries[id];
+      expect(after.fields.Password).toEqual({ protected: true, text: "S3cret!pass-v2" });
+      expect(after.history).toEqual([
+        ...before.history,
+        snapshotRevision(findEntry(original, "Everything Entry")),
+      ]);
+      // Attachments belong to the entry, not to what the domain restores.
+      expect(after.binaries).toEqual(before.binaries);
+    });
+
+    it("leaves the file's history alone when the vault's doesn't match it", async () => {
+      const { entry, original, session, id } = await openEverything();
+      const unknown = entry.history[0].update({ password: new Password("never-saved") });
+
+      const saved = await saveEntry(session, entry.update({ history: [unknown] }));
+
+      expect(snapshotVault(saved).entries[id].history).toEqual(
+        snapshotVault(original).entries[id].history,
+      );
+    });
+
+    it("refreshes the session's vault from what it saved", async () => {
+      const { session } = await open();
+      const edited = session.vault.rootGroup.entries.find((e) => e.title === "Edited In Argus")!;
+
+      await session.save(
+        session.vault.updateEntry(edited.update({ password: new Password("Argus-edit1!") })),
+      );
+
+      const refreshed = session.vault.findEntry(edited.id)!;
+      expect(refreshed.password.reveal()).toBe("Argus-edit1!");
+      expect(refreshed.history.map((revision) => revision.password.reveal())).toEqual([
+        "first-password",
+        "second-password",
+      ]);
+    });
   });
 });
 

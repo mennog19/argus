@@ -81,15 +81,23 @@ async function loadKdbx(fileBytes: ArrayBuffer, key: VaultKey): Promise<Kdbx> {
 
 /** A `kdbxweb` document, held open so that unmapped fields survive a save. */
 class KdbxVaultSession implements VaultSession {
-  readonly vault: Vault;
+  private current: Vault;
 
   constructor(private readonly db: Kdbx) {
-    this.vault = vaultFromKdbx(db);
+    this.current = vaultFromKdbx(db);
   }
 
-  save(vault: Vault): Promise<ArrayBuffer> {
+  get vault(): Vault {
+    return this.current;
+  }
+
+  async save(vault: Vault): Promise<ArrayBuffer> {
     applyVaultToKdbx(this.db, vault);
-    return this.db.save();
+    const fileBytes = await this.db.save();
+    // Re-read rather than keep `vault`: the save may have added a history
+    // revision, trimmed old ones, or stamped times the domain never set.
+    this.current = vaultFromKdbx(this.db);
+    return fileBytes;
   }
 
   async changeMasterPassword(

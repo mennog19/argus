@@ -29,6 +29,7 @@ export interface EntryFields {
   customFields?: CustomFields;
   icon?: Icon;
   times?: EntryTimes;
+  history?: readonly Entry[];
 }
 
 /**
@@ -46,6 +47,12 @@ export class Entry {
   readonly customFields: CustomFields;
   readonly icon: Icon;
   readonly times: EntryTimes;
+  /**
+   * Earlier versions of this entry, oldest first, the way KDBX keeps them:
+   * each is the whole entry as it was before an edit. The repository adds one
+   * whenever a save changes the entry, so nothing here pushes revisions.
+   */
+  readonly history: readonly Entry[];
 
   constructor(id: EntryId, fields: EntryFields = {}) {
     this.id = id;
@@ -58,6 +65,7 @@ export class Entry {
     this.customFields = fields.customFields ?? new CustomFields();
     this.icon = fields.icon ?? Icon.AUTO;
     this.times = fields.times ?? {};
+    this.history = fields.history ?? [];
   }
 
   static create(fields: EntryFields = {}): Entry {
@@ -79,11 +87,45 @@ export class Entry {
       customFields: fields.customFields ?? this.customFields,
       icon: fields.icon ?? this.icon,
       times: fields.times ?? this.times,
+      history: fields.history ?? this.history,
     });
   }
 
   /** The same entry with `at` recorded as when it was last opened. */
   markAccessed(at: Date): Entry {
     return this.update({ times: { ...this.times, accessedAt: at } });
+  }
+
+  /**
+   * Brings back what the entry held at revision `index`. Only the contents
+   * change: saving it is an ordinary edit, so the version it replaces becomes
+   * the newest revision, as in KeePass.
+   */
+  restoreRevision(index: number): Entry {
+    const revision = this.revisionAt(index);
+    return this.update({
+      title: revision.title,
+      username: revision.username,
+      password: revision.password,
+      url: revision.url,
+      notes: revision.notes,
+      tags: revision.tags,
+      customFields: revision.customFields,
+      icon: revision.icon,
+    });
+  }
+
+  /** The same entry without revision `index`, e.g. to purge an old password from the file. */
+  deleteRevision(index: number): Entry {
+    this.revisionAt(index);
+    return this.update({ history: this.history.filter((_, i) => i !== index) });
+  }
+
+  private revisionAt(index: number): Entry {
+    const revision = this.history[index];
+    if (!revision) {
+      throw new Error(`No revision ${index} in this entry's history`);
+    }
+    return revision;
   }
 }

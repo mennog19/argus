@@ -33,6 +33,7 @@ and compare the output against the matching `.sha256` value published with that 
 - **Vault management** — open, create, and save `.kdbx` files; edit groups, entries, and a recycle bin for soft-deleted items.
 - **Entries** — title, username, password, URL, notes, tags, and arbitrary custom fields (including protected/hidden ones), matching KeePass conventions. URLs can be typed without a scheme (`github.com/login`); they open as https.
 - **Field references** — KeePass `{REF:…}` placeholders (such as the ones KeePassXC writes when you clone an entry with "reference username and password") are resolved when shown, copied, or auto-typed. The stored entry keeps the reference, so KeePass and KeePassXC still see it as a link.
+- **Entry history** — every edit keeps the previous version, as in KeePass. Each entry lists its earlier versions with what changed, and any of them can be viewed, restored, or deleted, e.g. to purge an old password from the file.
 - **TOTP** — reads and generates time-based one-time codes stored using KeePassXC's TOTP conventions.
 - **Search** — full-text search across title, username, URL, notes, tags, and custom fields. Press **Ctrl+F** anywhere in an unlocked vault to jump to the search box.
 - **Password generator** — random-character passwords with a configurable length and character sets, shared settings, and a quick-generate action.
@@ -68,6 +69,7 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 - **Windows only.** Auto-type and the clipboard protections use Win32 APIs.
 - **No updater yet.** New versions have to be downloaded from the Releases page by hand.
 - **Field references are read-only links.** Argus resolves `{REF:…}` placeholders but has no UI for creating them.
+- **No attachments, by design.** Files stored inside a vault are easy to lose track of, so Argus doesn't show or add them. Attachments added in KeePass or KeePassXC are kept untouched when Argus saves.
 - **AES-KDF isn't capped.** The key-derivation limits above cover Argon2 (KDBX4). A KDBX3 file using AES-KDF with a huge round count can still make unlocking very slow.
 - **No biometric unlock, no browser extension, no breach checking.**
 

@@ -23,7 +23,7 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     openExistingVault: vi.fn(),
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
-    saveVault: vi.fn().mockResolvedValue(undefined),
+    saveVault: vi.fn(async (vault: Vault) => vault),
     changeMasterPassword: vi.fn().mockResolvedValue(undefined),
     getFileInfo: vi.fn().mockResolvedValue({ sizeBytes: 0, lastModifiedMs: 0 }),
     closeVault: vi.fn(),
@@ -425,7 +425,7 @@ describe("App", () => {
       vault: Vault.create("Personal"),
       filePath: "C:/vaults/personal.kdbx",
     };
-    const saveVault = vi.fn().mockResolvedValue(undefined);
+    const saveVault = vi.fn(async (vault: Vault) => vault);
 
     render(
       <App
@@ -457,6 +457,49 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "GitHub" })).toBeInTheDocument();
     expect(saveVault).toHaveBeenCalledWith(expect.anything(), "C:/vaults/personal.kdbx");
+  });
+
+  it("carries on from the vault as saved, not the one it sent", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    // Stands in for what the repository adds on save, such as a history revision.
+    const saveVault = vi.fn(async (vault: Vault) => {
+      const [entry] = vault.rootGroup.entries;
+      return vault.updateEntry(entry.update({ title: `${entry.title} (as saved)` }));
+    });
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: /new entry/i }));
+    await user.type(screen.getByLabelText("Title"), "GitHub");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByRole("heading", { name: "GitHub (as saved)" })).toBeInTheDocument();
   });
 
   describe("changing the master password", () => {
@@ -846,7 +889,7 @@ describe("App", () => {
     const saveVault = vi
       .fn()
       .mockRejectedValueOnce(new VaultSaveConflictError(opened.filePath))
-      .mockResolvedValueOnce(undefined);
+      .mockImplementationOnce(async (vault: Vault) => vault);
 
     render(
       <App
