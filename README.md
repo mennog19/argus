@@ -134,14 +134,31 @@ These match what CI runs:
 # Frontend
 pnpm lint
 pnpm test            # or pnpm test:coverage
+pnpm audit --audit-level moderate
 
 # Rust (run from src-tauri/)
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+cargo audit          # install once with: cargo install cargo-audit --locked
 ```
 
-End-to-end tests (Playwright against the Vite dev server) are planned but not set up yet.
+The KDBX round-trip tests use vaults written by KeePass 2 itself, in `tests/fixtures/keepass/`. To regenerate them (needs KeePass 2.x installed):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-keepass-fixtures.ps1
+```
+
+### 5. Publish a release
+
+Bump `version` in `src-tauri/tauri.conf.json`, then push a matching tag:
+
+```powershell
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The release workflow runs CI, builds both installers, and attaches them with their SHA-256 checksums to a draft GitHub Release. Review the draft and publish it.
 
 ## Recommended IDE Setup
 

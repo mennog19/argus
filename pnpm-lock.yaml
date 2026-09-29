@@ -7,6 +7,9 @@ settings:
 overrides:
   '@xmldom/xmldom': ^0.8.15
 
+patchedDependencies:
+  kdbxweb@2.1.1: 87f3c1d992e87b4a594b2370aea179fe6561d37ea617adb49f2064a0f4a94d48
+
 importers:
 
   .:
@@ -31,7 +34,7 @@ importers:
         version: 4.12.0
       kdbxweb:
         specifier: ^2.1.1
-        version: 2.1.1
+        version: 2.1.1(patch_hash=87f3c1d992e87b4a594b2370aea179fe6561d37ea617adb49f2064a0f4a94d48)
       lucide-react:
         specifier: ^1.47.0
         version: 1.47.0(react@19.3.0)
@@ -2362,7 +2365,7 @@ snapshots:
 
   json5@2.2.3: {}
 
-  kdbxweb@2.1.1:
+  kdbxweb@2.1.1(patch_hash=87f3c1d992e87b4a594b2370aea179fe6561d37ea617adb49f2064a0f4a94d48):
     dependencies:
       '@xmldom/xmldom': 0.8.15
       fflate: 0.7.5

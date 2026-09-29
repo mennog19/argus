@@ -5,10 +5,12 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Lets the release workflow run the same checks before it builds installers.
+  workflow_call:
 
 jobs:
   frontend:
-    name: Lint, test, coverage (TypeScript)
+    name: Lint, test, coverage, audit (TypeScript)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,8 +30,12 @@ jobs:
 
       - run: pnpm test:coverage
 
+      # Fails on any known moderate-or-worse advisory in a JS dependency.
+      - name: pnpm audit
+        run: pnpm audit --audit-level moderate
+
   rust:
-    name: Format, lint, test (Rust)
+    name: Format, lint, test, audit (Rust)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +66,16 @@ jobs:
       - name: cargo test
         working-directory: src-tauri
         run: cargo test
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      # Fails on any RustSec vulnerability in Cargo.lock. Unmaintained-crate
+      # notices stay warnings.
+      - name: cargo audit
+        working-directory: src-tauri
+        run: cargo audit
 
   build:
     name: Build Tauri app

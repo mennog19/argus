@@ -1,0 +1,22 @@
+diff --git a/dist/kdbxweb.js b/dist/kdbxweb.js
+index 7d330745e3ebc4c99c09a573824ae3bb08583565..bc577679b2231d1a4e61316c2eb9e4e49897efe3 100644
+--- a/dist/kdbxweb.js
++++ b/dist/kdbxweb.js
+@@ -1759,7 +1759,7 @@ class KdbxCustomData {
+                 XmlUtils.setText(XmlUtils.addChildNode(itemNode, XmlNames.Elem.Key), key);
+                 XmlUtils.setText(XmlUtils.addChildNode(itemNode, XmlNames.Elem.Value), item.value);
+                 if (item.lastModified && ctx.kdbx.versionIsAtLeast(4, 1)) {
+-                    XmlUtils.setDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), item.lastModified);
++                    ctx.setXmlDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), item.lastModified);
+                 }
+             }
+         }
+@@ -3856,7 +3856,7 @@ class KdbxMeta {
+                         XmlUtils.setText(XmlUtils.addChildNode(itemNode, XmlNames.Elem.CustomIconItemName), name);
+                     }
+                     if (lastModified) {
+-                        XmlUtils.setDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), lastModified);
++                        ctx.setXmlDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), lastModified);
+                     }
+                 }
+             }

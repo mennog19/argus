@@ -1,0 +1,86 @@
+name: Release
+
+# Push a tag matching the app version to build the Windows installers and
+# attach them, with SHA-256 checksums, to a draft GitHub Release:
+#   git tag v0.1.0 && git push origin v0.1.0
+# Review the draft on GitHub, then publish it.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build installers and draft the release
+    runs-on: windows-latest
+    needs: [ci]
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the app version
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME doesn't match version $version in src-tauri/tauri.conf.json."
+          }
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm tauri build --bundles nsis,msi
+
+      - name: Collect installers and write checksums
+        run: |
+          New-Item -ItemType Directory release | Out-Null
+          $bundle = "src-tauri/target/release/bundle"
+          $installers = @(Get-ChildItem "$bundle/nsis/*.exe") + @(Get-ChildItem "$bundle/msi/*.msi")
+          if ($installers.Count -ne 2) { throw "Expected one .exe and one .msi, found: $($installers.Name -join ', ')" }
+          $sums = foreach ($installer in $installers) {
+            Copy-Item $installer.FullName release/
+            $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower()
+            $line = "$hash  $($installer.Name)"
+            Set-Content -Path "release/$($installer.Name).sha256" -Value $line -Encoding ascii
+            $line
+          }
+          Set-Content -Path release/SHA256SUMS.txt -Value $sums -Encoding ascii
+
+          $notes = @(
+            "Windows installers for Argus $env:VERSION. Either one installs the app."
+            ""
+            "Argus isn't code-signed, so Windows SmartScreen will warn before running the installer. Check the download against its SHA-256 checksum first:"
+            ""
+            '```'
+            $sums
+            '```'
+          )
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME (Get-ChildItem release/*).FullName `
+            --draft --verify-tag --title "Argus $env:VERSION" --notes-file release-notes.md
