@@ -49,6 +49,16 @@ describe("JsonSettingsStore", () => {
 
       expect(result).toEqual(DEFAULT_SETTINGS);
     });
+
+    it("fills in what a malformed file is missing instead of passing it through", async () => {
+      vi.mocked(exists).mockResolvedValue(true);
+      vi.mocked(readTextFile).mockResolvedValue("{}");
+      const store = new JsonSettingsStore();
+
+      const result = await store.load();
+
+      expect(result.recentVaults).toEqual([]);
+    });
   });
 
   describe("save", () => {
