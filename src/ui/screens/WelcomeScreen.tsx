@@ -5,7 +5,9 @@ import { MASTER_PASSWORD_MIN_LENGTH } from "../../domain";
 import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename, formatRelativeTime } from "../format";
+import { NewKeyFileChoice, newVaultKeyFile, NO_NEW_KEY_FILE } from "../new-key-file-choice";
 import { KeyFileField } from "./KeyFileField";
+import { NewKeyFileOption } from "./NewKeyFileOption";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 interface WelcomeScreenProps {
@@ -30,6 +32,7 @@ export function WelcomeScreen({
   const [createName, setCreateName] = useState("");
   const [createPassword, setCreatePassword] = useState("");
   const [createConfirmPassword, setCreateConfirmPassword] = useState("");
+  const [createKeyFile, setCreateKeyFile] = useState<NewKeyFileChoice>(NO_NEW_KEY_FILE);
 
   function resetToIdle() {
     setMode("idle");
@@ -39,6 +42,7 @@ export function WelcomeScreen({
     setCreateName("");
     setCreatePassword("");
     setCreateConfirmPassword("");
+    setCreateKeyFile(NO_NEW_KEY_FILE);
   }
 
   async function handleOpenSubmit(event: FormEvent) {
@@ -71,9 +75,18 @@ export function WelcomeScreen({
       fail("Passwords do not match.");
       return;
     }
+    const keyFile = newVaultKeyFile(createKeyFile);
+    if (keyFile === "incomplete") {
+      fail(
+        createKeyFile.kind === "generate"
+          ? "Choose where to save the key file."
+          : "Choose the file to use as a key file.",
+      );
+      return;
+    }
 
     await run(async () => {
-      const opened = await vaultAccessService.createNewVault(createName, createPassword);
+      const opened = await vaultAccessService.createNewVault(createName, createPassword, keyFile);
       if (opened) {
         onOpened(opened);
       }
@@ -172,6 +185,13 @@ export function WelcomeScreen({
               placeholder="Confirm password"
             />
           </div>
+          <NewKeyFileOption
+            choice={createKeyFile}
+            onChange={setCreateKeyFile}
+            onPickSaveLocation={() => vaultAccessService.pickPathForNewKeyFile(createName)}
+            onPickExisting={() => vaultAccessService.pickKeyFile()}
+            disabled={busy}
+          />
           {error && <div className="field-error">{error}</div>}
           <button type="submit" className="btn-primary" disabled={busy}>
             Choose location & Create

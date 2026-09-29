@@ -440,6 +440,25 @@ input[type="radio"]:checked::after {
   color: var(--color-text);
 }
 
+.new-key-file {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.new-key-file .generator-mode-toggle .btn-secondary {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+.key-file-warning {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-warning);
+}
+
 .key-file-name {
   overflow: hidden;
   text-overflow: ellipsis;

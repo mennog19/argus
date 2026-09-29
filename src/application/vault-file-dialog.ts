@@ -9,4 +9,6 @@ export interface VaultFileDialog {
   pickPathForNewVault(vaultName: string): Promise<string | undefined>;
   /** A KeePass/KeePassXC key file to unlock a vault with. Any file can be one. */
   pickKeyFile(): Promise<string | undefined>;
+  /** Where to save a newly generated key file; `vaultName` seeds `<vaultName>.keyx`. */
+  pickPathForNewKeyFile(vaultName: string): Promise<string | undefined>;
 }

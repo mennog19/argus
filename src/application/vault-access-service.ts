@@ -10,6 +10,14 @@ export interface OpenedVault {
   keyFilePath?: string;
 }
 
+/**
+ * The key file a new vault is created with: one generated fresh and saved to
+ * `path`, or an existing file at `path` whose bytes become the key as-is.
+ */
+export type NewVaultKeyFile =
+  | { readonly kind: "generate"; readonly path: string }
+  | { readonly kind: "existing"; readonly path: string };
+
 export interface VaultFileInfo {
   sizeBytes: number;
   lastModifiedMs: number;
@@ -87,19 +95,51 @@ export class VaultAccessService {
     return { vault, filePath, keyFilePath };
   }
 
-  async createNewVault(name: string, masterPassword: string): Promise<OpenedVault | undefined> {
+  /** Prompts for where to save a key file generated for a new vault called `vaultName`. */
+  pickPathForNewKeyFile(vaultName: string): Promise<string | undefined> {
+    return this.dialog.pickPathForNewKeyFile(vaultName);
+  }
+
+  /**
+   * Creates a vault locked with `masterPassword`, plus a key file when
+   * `keyFile` is given: either a newly generated one written to its path, or
+   * an existing file used as-is.
+   */
+  async createNewVault(
+    name: string,
+    masterPassword: string,
+    keyFile?: NewVaultKeyFile,
+  ): Promise<OpenedVault | undefined> {
     const filePath = await this.dialog.pickPathForNewVault(name);
     if (!filePath) {
       return undefined;
     }
 
-    const session = await this.repository.createVault(name, masterPassword);
+    const keyFileBytes = keyFile && (await this.prepareKeyFile(keyFile));
+    const session = await this.repository.createVault(name, {
+      password: masterPassword,
+      keyFile: keyFileBytes,
+    });
     const fileBytes = await session.save(session.vault);
     await this.fileStorage.writeFile(filePath, fileBytes);
     this.session = session;
-    this.keyFile = undefined;
+    this.keyFile = keyFileBytes;
     await this.rememberMtime(filePath);
-    return { vault: session.vault, filePath };
+    return { vault: session.vault, filePath, keyFilePath: keyFile?.path };
+  }
+
+  /**
+   * A generated key file is written before the vault that depends on it: if
+   * the vault write then fails, what's left is a stray key file, not a vault
+   * nothing can open.
+   */
+  private async prepareKeyFile(keyFile: NewVaultKeyFile): Promise<ArrayBuffer> {
+    if (keyFile.kind === "existing") {
+      return this.readKeyFile(keyFile.path);
+    }
+    const bytes = await this.repository.generateKeyFile();
+    await this.fileStorage.writeFile(keyFile.path, bytes);
+    return bytes;
   }
 
   /**

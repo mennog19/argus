@@ -52,7 +52,12 @@ export interface VaultSession {
 /** Opens and creates KDBX vault documents. Holds no state of its own. */
 export interface VaultRepository {
   openVault(fileBytes: ArrayBuffer, key: VaultKey): Promise<VaultSession>;
-  createVault(name: string, masterPassword: string): Promise<VaultSession>;
+  createVault(name: string, key: VaultKey): Promise<VaultSession>;
+  /**
+   * The contents of a brand-new random key file, in the XML format KeePass
+   * and KeePassXC write, so the vault it protects opens in either of them.
+   */
+  generateKeyFile(): Promise<ArrayBuffer>;
   /**
    * Re-encrypts a whole vault file under `newMasterPassword` without opening
    * it as a session or mapping it through the domain model, so everything

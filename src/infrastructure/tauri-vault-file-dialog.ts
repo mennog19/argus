@@ -8,16 +8,17 @@ const KEY_FILE_FILTERS = [
   { name: "Key File", extensions: ["keyx", "key"] },
   { name: "All Files", extensions: ["*"] },
 ];
+const NEW_KEY_FILE_FILTERS = [{ name: "Key File", extensions: ["keyx"] }];
 
-/** `<name>.kdbx`, with characters Windows forbids in file names replaced. */
-function suggestedFileName(vaultName: string): string {
+/** `<name>.<extension>`, with characters Windows forbids in file names replaced. */
+function suggestedFileName(vaultName: string, extension: string): string {
   // eslint-disable-next-line no-control-regex
   let safe = vaultName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim();
   // Windows silently strips trailing dots and spaces from file names.
   while (safe.endsWith(".") || safe.endsWith(" ")) {
     safe = safe.slice(0, -1);
   }
-  return `${safe || "Vault"}.kdbx`;
+  return `${safe || "Vault"}.${extension}`;
 }
 
 /** `VaultFileDialog` backed by Tauri's native file-picker plugin. */
@@ -28,12 +29,23 @@ export class TauriVaultFileDialog implements VaultFileDialog {
   }
 
   async pickPathForNewVault(vaultName: string): Promise<string | undefined> {
-    const path = await save({ filters: KDBX_FILTERS, defaultPath: suggestedFileName(vaultName) });
+    const path = await save({
+      filters: KDBX_FILTERS,
+      defaultPath: suggestedFileName(vaultName, "kdbx"),
+    });
     return path ?? undefined;
   }
 
   async pickKeyFile(): Promise<string | undefined> {
     const path = await open({ filters: KEY_FILE_FILTERS, multiple: false, directory: false });
+    return path ?? undefined;
+  }
+
+  async pickPathForNewKeyFile(vaultName: string): Promise<string | undefined> {
+    const path = await save({
+      filters: NEW_KEY_FILE_FILTERS,
+      defaultPath: suggestedFileName(vaultName, "keyx"),
+    });
     return path ?? undefined;
   }
 }

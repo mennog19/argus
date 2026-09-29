@@ -15,7 +15,7 @@ import { VaultKey, VaultRepository, VaultSession } from "../../src/application/v
  * the wrapper puts it in a session.
  */
 type OpenFake = (fileBytes: ArrayBuffer, key: VaultKey) => Promise<Vault>;
-type CreateFake = (name: string, masterPassword: string) => Promise<Vault>;
+type CreateFake = (name: string, key: VaultKey) => Promise<Vault>;
 type SaveFake = (vault: Vault) => Promise<ArrayBuffer>;
 type RekeyFake = (currentMasterPassword: string, newMasterPassword: string) => Promise<void>;
 type RekeyFileFake = (
@@ -31,6 +31,7 @@ function fakeRepository(
     saveVault?: SaveFake;
     changeMasterPassword?: RekeyFake;
     rekeyFile?: RekeyFileFake;
+    generateKeyFile?: () => Promise<ArrayBuffer>;
   } = {},
 ) {
   const saveVault = vi.fn<SaveFake>(overrides.saveVault ?? (() => Promise.resolve(emptyBytes())));
@@ -48,10 +49,11 @@ function fakeRepository(
     openVault: vi.fn(async (fileBytes: ArrayBuffer, key: VaultKey) =>
       sessionFor(await openVault(fileBytes, key)),
     ),
-    createVault: vi.fn(async (name: string, masterPassword: string) =>
-      sessionFor(await createVault(name, masterPassword)),
+    createVault: vi.fn(async (name: string, key: VaultKey) =>
+      sessionFor(await createVault(name, key)),
     ),
     rekeyFile: vi.fn<RekeyFileFake>(overrides.rekeyFile ?? (() => Promise.resolve(emptyBytes()))),
+    generateKeyFile: vi.fn(overrides.generateKeyFile ?? (() => Promise.resolve(emptyBytes()))),
   } satisfies VaultRepository;
   // Only the session's mocks are merged in: overwriting `openVault` here with
   // the raw override would bypass the wrapper that builds the session.
@@ -83,6 +85,7 @@ function fakeDialog(overrides: Partial<VaultFileDialog> = {}): VaultFileDialog {
     pickVaultToOpen: vi.fn(),
     pickPathForNewVault: vi.fn(),
     pickKeyFile: vi.fn(),
+    pickPathForNewKeyFile: vi.fn(),
     ...overrides,
   };
 }
@@ -184,10 +187,132 @@ describe("VaultAccessService", () => {
 
       const result = await service.createNewVault("New Vault", "master password");
 
-      expect(repository.createVault).toHaveBeenCalledWith("New Vault", "master password");
+      expect(repository.createVault).toHaveBeenCalledWith("New Vault", {
+        password: "master password",
+      });
       expect(repository.saveVault).toHaveBeenCalledWith(vault);
       expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/new.kdbx", fileBytes);
       expect(result).toEqual({ vault, filePath: "C:/vaults/new.kdbx" });
+    });
+
+    it("generates a key file, saves it, and locks the new vault with it too", async () => {
+      const keyFileBytes = new ArrayBuffer(32);
+      const vaultBytes = new ArrayBuffer(4);
+      const repository = fakeRepository({
+        createVault: vi.fn().mockResolvedValue(Vault.create("New Vault")),
+        saveVault: vi.fn().mockResolvedValue(vaultBytes),
+        generateKeyFile: vi.fn().mockResolvedValue(keyFileBytes),
+      });
+      const dialog = fakeDialog({
+        pickPathForNewVault: vi.fn().mockResolvedValue("C:/vaults/new.kdbx"),
+      });
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      const result = await service.createNewVault("New Vault", "master password", {
+        kind: "generate",
+        path: "D:/keys/new.keyx",
+      });
+
+      expect(repository.createVault).toHaveBeenCalledWith("New Vault", {
+        password: "master password",
+        keyFile: keyFileBytes,
+      });
+      // The key file lands on disk before the vault that can't open without it.
+      expect(vi.mocked(fileStorage.writeFile).mock.calls).toEqual([
+        ["D:/keys/new.keyx", keyFileBytes],
+        ["C:/vaults/new.kdbx", vaultBytes],
+      ]);
+      expect(result?.keyFilePath).toBe("D:/keys/new.keyx");
+    });
+
+    it("locks the new vault with an existing file's bytes, leaving that file untouched", async () => {
+      const keyFileBytes = new ArrayBuffer(16);
+      const repository = fakeRepository({
+        createVault: vi.fn().mockResolvedValue(Vault.create("New Vault")),
+      });
+      const dialog = fakeDialog({
+        pickPathForNewVault: vi.fn().mockResolvedValue("C:/vaults/new.kdbx"),
+      });
+      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(keyFileBytes) });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      const result = await service.createNewVault("New Vault", "master password", {
+        kind: "existing",
+        path: "D:/keys/photo.jpg",
+      });
+
+      expect(fileStorage.readFile).toHaveBeenCalledWith("D:/keys/photo.jpg");
+      expect(repository.generateKeyFile).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalledWith(
+        "D:/keys/photo.jpg",
+        expect.anything(),
+      );
+      expect(repository.createVault).toHaveBeenCalledWith("New Vault", {
+        password: "master password",
+        keyFile: keyFileBytes,
+      });
+      expect(result?.keyFilePath).toBe("D:/keys/photo.jpg");
+    });
+
+    it("generates nothing when the vault's save dialog is cancelled", async () => {
+      const repository = fakeRepository();
+      const dialog = fakeDialog({ pickPathForNewVault: vi.fn().mockResolvedValue(undefined) });
+      const fileStorage = fakeFileStorage();
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+
+      await service.createNewVault("New Vault", "master password", {
+        kind: "generate",
+        path: "D:/keys/new.keyx",
+      });
+
+      expect(repository.generateKeyFile).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("re-keys backups with the key file the vault was created with", async () => {
+      const keyFileBytes = new ArrayBuffer(32);
+      const repository = fakeRepository({
+        createVault: vi.fn().mockResolvedValue(Vault.create("New Vault")),
+        generateKeyFile: vi.fn().mockResolvedValue(keyFileBytes),
+      });
+      const dialog = fakeDialog({
+        pickPathForNewVault: vi.fn().mockResolvedValue("C:/vaults/new.kdbx"),
+      });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        exists: vi.fn().mockResolvedValue(true),
+      });
+      const service = new VaultAccessService(repository, dialog, fileStorage);
+      await service.createNewVault("New Vault", "old pw", {
+        kind: "generate",
+        path: "D:/keys/new.keyx",
+      });
+
+      await service.changeMasterPassword(
+        Vault.create("New Vault"),
+        "C:/vaults/new.kdbx",
+        "old pw",
+        "new pw",
+      );
+
+      expect(repository.rekeyFile).toHaveBeenCalledWith(
+        expect.any(ArrayBuffer),
+        { password: "old pw", keyFile: keyFileBytes },
+        "new pw",
+      );
+    });
+  });
+
+  describe("pickPathForNewKeyFile", () => {
+    it("prompts the new key file dialog, seeded with the vault's name", async () => {
+      const dialog = fakeDialog({
+        pickPathForNewKeyFile: vi.fn().mockResolvedValue("D:/keys/Family.keyx"),
+      });
+      const service = new VaultAccessService(fakeRepository(), dialog, fakeFileStorage());
+
+      expect(await service.pickPathForNewKeyFile("Family")).toBe("D:/keys/Family.keyx");
+      expect(dialog.pickPathForNewKeyFile).toHaveBeenCalledWith("Family");
     });
   });
 

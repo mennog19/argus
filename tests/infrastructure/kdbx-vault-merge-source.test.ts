@@ -24,6 +24,7 @@ function fakeDialog(overrides: Partial<VaultFileDialog> = {}): VaultFileDialog {
     pickVaultToOpen: vi.fn(),
     pickPathForNewVault: vi.fn(),
     pickKeyFile: vi.fn(),
+    pickPathForNewKeyFile: vi.fn(),
     ...overrides,
   };
 }

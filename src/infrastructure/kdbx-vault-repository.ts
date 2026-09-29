@@ -134,11 +134,18 @@ export class KdbxVaultRepository implements VaultRepository {
     return db.save();
   }
 
-  createVault(name: string, masterPassword: string): Promise<VaultSession> {
+  async createVault(name: string, key: VaultKey): Promise<VaultSession> {
     configureKdbxCrypto();
-    const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
-    const db = Kdbx.create(credentials, name);
+    const db = Kdbx.create(await credentialsFor(key), name);
     applyDefaultKdf(db);
-    return Promise.resolve(new KdbxVaultSession(db));
+    return new KdbxVaultSession(db);
+  }
+
+  async generateKeyFile(): Promise<ArrayBuffer> {
+    configureKdbxCrypto();
+    // Version 2 is the `<KeyFile><Meta><Version>2.0` XML format KeePassXC
+    // writes by default, with a checksum that catches a damaged copy.
+    const bytes = await Credentials.createRandomKeyFile(2);
+    return bytes.slice().buffer;
   }
 }

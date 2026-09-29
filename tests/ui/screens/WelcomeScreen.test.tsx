@@ -12,6 +12,7 @@ function fakeService(overrides: Partial<VaultAccessService> = {}): VaultAccessSe
     createNewVault: vi.fn(),
     openVaultAtPath: vi.fn(),
     pickKeyFile: vi.fn(),
+    pickPathForNewKeyFile: vi.fn(),
     ...overrides,
   } as unknown as VaultAccessService;
 }
@@ -325,8 +326,116 @@ describe("WelcomeScreen", () => {
       await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
       await user.click(screen.getByRole("button", { name: /choose location & create/i }));
 
-      expect(service.createNewVault).toHaveBeenCalledWith("Personal", "hunter2-long");
+      expect(service.createNewVault).toHaveBeenCalledWith("Personal", "hunter2-long", undefined);
       expect(onOpened).toHaveBeenCalledWith(opened);
+    });
+
+    async function fillCreateForm(user: ReturnType<typeof userEvent.setup>) {
+      await openCreateForm(user);
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "hunter2-long");
+    }
+
+    it("creates the vault with a generated key file saved where the user chose", async () => {
+      const user = userEvent.setup();
+      const service = fakeService({
+        pickPathForNewKeyFile: vi.fn().mockResolvedValue("D:/keys/Personal.keyx"),
+        createNewVault: vi.fn().mockResolvedValue(undefined),
+      });
+
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={service}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await fillCreateForm(user);
+      await user.click(screen.getByLabelText("Also protect with a key file"));
+      await user.click(screen.getByRole("button", { name: "Choose where to save it…" }));
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(service.pickPathForNewKeyFile).toHaveBeenCalledWith("Personal");
+      expect(service.createNewVault).toHaveBeenCalledWith("Personal", "hunter2-long", {
+        kind: "generate",
+        path: "D:/keys/Personal.keyx",
+      });
+    });
+
+    it("creates the vault with an existing file as its key file", async () => {
+      const user = userEvent.setup();
+      const service = fakeService({
+        pickKeyFile: vi.fn().mockResolvedValue("D:/keys/photo.jpg"),
+        createNewVault: vi.fn().mockResolvedValue(undefined),
+      });
+
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={service}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await fillCreateForm(user);
+      await user.click(screen.getByLabelText("Also protect with a key file"));
+      await user.click(screen.getByRole("radio", { name: "Use existing file" }));
+      await user.click(screen.getByRole("button", { name: "Choose a file…" }));
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(service.createNewVault).toHaveBeenCalledWith("Personal", "hunter2-long", {
+        kind: "existing",
+        path: "D:/keys/photo.jpg",
+      });
+    });
+
+    it.each([
+      ["Generate new", "Choose where to save the key file."],
+      ["Use existing file", "Choose the file to use as a key file."],
+    ])("refuses to create with %s ticked but no file chosen yet", async (kindLabel, message) => {
+      const user = userEvent.setup();
+      const service = fakeService();
+
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={service}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await fillCreateForm(user);
+      await user.click(screen.getByLabelText("Also protect with a key file"));
+      await user.click(screen.getByRole("radio", { name: kindLabel }));
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(service.createNewVault).not.toHaveBeenCalled();
+    });
+
+    it("resets the key file choice on Back", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={fakeService()}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await openCreateForm(user);
+      await user.click(screen.getByLabelText("Also protect with a key file"));
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      await openCreateForm(user);
+
+      expect(screen.getByLabelText("Also protect with a key file")).not.toBeChecked();
     });
 
     it("does nothing when the user cancels the save dialog", async () => {

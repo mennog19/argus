@@ -163,7 +163,7 @@ describe("KdbxVaultRepository", () => {
   it("creates a brand-new vault that can be saved and reopened", async () => {
     const repository = new KdbxVaultRepository();
 
-    const session = await repository.createVault("Brand New Vault", MASTER_PASSWORD);
+    const session = await repository.createVault("Brand New Vault", { password: MASTER_PASSWORD });
 
     expect(session.vault.name).toBe("Brand New Vault");
     expect(session.vault.rootGroup.entries).toEqual([]);
@@ -175,8 +175,43 @@ describe("KdbxVaultRepository", () => {
     expect(reopened.name).toBe("Brand New Vault");
   });
 
+  it("creates a vault that needs its generated key file as well as the password", async () => {
+    const repository = new KdbxVaultRepository();
+    const keyFile = await repository.generateKeyFile();
+
+    const session = await repository.createVault("Keyed", {
+      password: MASTER_PASSWORD,
+      keyFile,
+    });
+    const savedBytes = await session.save(session.vault);
+
+    await expect(
+      new KdbxVaultRepository().openVault(savedBytes, { password: MASTER_PASSWORD }),
+    ).rejects.toThrow("Incorrect password");
+    // Opened straight through kdbxweb rather than the repository, the way any
+    // other KeePass client would read the pair of files.
+    const raw = await Kdbx.load(
+      savedBytes,
+      new Credentials(ProtectedValue.fromString(MASTER_PASSWORD), keyFile),
+    );
+    expect(raw.meta.name).toBe("Keyed");
+  });
+
+  it("generates a fresh KeePassXC-format XML key file each time", async () => {
+    const repository = new KdbxVaultRepository();
+
+    const first = new TextDecoder().decode(await repository.generateKeyFile());
+    const second = new TextDecoder().decode(await repository.generateKeyFile());
+
+    expect(first).toContain("<KeyFile>");
+    expect(first).toContain("<Version>2.0</Version>");
+    expect(first).not.toBe(second);
+  });
+
   it("creates new vaults with Argon2id at DEFAULT_KDF strength, not kdbxweb's weak defaults", async () => {
-    const session = await new KdbxVaultRepository().createVault("Vault", MASTER_PASSWORD);
+    const session = await new KdbxVaultRepository().createVault("Vault", {
+      password: MASTER_PASSWORD,
+    });
     const savedBytes = await session.save(session.vault);
 
     const raw = await Kdbx.load(
