@@ -6,9 +6,6 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 
 ## Should fix
 
-- [x] **Old backups can still be opened with the old master password.** After a master password change, the `.bak1–3` files are still encrypted with the old one. If the change was because the old password leaked, those backups are still exposed. Either delete or rotate them, or warn the user in the UI.
-  - Fixed: a password change now re-encrypts each backup with the new password. A backup that can't be re-encrypted is deleted, and one that can't be deleted either is listed in the UI. The success message also warns that copies made outside Argus still use the old password.
-- [ ] **Auto-type can type into the wrong page.** It types into the window captured when the hotkey was pressed, but doesn't check the window title again just before typing ([auto_type.rs](src-tauri/src/auto_type.rs#L429)). If the browser tab changes in the meantime, credentials go into the wrong page. Compare the title again before sending any keystrokes.
 - [ ] **Entry history grows forever.** `pushHistory()` runs on every edit, but `meta.historyMaxItems` and `historyMaxSize` are never applied, so vaults keep getting bigger.
 - [ ] **The settings file isn't validated when it's loaded.** [json-settings-store.ts](src/infrastructure/json-settings-store.ts#L22) just casts `JSON.parse` to `AppSettings`. A file like `{}` would leave `recentVaults` undefined and crash startup. Run it through the same validation the settings import uses, or merge it with the defaults.
 - [ ] **Key files aren't supported.** Vaults protected with a KeePass/KeePassXC key file can't be opened. Either support them or say so clearly in the README and in the error message.

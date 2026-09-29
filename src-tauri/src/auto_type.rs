@@ -105,7 +105,30 @@ pub struct ForegroundWindow {
 /// The window captured by the most recent hotkey press, if any.
 #[derive(Default)]
 pub struct AutoTypeState {
-    target: Mutex<Option<isize>>,
+    target: Mutex<Option<Target>>,
+}
+
+/// The window to type into, and the title it had when the entry was chosen
+/// for it. A browser keeps one window across tabs, so the handle alone can't
+/// tell whether the page is still the one the entry was matched against.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Target {
+    pub handle: isize,
+    pub title: String,
+}
+
+/// Checks that the window in front is still the captured one, showing the
+/// same title. Called before every keystroke batch: if the user switched
+/// windows or tabs, or the page navigated, the credentials would go somewhere
+/// they were never matched to.
+pub fn check_target(target: &Target, foreground: isize, title: &str) -> Result<(), String> {
+    if foreground != target.handle {
+        return Err("The target window is no longer in front; auto-type was stopped".into());
+    }
+    if title != target.title {
+        return Err("The target window's title changed; auto-type was stopped".into());
+    }
+    Ok(())
 }
 
 /// A foreground window as the platform layer found it.
@@ -134,7 +157,10 @@ pub fn auto_type_capture_target(
     state: tauri::State<'_, AutoTypeState>,
 ) -> Option<ForegroundWindow> {
     let captured = platform::foreground_window()?;
-    *state.target.lock().expect("auto-type target mutex") = Some(captured.handle);
+    *state.target.lock().expect("auto-type target mutex") = Some(Target {
+        handle: captured.handle,
+        title: captured.title.clone(),
+    });
 
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
@@ -148,8 +174,12 @@ pub fn auto_type_capture_target(
     })
 }
 
-fn captured_target(state: &AutoTypeState) -> Result<isize, String> {
-    (*state.target.lock().expect("auto-type target mutex"))
+fn captured_target(state: &AutoTypeState) -> Result<Target, String> {
+    state
+        .target
+        .lock()
+        .expect("auto-type target mutex")
+        .clone()
         .ok_or_else(|| "No window was captured for auto-type".to_string())
 }
 
@@ -163,7 +193,7 @@ fn captured_target(state: &AutoTypeState) -> Result<isize, String> {
 pub async fn auto_type_inspect_target(
     state: tauri::State<'_, AutoTypeState>,
 ) -> Result<FormLayout, String> {
-    let handle = captured_target(&state)?;
+    let handle = captured_target(&state)?.handle;
 
     tauri::async_runtime::spawn_blocking(move || platform::inspect(handle))
         .await
@@ -179,16 +209,19 @@ pub async fn auto_type_send(
     state: tauri::State<'_, AutoTypeState>,
     steps: Vec<AutoTypeStep>,
 ) -> Result<(), String> {
-    let handle = captured_target(&state)?;
+    let target = captured_target(&state)?;
 
-    tauri::async_runtime::spawn_blocking(move || platform::type_into(handle, &steps))
+    tauri::async_runtime::spawn_blocking(move || platform::type_into(&target, &steps))
         .await
         .map_err(|error| error.to_string())?
 }
 
 #[cfg(windows)]
 mod platform {
-    use super::{pick_fields, AutoTypeStep, CapturedWindow, FieldInfo, FormField, FormLayout};
+    use super::{
+        check_target, pick_fields, AutoTypeStep, CapturedWindow, FieldInfo, FormField, FormLayout,
+        Target,
+    };
     use std::thread::sleep;
     use std::time::Duration;
     use windows::core::PWSTR;
@@ -426,8 +459,8 @@ mod platform {
         }
     }
 
-    pub fn type_into(handle: isize, steps: &[AutoTypeStep]) -> Result<(), String> {
-        let hwnd = HWND(handle as *mut std::ffi::c_void);
+    pub fn type_into(target: &Target, steps: &[AutoTypeStep]) -> Result<(), String> {
+        let hwnd = HWND(target.handle as *mut std::ffi::c_void);
 
         // SAFETY: `hwnd` came from `GetForegroundWindow` in this process. A
         // window closed since then simply fails these calls, which is why the
@@ -442,6 +475,14 @@ mod platform {
         let mut uia: Option<Uia> = None;
 
         for step in steps {
+            // Every step sends keystrokes (a `Focus` step sends Ctrl+A), so
+            // look again right before each one.
+            // SAFETY: plain Win32 queries; a stale `hwnd` just yields an
+            // empty title, which fails the check.
+            let (foreground, title) =
+                unsafe { (GetForegroundWindow().0 as isize, window_title(hwnd)) };
+            check_target(target, foreground, &title)?;
+
             match step {
                 AutoTypeStep::Focus { field } => {
                     if uia.is_none() {
@@ -572,7 +613,7 @@ mod platform {
 
 #[cfg(not(windows))]
 mod platform {
-    use super::{AutoTypeStep, CapturedWindow, FormLayout};
+    use super::{AutoTypeStep, CapturedWindow, FormLayout, Target};
 
     pub fn foreground_window() -> Option<CapturedWindow> {
         None
@@ -582,14 +623,39 @@ mod platform {
         Ok(FormLayout::default())
     }
 
-    pub fn type_into(_handle: isize, _steps: &[AutoTypeStep]) -> Result<(), String> {
+    pub fn type_into(_target: &Target, _steps: &[AutoTypeStep]) -> Result<(), String> {
         Err("Auto-type is only implemented on Windows".into())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{pick_fields, AutoTypeStep, FieldInfo, FieldPicks, FormField, FormLayout};
+    use super::{
+        check_target, pick_fields, AutoTypeStep, FieldInfo, FieldPicks, FormField, FormLayout,
+        Target,
+    };
+
+    fn github_tab() -> Target {
+        Target {
+            handle: 42,
+            title: "Sign in to GitHub - Firefox".into(),
+        }
+    }
+
+    #[test]
+    fn allows_typing_while_the_same_window_and_title_are_in_front() {
+        assert!(check_target(&github_tab(), 42, "Sign in to GitHub - Firefox").is_ok());
+    }
+
+    #[test]
+    fn stops_when_another_window_is_in_front() {
+        assert!(check_target(&github_tab(), 7, "Sign in to GitHub - Firefox").is_err());
+    }
+
+    #[test]
+    fn stops_when_the_browser_switched_to_another_tab() {
+        assert!(check_target(&github_tab(), 42, "Evil page - Firefox").is_err());
+    }
 
     #[test]
     fn deserializes_the_step_shape_the_frontend_sends() {
