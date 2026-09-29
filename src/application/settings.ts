@@ -4,6 +4,18 @@ import { PasswordPolicyOptions } from "../domain";
 export interface RecentVaultEntry {
   readonly path: string;
   readonly lastOpenedAt: string;
+  /**
+   * The key file it was last unlocked with, if it needs one, so unlocking it
+   * again doesn't mean hunting the file down each time. Only the path is
+   * kept, never the contents -- as KeePassXC does by default.
+   */
+  readonly keyFilePath?: string;
+}
+
+/** Which vault was opened, and with which key file if any. */
+export interface OpenedVaultLocation {
+  readonly path: string;
+  readonly keyFilePath?: string;
 }
 
 /** Auto-lock triggers, each independently toggleable. All off by default (opt-in). */
@@ -219,20 +231,23 @@ export interface SettingsStore {
 const DEFAULT_MAX_RECENT_VAULTS = 5;
 
 /**
- * Returns settings with `path` recorded as the most recently opened vault:
+ * Returns settings with `opened` recorded as the most recently opened vault:
  * moved (or added) to the front, deduplicated, and capped at `maxEntries`.
+ * Its key file is replaced too, so unlocking without one forgets it.
  */
 export function recordVaultOpened(
   settings: AppSettings,
-  path: string,
+  { path, keyFilePath }: OpenedVaultLocation,
   openedAt: Date = new Date(),
   maxEntries: number = DEFAULT_MAX_RECENT_VAULTS,
 ): AppSettings {
   const withoutPath = settings.recentVaults.filter((entry) => entry.path !== path);
-  const recentVaults = [{ path, lastOpenedAt: openedAt.toISOString() }, ...withoutPath].slice(
-    0,
-    maxEntries,
-  );
+  const entry: RecentVaultEntry = {
+    path,
+    lastOpenedAt: openedAt.toISOString(),
+    ...(keyFilePath === undefined ? {} : { keyFilePath }),
+  };
+  const recentVaults = [entry, ...withoutPath].slice(0, maxEntries);
   return { ...settings, recentVaults };
 }
 

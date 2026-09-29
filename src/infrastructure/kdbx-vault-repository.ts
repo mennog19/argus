@@ -9,6 +9,7 @@ import {
 } from "kdbxweb";
 import {
   IncorrectMasterPasswordError,
+  VaultKey,
   VaultRepository,
   VaultSession,
 } from "../application/vault-repository";
@@ -43,14 +44,36 @@ function applyDefaultKdf(db: Kdbx): void {
   params.set("P", VarDictionary.ValueType.UInt32, DEFAULT_KDF.parallelism);
 }
 
-async function loadKdbx(fileBytes: ArrayBuffer, masterPassword: string): Promise<Kdbx> {
+/**
+ * A key file with an empty password means a key-file-only vault, whose
+ * composite key has no password part at all. That differs from a password
+ * part holding the empty string, which hashes to something and so would never
+ * open it.
+ */
+async function credentialsFor({ password, keyFile }: VaultKey): Promise<Credentials> {
+  const passwordPart = keyFile && password === "" ? null : ProtectedValue.fromString(password);
+  const credentials = new Credentials(passwordPart, keyFile);
+  try {
+    // Parsing the key file happens here, before any decryption is attempted.
+    return await credentials.ready;
+  } catch (cause) {
+    throw new Error("That key file couldn't be read. Is it the right file?", { cause });
+  }
+}
+
+async function loadKdbx(fileBytes: ArrayBuffer, key: VaultKey): Promise<Kdbx> {
   configureKdbxCrypto();
-  const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
+  const credentials = await credentialsFor(key);
   try {
     return await Kdbx.load(fileBytes, credentials);
   } catch (cause) {
     if (cause instanceof KdbxError && cause.code === Consts.ErrorCodes.InvalidKey) {
-      throw new Error("Incorrect password", { cause });
+      // Without a key file, a vault that needs one fails exactly like a wrong
+      // password does, so the message has to mention both possibilities.
+      const message = key.keyFile
+        ? "Incorrect password or key file."
+        : "Incorrect password. If this vault uses a key file, choose it as well.";
+      throw new Error(message, { cause });
     }
     throw cause;
   }
@@ -83,9 +106,12 @@ class KdbxVaultSession implements VaultSession {
     // `credentials.passwordHash` already *is* sha256(currentPassword) (see
     // `KdbxCredentials.setPassword`), not a value to hash again — comparing
     // it against a fresh `.getHash()` would compare a single hash against a
-    // double hash and never match. It's always set: the repository only ever
-    // builds `Credentials` with a non-null password.
-    const stored = this.db.credentials.passwordHash!;
+    // double hash and never match. It's unset only for a key-file-only vault,
+    // whose current password is the empty one it was unlocked with.
+    const stored = this.db.credentials.passwordHash;
+    if (!stored) {
+      return candidate === "";
+    }
     const candidateHash = await ProtectedValue.fromString(candidate).getHash();
     return buffersEqual(stored.getBinary(), new Uint8Array(candidateHash));
   }
@@ -93,25 +119,33 @@ class KdbxVaultSession implements VaultSession {
 
 /** `kdbxweb`-backed `VaultRepository`. Stateless; each open yields a session. */
 export class KdbxVaultRepository implements VaultRepository {
-  async openVault(fileBytes: ArrayBuffer, masterPassword: string): Promise<VaultSession> {
-    return new KdbxVaultSession(await loadKdbx(fileBytes, masterPassword));
+  async openVault(fileBytes: ArrayBuffer, key: VaultKey): Promise<VaultSession> {
+    return new KdbxVaultSession(await loadKdbx(fileBytes, key));
   }
 
   async rekeyFile(
     fileBytes: ArrayBuffer,
-    currentMasterPassword: string,
+    currentKey: VaultKey,
     newMasterPassword: string,
   ): Promise<ArrayBuffer> {
-    const db = await loadKdbx(fileBytes, currentMasterPassword);
+    const db = await loadKdbx(fileBytes, currentKey);
+    // Replaces only the password part; the key file hash stays in place.
     await db.credentials.setPassword(ProtectedValue.fromString(newMasterPassword));
     return db.save();
   }
 
-  createVault(name: string, masterPassword: string): Promise<VaultSession> {
+  async createVault(name: string, key: VaultKey): Promise<VaultSession> {
     configureKdbxCrypto();
-    const credentials = new Credentials(ProtectedValue.fromString(masterPassword));
-    const db = Kdbx.create(credentials, name);
+    const db = Kdbx.create(await credentialsFor(key), name);
     applyDefaultKdf(db);
-    return Promise.resolve(new KdbxVaultSession(db));
+    return new KdbxVaultSession(db);
+  }
+
+  async generateKeyFile(): Promise<ArrayBuffer> {
+    configureKdbxCrypto();
+    // Version 2 is the `<KeyFile><Meta><Version>2.0` XML format KeePassXC
+    // writes by default, with a checksum that catches a damaged copy.
+    const bytes = await Credentials.createRandomKeyFile(2);
+    return bytes.slice().buffer;
   }
 }

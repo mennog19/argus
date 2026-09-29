@@ -122,8 +122,8 @@ function App({
     }
   }
 
-  async function rememberAndUnlock(vault: Vault, filePath: string) {
-    await appSettings.recordVaultOpened(filePath);
+  async function rememberAndUnlock(vault: Vault, filePath: string, keyFilePath?: string) {
+    await appSettings.recordVaultOpened({ path: filePath, keyFilePath });
     setScreen({ kind: "unlocked", vault, filePath });
     void refreshFileInfo(filePath);
   }
@@ -191,7 +191,9 @@ function App({
       <WelcomeScreen
         recentVaults={settings.recentVaults}
         vaultAccessService={vaultAccessService}
-        onOpened={(opened: OpenedVault) => void rememberAndUnlock(opened.vault, opened.filePath)}
+        onOpened={(opened: OpenedVault) =>
+          void rememberAndUnlock(opened.vault, opened.filePath, opened.keyFilePath)
+        }
         onSelectRecent={lock}
       />
     );
@@ -201,9 +203,14 @@ function App({
     const { filePath } = screen;
     return (
       <LockedScreen
+        // Remounting per vault resets the key file picked for the previous one.
+        key={filePath}
         filePath={filePath}
+        initialKeyFilePath={
+          settings.recentVaults.find((entry) => entry.path === filePath)?.keyFilePath
+        }
         vaultAccessService={vaultAccessService}
-        onUnlocked={(vault) => void rememberAndUnlock(vault, filePath)}
+        onUnlocked={(vault, keyFilePath) => void rememberAndUnlock(vault, filePath, keyFilePath)}
         onChooseDifferentVault={() => setScreen({ kind: "welcome" })}
       />
     );

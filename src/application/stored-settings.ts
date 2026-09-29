@@ -88,7 +88,12 @@ function parseRecentVaults(value: unknown): readonly RecentVaultEntry[] {
       (entry): entry is RecentVaultEntry =>
         isRecord(entry) && typeof entry.path === "string" && typeof entry.lastOpenedAt === "string",
     )
-    .map(({ path, lastOpenedAt }) => ({ path, lastOpenedAt }));
+    .map(({ path, lastOpenedAt, keyFilePath }) => ({
+      path,
+      lastOpenedAt,
+      // A malformed key file path costs only itself, not the whole entry.
+      ...(typeof keyFilePath === "string" ? { keyFilePath } : {}),
+    }));
 }
 
 function parseAutoLock(value: unknown): AutoLockSettings {

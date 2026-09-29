@@ -66,7 +66,7 @@ function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): Window
 }
 
 function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
-  return { pickFile: vi.fn(), openFile: vi.fn(), ...overrides };
+  return { pickFile: vi.fn(), pickKeyFile: vi.fn(), openFile: vi.fn(), ...overrides };
 }
 
 function fakeAutoTyper(overrides: Partial<AutoTyper> = {}): AutoTyper {
@@ -233,6 +233,90 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+  });
+
+  it("unlocks a recent vault with its remembered key file, and keeps remembering it", async () => {
+    const user = userEvent.setup();
+    const settings: AppSettings = {
+      recentVaults: [
+        {
+          path: "C:/vaults/a.kdbx",
+          lastOpenedAt: "2026-01-01T00:00:00.000Z",
+          keyFilePath: "C:/keys/a.keyx",
+        },
+      ],
+    };
+    const vaultAccessService = fakeVaultAccessService({
+      openVaultAtPath: vi.fn().mockResolvedValue(Vault.create("A")),
+    });
+    const settingsStore = fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) });
+
+    render(
+      <App
+        vaultAccessService={vaultAccessService}
+        settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+      />,
+    );
+
+    await user.type(await screen.findByLabelText("Master password"), "hunter2-long");
+    await user.click(screen.getByRole("button", { name: "Unlock" }));
+
+    expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    expect(vaultAccessService.openVaultAtPath).toHaveBeenCalledWith(
+      "C:/vaults/a.kdbx",
+      "hunter2-long",
+      "C:/keys/a.keyx",
+    );
+    expect(settingsStore.save).toHaveBeenCalledWith({
+      recentVaults: [
+        expect.objectContaining({ path: "C:/vaults/a.kdbx", keyFilePath: "C:/keys/a.keyx" }),
+      ],
+    });
+  });
+
+  it("remembers the key file a vault was opened with from the welcome screen", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = {
+      vault: Vault.create("Mine"),
+      filePath: "C:/vaults/mine.kdbx",
+      keyFilePath: "C:/keys/mine.keyx",
+    };
+    const settingsStore = fakeSettingsStore();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          openExistingVault: vi.fn().mockResolvedValue(opened),
+        })}
+        settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /open existing vault/i }));
+    await user.click(screen.getByRole("button", { name: /choose file & unlock/i }));
+
+    expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    expect(settingsStore.save).toHaveBeenCalledWith({
+      recentVaults: [
+        expect.objectContaining({ path: "C:/vaults/mine.kdbx", keyFilePath: "C:/keys/mine.keyx" }),
+      ],
+    });
   });
 
   it("keeps working when the vault's file info can't be loaded after unlocking", async () => {

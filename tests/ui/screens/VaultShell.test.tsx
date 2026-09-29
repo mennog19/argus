@@ -63,7 +63,7 @@ function fakeClipboardWriter(overrides: Partial<ClipboardWriter> = {}): Clipboar
 }
 
 function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
-  return { pickFile: vi.fn(), openFile: vi.fn(), ...overrides };
+  return { pickFile: vi.fn(), pickKeyFile: vi.fn(), openFile: vi.fn(), ...overrides };
 }
 
 function renderShell(
@@ -1382,7 +1382,7 @@ describe("VaultShell", () => {
       await user.type(screen.getByLabelText("Its master password"), "pw");
       await user.click(screen.getByRole("button", { name: /unlock & compare/i }));
 
-      expect(mergeSource.openFile).toHaveBeenCalledWith("C:/vaults/other.kdbx", "pw");
+      expect(mergeSource.openFile).toHaveBeenCalledWith("C:/vaults/other.kdbx", "pw", undefined);
       expect(await screen.findByRole("heading", { name: "Merge vault" })).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Settings" })).not.toBeInTheDocument();
 

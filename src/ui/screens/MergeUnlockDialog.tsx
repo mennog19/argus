@@ -3,6 +3,7 @@ import { Vault } from "../../domain";
 import { VaultMergeSource } from "../../application/vault-merge-source";
 import { useAsyncAction } from "../use-async-action";
 import { basename } from "../format";
+import { KeyFileField } from "./KeyFileField";
 
 interface MergeUnlockDialogProps {
   filePath: string;
@@ -23,12 +24,13 @@ export function MergeUnlockDialog({
   onCancel,
 }: MergeUnlockDialogProps) {
   const [password, setPassword] = useState("");
+  const [keyFilePath, setKeyFilePath] = useState<string | undefined>(undefined);
   const { busy, error, run } = useAsyncAction();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const opened = await mergeSource.openFile(filePath, password);
+      const opened = await mergeSource.openFile(filePath, password, keyFilePath);
       setPassword("");
       onUnlocked(opened);
     }, "Failed to open vault.");
@@ -62,6 +64,12 @@ export function MergeUnlockDialog({
               autoFocus
             />
           </div>
+          <KeyFileField
+            keyFilePath={keyFilePath}
+            onPick={() => mergeSource.pickKeyFile()}
+            onChange={setKeyFilePath}
+            disabled={busy}
+          />
           {error && <div className="field-error">{error}</div>}
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onCancel} disabled={busy}>
