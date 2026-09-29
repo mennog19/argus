@@ -352,7 +352,7 @@ export class Vault {
     const result = updateGroupById(
       this.rootGroup,
       this.recycleBinId,
-      (bin) => new Group(bin.id, bin.name),
+      (bin) => new Group(bin.id, bin.name, [], [], bin.icon),
     );
     if (!result.found) {
       return this;

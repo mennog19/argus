@@ -718,6 +718,17 @@ describe("Vault", () => {
         expect(emptied.recycleBinId?.equals(vault.recycleBinId!)).toBe(true);
       });
 
+      it("keeps the recycle bin's icon", () => {
+        const entry = Entry.create({ title: "Bank" });
+        let vault = new Vault("Root", Group.create("Root").addEntry(entry));
+        vault = vault.deleteEntry(entry.id);
+        vault = vault.changeGroupIcon(vault.recycleBinId!, Icon.library("star"));
+
+        const emptied = vault.emptyRecycleBin();
+
+        expect(emptied.recycleBin?.icon.equals(Icon.library("star"))).toBe(true);
+      });
+
       it("returns the same vault when there is no recycle bin yet", () => {
         const vault = Vault.create("Root");
 

@@ -5,9 +5,19 @@ import { PasswordPolicy } from "./password-policy";
 /** Returns a uniformly random integer in `[0, maxExclusive)`. */
 export type RandomInt = (maxExclusive: number) => number;
 
-const defaultRandomInt: RandomInt = (maxExclusive) => {
+const UINT32_RANGE = 2 ** 32;
+
+/**
+ * `crypto.getRandomValues`-backed {@link RandomInt}. Uses rejection sampling:
+ * draws at or above the largest multiple of `maxExclusive` that fits in a
+ * uint32 are discarded, so `% maxExclusive` has no modulo bias.
+ */
+export const cryptoRandomInt: RandomInt = (maxExclusive) => {
+  const limit = UINT32_RANGE - (UINT32_RANGE % maxExclusive);
   const buffer = new Uint32Array(1);
-  crypto.getRandomValues(buffer);
+  do {
+    crypto.getRandomValues(buffer);
+  } while (buffer[0] >= limit);
   return buffer[0] % maxExclusive;
 };
 
@@ -18,7 +28,7 @@ const defaultRandomInt: RandomInt = (maxExclusive) => {
  */
 export function generatePassword(
   policy: PasswordPolicy,
-  randomInt: RandomInt = defaultRandomInt,
+  randomInt: RandomInt = cryptoRandomInt,
 ): Password {
   const value =
     policy.mode === "passphrase"

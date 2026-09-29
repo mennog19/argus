@@ -21,8 +21,8 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 
 ## Minor
 
-- [ ] The password generator's `% maxExclusive` has a negligible modulo bias (about 1e-8). Rejection sampling would make the "uniform" doc comment strictly true.
-- [ ] `emptyRecycleBin` rebuilds the bin `Group` without its icon, which may reset the bin's icon on save.
+- [x] The password generator's `% maxExclusive` has a negligible modulo bias (about 1e-8). Rejection sampling would make the "uniform" doc comment strictly true.
+- [x] `emptyRecycleBin` rebuilds the bin `Group` without its icon, which may reset the bin's icon on save.
 
 ## Already done well
 

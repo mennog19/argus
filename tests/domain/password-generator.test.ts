@@ -1,6 +1,36 @@
-import { describe, expect, it } from "vitest";
-import { generatePassword } from "../../src/domain/password-generator";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cryptoRandomInt, generatePassword } from "../../src/domain/password-generator";
 import { PasswordPolicy } from "../../src/domain/password-policy";
+
+describe("cryptoRandomInt", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function stubRandomValues(...draws: number[]): void {
+    const spy = vi.spyOn(crypto, "getRandomValues");
+    for (const draw of draws) {
+      spy.mockImplementationOnce(<T extends ArrayBufferView | null>(array: T): T => {
+        (array as unknown as Uint32Array)[0] = draw;
+        return array;
+      });
+    }
+  }
+
+  it("reduces an accepted draw modulo maxExclusive", () => {
+    stubRandomValues(17);
+
+    expect(cryptoRandomInt(10)).toBe(7);
+  });
+
+  it("rejects draws in the biased tail above the largest multiple of maxExclusive", () => {
+    // 2^32 % 10 === 6, so draws >= 2^32 - 6 would over-weight 0..5.
+    stubRandomValues(2 ** 32 - 1, 2 ** 32 - 6, 2 ** 32 - 7);
+
+    expect(cryptoRandomInt(10)).toBe((2 ** 32 - 7) % 10);
+    expect(crypto.getRandomValues).toHaveBeenCalledTimes(3);
+  });
+});
 
 describe("generatePassword", () => {
   it("produces a deterministic character password when randomInt is fixed", () => {
