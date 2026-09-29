@@ -1,4 +1,4 @@
-import { Entry, Group, GroupId, matchesSearchQuery } from "../domain";
+import { Entry, FieldReferences, Group, GroupId, matchesSearchQuery } from "../domain";
 
 export interface EntryWithGroup {
   readonly entry: Entry;
@@ -24,6 +24,15 @@ export function collectAllEntries(
     .filter((child) => !isExcluded(child, excludeIds))
     .flatMap((child) => collectAllEntries(child, excludeIds));
   return [...own, ...nested];
+}
+
+/**
+ * A resolver for `{REF:…}` placeholders that can reach every entry under
+ * `rootGroup`, the recycle bin included — KeePass resolves against the whole
+ * file, and a reference shouldn't break just because its target was binned.
+ */
+export function fieldReferencesOf(rootGroup: Group): FieldReferences {
+  return new FieldReferences(collectAllEntries(rootGroup).map(({ entry }) => entry));
 }
 
 /** Only `group`'s own entries (not its subgroups'), paired with `group` itself. */

@@ -16,7 +16,7 @@ import { SettingsStore } from "../application/settings";
 import { SettingsTransferService } from "../application/settings-transfer-service";
 import { UrlOpener } from "../application/url-opener";
 import { VaultMergeSource } from "../application/vault-merge-source";
-import { collectAllEntries } from "./vault-browsing";
+import { collectAllEntries, fieldReferencesOf } from "./vault-browsing";
 import { useAppSettings } from "./use-app-settings";
 import { useAutoLock } from "./use-auto-lock";
 import { useAutoType } from "./use-auto-type";
@@ -88,16 +88,18 @@ function App({
 
   // Everything auto-type is allowed to offer: the whole vault minus the
   // recycle bin, so a deleted login can't be typed back into a live site.
-  const autoTypeEntries = useMemo(
-    () =>
-      screen.kind === "unlocked"
-        ? collectAllEntries(
-            screen.vault.rootGroup,
-            screen.vault.recycleBin ? [screen.vault.recycleBin.id] : [],
-          ).map(({ entry }) => entry)
-        : [],
-    [screen],
-  );
+  // References are resolved up front: what gets matched and typed is the
+  // linked entry's real username and password, never the `{REF:…}` text.
+  const autoTypeEntries = useMemo(() => {
+    if (screen.kind !== "unlocked") {
+      return [];
+    }
+    const { rootGroup, recycleBin } = screen.vault;
+    const references = fieldReferencesOf(rootGroup);
+    return collectAllEntries(rootGroup, recycleBin ? [recycleBin.id] : []).map(({ entry }) =>
+      references.resolveEntry(entry),
+    );
+  }, [screen]);
 
   // The hotkey is only bound while a vault is open. A locked Argus has no
   // credentials to type, and leaving the accelerator claimed would keep it

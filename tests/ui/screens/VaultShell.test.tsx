@@ -512,6 +512,37 @@ describe("VaultShell", () => {
     expect(writeText).toHaveBeenCalledWith("s3cret!");
   });
 
+  it("shows and copies what a linked entry's {REF:…} fields point at, but edits the reference", async () => {
+    const target = Entry.create({
+      title: "Main",
+      username: "octocat",
+      password: new Password("s3cret!"),
+    });
+    const ref = target.id.toString().replace(/-/g, "").toUpperCase();
+    const linked = Entry.create({
+      title: "Linked",
+      username: `{REF:U@I:${ref}}`,
+      password: new Password(`{REF:P@I:${ref}}`),
+    });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, target);
+    vault = vault.addEntry(vault.rootGroup.id, linked);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderShell(vault, { clipboardWriter: fakeClipboardWriter({ writeText }) });
+    const linkedRow = screen.getByText("Linked").closest("button") as HTMLButtonElement;
+    expect(linkedRow).toHaveTextContent("octocat");
+    expect(screen.queryByText(/\{REF:/)).not.toBeInTheDocument();
+
+    await user.click(linkedRow);
+    await user.click(screen.getByRole("button", { name: "Copy password" }));
+    expect(writeText).toHaveBeenCalledWith("s3cret!");
+
+    await user.click(screen.getByRole("button", { name: "Edit entry" }));
+    expect(screen.getByLabelText("Username")).toHaveValue(`{REF:U@I:${ref}}`);
+  });
+
   it("does not clear the clipboard from a stale copy once a newer value has been copied", async () => {
     const entry = Entry.create({
       title: "GitHub",

@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { openableUrl, TOTP_FIELD_KEYS, totpConfigFromCustomFields } from "../../../domain";
+import {
+  FieldReferences,
+  openableUrl,
+  TOTP_FIELD_KEYS,
+  totpConfigFromCustomFields,
+} from "../../../domain";
 import { UrlOpener } from "../../../application/url-opener";
 import { EntryAvatar } from "../../entry-icons/EntryAvatar";
 import { EditIcon, EyeIcon, EyeOffIcon, TrashIcon } from "../../icons";
@@ -12,6 +17,12 @@ import { TotpCard } from "./TotpCard";
 
 interface EntryDetailProps {
   entryWithGroup: EntryWithGroup;
+  /**
+   * Resolves `{REF:…}` placeholders, so a linked entry shows, copies, and
+   * opens the values it points at. Editing still starts from the stored
+   * reference text — the shell hands the form the unresolved entry.
+   */
+  references: FieldReferences;
   urlOpener: UrlOpener;
   clipboard: ClipboardCopy;
   clipboardClearSeconds: number;
@@ -23,6 +34,7 @@ interface EntryDetailProps {
 
 export function EntryDetail({
   entryWithGroup,
+  references,
   urlOpener,
   clipboard,
   clipboardClearSeconds,
@@ -31,7 +43,11 @@ export function EntryDetail({
   onEdit,
   onDelete,
 }: EntryDetailProps) {
-  const { entry, group } = entryWithGroup;
+  const { entry: storedEntry, group } = entryWithGroup;
+  const entry = useMemo(
+    () => references.resolveEntry(storedEntry),
+    [references, storedEntry],
+  );
   const totpConfig = useMemo(() => totpConfigFromCustomFields(entry.customFields), [entry]);
   // The raw TOTP fields have their own card above; only hide them from the
   // generic list once they've actually been parsed into a usable config, so

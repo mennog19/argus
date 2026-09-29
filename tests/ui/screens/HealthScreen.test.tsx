@@ -49,6 +49,21 @@ describe("HealthScreen", () => {
     expect(tileFor("Strong")).toHaveTextContent("1");
   });
 
+  it("leaves out entries whose password is a {REF:…} to another entry's", () => {
+    const group = Group.create("Personal");
+    const target = entryIn(group, { title: "Main", password: new Password(STRONG_PASSWORD) });
+    const reference = target.entry.id.toString().replace(/-/g, "");
+    const linked = entryIn(group, {
+      title: "Linked",
+      password: new Password(`{REF:P@I:${reference}}`),
+    });
+
+    render(<HealthScreen entries={[target, linked]} onSelectEntry={vi.fn()} />);
+
+    expect(screen.getByText(/1 of 1 passwords are healthy/i)).toBeInTheDocument();
+    expect(tileFor("Reused")).toHaveTextContent("0");
+  });
+
   it("opens on an overview of every category instead of one category's entries", () => {
     const group = Group.create("Personal");
     const entries: EntryWithGroup[] = [

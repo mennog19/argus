@@ -12,6 +12,7 @@ import {
   collectAllEntries,
   entriesOf,
   EntryWithGroup,
+  fieldReferencesOf,
   flattenGroupOptions,
   searchEntries,
 } from "../vault-browsing";
@@ -109,6 +110,7 @@ export function VaultShell({
     () => collectAllEntries(rootGroup, excludeFromBrowsing),
     [rootGroup, excludeFromBrowsing],
   );
+  const references = useMemo(() => fieldReferencesOf(rootGroup), [rootGroup]);
 
   // Falls back to "All Items" if the selected group no longer exists (e.g.
   // it, or an ancestor of it, was just deleted).
@@ -277,6 +279,7 @@ export function VaultShell({
     return (
       <EntryDetail
         entryWithGroup={selected}
+        references={references}
         urlOpener={urlOpener}
         clipboard={clipboard}
         clipboardClearSeconds={clipboardClearSeconds}
@@ -325,6 +328,7 @@ export function VaultShell({
             <EntryListPanel
               heading={effectiveGroupId === ALL_ITEMS ? "All Items" : selectedGroup?.name}
               entries={visibleEntries}
+              references={references}
               selectedEntryId={selectedEntryId}
               draggingEntryId={draggingEntryId}
               searchQuery={searchQuery}

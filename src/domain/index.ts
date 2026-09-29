@@ -20,6 +20,7 @@ export { Entry, type EntryFields, type EntryTimes } from "./entry";
 export { Icon, type IconKind } from "./icon";
 export { EntryId } from "./entry-id";
 export { openableUrl } from "./entry-url";
+export { FieldReferences, isFieldReference } from "./field-references";
 export { matchesSearchQuery } from "./entry-search";
 export { Group } from "./group";
 export { GroupId } from "./group-id";

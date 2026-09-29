@@ -1793,6 +1793,33 @@ describe("App", () => {
       expect(screen.queryByRole("dialog", { name: "Auto-type" })).not.toBeInTheDocument();
     });
 
+    it("matches and types a linked entry by the values its {REF:…} fields point at", async () => {
+      const user = userEvent.setup();
+      const githubRef = GITHUB.id.toString().replace(/-/g, "").toUpperCase();
+      const linked = Entry.create({
+        title: "Work login",
+        username: `{REF:U@I:${githubRef}}`,
+        url: `{REF:A@I:${githubRef}}`,
+      });
+      let vault = vaultWithGithub();
+      vault = vault.addEntry(vault.rootGroup.id, linked);
+      const autoTyper = fakeAutoTyper({
+        captureTarget: vi
+          .fn()
+          .mockResolvedValue({ title: "github.com — Firefox", processName: "firefox.exe" }),
+      });
+      const { globalHotkey } = await enableAutoType(user, { autoTyper, vault });
+      await pressHotkey(globalHotkey);
+
+      await user.click(await screen.findByRole("option", { name: /Work login/ }));
+
+      expect(autoTyper.typeIntoTarget).toHaveBeenCalledWith([
+        { kind: "focus", field: "username" },
+        { kind: "text", text: "menno" },
+        { kind: "submit" },
+      ]);
+    });
+
     it("closes the picker when it is cancelled", async () => {
       const user = userEvent.setup();
       const autoTyper = fakeAutoTyper({
