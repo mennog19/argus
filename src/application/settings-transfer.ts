@@ -3,6 +3,7 @@ import {
   AppSettings,
   AutoLockSettings,
   EntryFieldVisibility,
+  DEFAULT_CLOSE_TO_TRAY,
   DEFAULT_EXPIRED_ENTRY_ACTION,
   EXPIRED_ENTRY_ACTIONS,
   ExpiredEntryAction,
@@ -55,6 +56,9 @@ export interface PortableSettings {
     readonly clipboardClearSeconds: number;
     readonly contentProtection: boolean;
   };
+  readonly window: {
+    readonly closeToTray: boolean;
+  };
   readonly groups: {
     readonly deleteMode: GroupDeleteMode;
   };
@@ -78,6 +82,7 @@ export function toPortableSettings(settings: AppSettings): PortableSettings {
     autoLock,
     clipboardClearSeconds,
     contentProtection,
+    closeToTray,
     groupDeleteMode,
     entryFieldVisibility,
     expiredEntryAction,
@@ -94,6 +99,7 @@ export function toPortableSettings(settings: AppSettings): PortableSettings {
       clipboardClearSeconds,
       contentProtection,
     },
+    window: { closeToTray },
     groups: { deleteMode: groupDeleteMode },
     entryCreation: { fieldVisibility: entryFieldVisibility },
     entries: { expiredAction: expiredEntryAction },
@@ -127,6 +133,7 @@ export function applyPortableSettings(
     autoLock,
     clipboardClearSeconds: portable.security.clipboardClearSeconds,
     contentProtection: portable.security.contentProtection,
+    closeToTray: portable.window.closeToTray,
     groupDeleteMode: portable.groups.deleteMode,
     entryFieldVisibility: portable.entryCreation.fieldVisibility,
     expiredEntryAction: portable.entries.expiredAction,
@@ -161,6 +168,7 @@ export function parsePortableSettings(text: string): PortableSettings {
   const entryCreation = section(raw, "entryCreation");
   // Added after version 1 files were already being exported.
   const entries = raw.entries === undefined ? {} : section(raw, "entries");
+  const windowSection = raw.window === undefined ? {} : section(raw, "window");
 
   return {
     format: PORTABLE_SETTINGS_FORMAT,
@@ -189,6 +197,13 @@ export function parsePortableSettings(text: string): PortableSettings {
         MAX_CLIPBOARD_CLEAR_SECONDS,
       ),
       contentProtection: parseBoolean(security.contentProtection, "Screen-capture protection"),
+    },
+    window: {
+      closeToTray: parseOptionalBoolean(
+        windowSection.closeToTray,
+        "Minimize to tray when closed",
+        DEFAULT_CLOSE_TO_TRAY,
+      ),
     },
     groups: { deleteMode: oneOf(groups.deleteMode, GROUP_DELETE_MODES, "Group delete mode") },
     entryCreation: { fieldVisibility: parseFieldVisibility(entryCreation.fieldVisibility) },

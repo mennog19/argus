@@ -24,6 +24,7 @@ const CUSTOMIZED: AppSettings = {
     lockOnSessionLock: false,
   },
   contentProtection: false,
+  closeToTray: true,
   groupDeleteMode: "keepContents",
   expiredEntryAction: "recycle",
   entryFieldVisibility: {
@@ -65,6 +66,7 @@ describe("toPortableSettings", () => {
         clipboardClearSeconds: 45,
         contentProtection: false,
       },
+      window: { closeToTray: true },
       groups: { deleteMode: "keepContents" },
       entryCreation: { fieldVisibility: CUSTOMIZED.entryFieldVisibility },
       entries: { expiredAction: "recycle" },
@@ -84,6 +86,7 @@ describe("toPortableSettings", () => {
         clipboardClearSeconds: 20,
         contentProtection: true,
       },
+      window: { closeToTray: false },
       groups: { deleteMode: "deleteContents" },
       entryCreation: {
         fieldVisibility: {
@@ -130,6 +133,7 @@ describe("applyPortableSettings", () => {
       lockOnSessionLock: false,
     });
     expect(applied.contentProtection).toBe(false);
+    expect(applied.closeToTray).toBe(true);
     expect(applied.groupDeleteMode).toBe("keepContents");
     expect(applied.entryFieldVisibility).toEqual(CUSTOMIZED.entryFieldVisibility);
     expect(applied.expiredEntryAction).toBe("recycle");
@@ -262,6 +266,23 @@ describe("parsePortableSettings", () => {
     delete (raw.security as Record<string, unknown>).lockOnSessionLock;
 
     expect(importRaw(raw).security.lockOnSessionLock).toBe(false);
+  });
+
+  it("imports a file from before the window section existed with minimize-to-tray off", () => {
+    const raw = rawOf();
+    delete raw.window;
+
+    expect(importRaw(raw).window.closeToTray).toBe(false);
+  });
+
+  it("rejects a non-boolean minimize-to-tray", () => {
+    const raw = rawOf({ window: { closeToTray: "yes" } });
+
+    expect(() => importRaw(raw)).toThrow(/must be true or false/i);
+  });
+
+  it("rejects a malformed window section", () => {
+    expect(() => importRaw(rawOf({ window: "tray" }))).toThrow(/"window" section/i);
   });
 
   it.each(["lockOnMinimize", "lockOnSleep", "lockOnSessionLock", "contentProtection"])(

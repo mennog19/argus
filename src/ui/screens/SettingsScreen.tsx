@@ -11,6 +11,7 @@ import { GroupsSection } from "./settings/GroupsSection";
 import { SecuritySection } from "./settings/SecuritySection";
 import { SettingChangeHandler } from "../setting-change";
 import { VaultInfoSection } from "./settings/VaultInfoSection";
+import { WindowSection } from "./settings/WindowSection";
 
 interface SettingsScreenProps {
   filePath: string;
@@ -53,6 +54,7 @@ export function SettingsScreen({
             accentColor={settings.accentColor}
             onSettingChange={onSettingChange}
           />
+          <WindowSection closeToTray={settings.closeToTray} onSettingChange={onSettingChange} />
           <SecuritySection
             autoLock={settings.autoLock}
             clipboardClearSeconds={settings.clipboardClearSeconds}

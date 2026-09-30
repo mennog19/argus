@@ -43,6 +43,7 @@ function renderSettings(
     accentColor?: AccentColor;
     theme?: Theme;
     contentProtection?: boolean;
+    closeToTray?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
     onChangeMasterPassword?: (
       currentPassword: string,
@@ -73,6 +74,7 @@ function renderSettings(
     accentColor: overrides.accentColor ?? DEFAULT_ACCENT_COLOR,
     theme: overrides.theme ?? "dark",
     contentProtection: overrides.contentProtection ?? true,
+    closeToTray: overrides.closeToTray ?? false,
     entryFieldVisibility: overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
     entrySort: "manual",
   };
@@ -433,6 +435,24 @@ describe("SettingsScreen", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /screen sharing/i }));
 
     expect(onSettingChange).toHaveBeenCalledWith("contentProtection", false);
+  });
+
+  it("shows minimize-to-tray off by default", () => {
+    renderSettings();
+
+    expect(screen.getByRole("checkbox", { name: /system tray/i })).not.toBeChecked();
+  });
+
+  it("reports turning minimize-to-tray on and off", () => {
+    const { onSettingChange, unmount } = renderSettings({ closeToTray: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /system tray/i }));
+    expect(onSettingChange).toHaveBeenCalledWith("closeToTray", true);
+    unmount();
+
+    const { onSettingChange: onSecondChange } = renderSettings({ closeToTray: true });
+    fireEvent.click(screen.getByRole("checkbox", { name: /system tray/i }));
+    expect(onSecondChange).toHaveBeenCalledWith("closeToTray", false);
   });
 
   describe("danger zone", () => {

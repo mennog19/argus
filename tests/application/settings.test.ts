@@ -6,6 +6,7 @@ import {
   DEFAULT_AUTO_LOCK,
   DEFAULT_AUTO_TYPE,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+  DEFAULT_CLOSE_TO_TRAY,
   DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_ENTRY_SORT,
@@ -136,6 +137,7 @@ describe("withSetting", () => {
     expectRecorded("accentColor", { kind: "preset", id: "teal" });
     expectRecorded("theme", "light");
     expectRecorded("contentProtection", false);
+    expectRecorded("closeToTray", true);
     expectRecorded("entryFieldVisibility", {
       ...DEFAULT_ENTRY_FIELD_VISIBILITY,
       password: false,
@@ -171,6 +173,7 @@ describe("resolveSettings", () => {
       accentColor: DEFAULT_ACCENT_COLOR,
       theme: DEFAULT_THEME,
       contentProtection: DEFAULT_CONTENT_PROTECTION,
+      closeToTray: DEFAULT_CLOSE_TO_TRAY,
       entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
       entrySort: DEFAULT_ENTRY_SORT,
     });
@@ -192,6 +195,7 @@ describe("resolveSettings", () => {
       accentColor: { kind: "custom", hue: 120 },
       theme: "light",
       contentProtection: false,
+      closeToTray: true,
       entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
       entrySort: "title-desc",
     } satisfies Omit<AppSettings, "recentVaults">;

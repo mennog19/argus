@@ -20,7 +20,9 @@ function fakeWindow(isMinimized: () => Promise<boolean> = () => Promise.resolve(
   const onResized = vi.fn().mockResolvedValue(unlisten);
   const window = { onResized, isMinimized: vi.fn(isMinimized) };
   vi.mocked(getCurrentWindow).mockReturnValue(window as never);
-  return { window, unlisten };
+  const unlistenTray = vi.fn();
+  vi.mocked(listen).mockReset().mockResolvedValue(unlistenTray);
+  return { window, unlisten, unlistenTray };
 }
 
 describe("TauriWindowEvents", () => {
@@ -50,14 +52,27 @@ describe("TauriWindowEvents", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
+  it("calls the callback when closing hides the window to the tray", () => {
+    fakeWindow();
+    const callback = vi.fn();
+
+    new TauriWindowEvents().onMinimize(callback);
+    const [eventName, handler] = vi.mocked(listen).mock.calls[0];
+    handler({ event: eventName, id: 1, payload: null });
+
+    expect(eventName).toBe("hidden-to-tray");
+    expect(callback).toHaveBeenCalled();
+  });
+
   it("unsubscribes via the underlying unlisten function once registration has resolved", async () => {
-    const { unlisten } = fakeWindow();
+    const { unlisten, unlistenTray } = fakeWindow();
 
     const unsubscribe = new TauriWindowEvents().onMinimize(vi.fn());
     await flush();
     unsubscribe();
 
     expect(unlisten).toHaveBeenCalled();
+    expect(unlistenTray).toHaveBeenCalled();
   });
 
   it("unsubscribes as soon as registration resolves, even if called beforehand", async () => {

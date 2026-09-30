@@ -59,6 +59,7 @@ const TEST_SETTINGS: EffectiveSettings = {
   accentColor: DEFAULT_ACCENT_COLOR,
   theme: DEFAULT_THEME,
   contentProtection: true,
+  closeToTray: false,
   entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
   entrySort: DEFAULT_ENTRY_SORT,
 };
@@ -124,6 +125,7 @@ function renderShell(
     accentColor: overrides.accentColor ?? TEST_SETTINGS.accentColor,
     theme: overrides.theme ?? TEST_SETTINGS.theme,
     contentProtection: overrides.contentProtection ?? TEST_SETTINGS.contentProtection,
+    closeToTray: TEST_SETTINGS.closeToTray,
     entryFieldVisibility: overrides.entryFieldVisibility ?? TEST_SETTINGS.entryFieldVisibility,
     entrySort: overrides.entrySort ?? TEST_SETTINGS.entrySort,
   };

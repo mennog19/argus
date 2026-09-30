@@ -25,6 +25,7 @@ const FULL_SETTINGS: AppSettings = {
   accentColor: { kind: "custom", hue: 200 },
   theme: "light",
   contentProtection: false,
+  closeToTray: true,
   entryFieldVisibility: {
     username: true,
     password: true,
@@ -102,6 +103,7 @@ describe("parseStoredSettings", () => {
       clipboardClearSeconds: 0,
       theme: "sepia",
       contentProtection: "yes",
+      closeToTray: "yes",
       groupDeleteMode: "shred",
       expiredEntryAction: "archive",
       entrySort: "random",

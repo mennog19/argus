@@ -2,8 +2,8 @@ mod atomic_write;
 mod auto_type;
 mod clipboard;
 mod session_lock;
+mod tray;
 
-use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
 /// Rolling-backup suffixes `VaultAccessService` rotates next to a vault; the
@@ -87,10 +87,7 @@ pub fn run() {
         // Must be registered first: plugins run in registration order, and a
         // second launch needs to be caught before anything else initializes.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            tray::show_main_window(app);
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -107,6 +104,14 @@ pub fn run() {
         // password is ever checked.
         .plugin(tauri_plugin_persisted_scope::init())
         .manage(auto_type::AutoTypeState::default())
+        .manage(tray::CloseToTray::default())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if tray::hide_on_close(window) {
+                    api.prevent_close();
+                }
+            }
+        })
         // A secret still on the clipboard at launch was left by a run that
         // crashed or was killed before its auto-clear or quit could wipe it.
         .setup(|app| {
@@ -121,7 +126,8 @@ pub fn run() {
             auto_type::auto_type_inspect_target,
             auto_type::auto_type_send,
             clipboard::clipboard_write_secret,
-            clipboard::clipboard_clear_secret
+            clipboard::clipboard_clear_secret,
+            tray::set_close_to_tray
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

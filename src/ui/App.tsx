@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Vault } from "../domain";
 import { ClipboardWriter } from "../application/clipboard";
 import {
@@ -12,6 +12,7 @@ import { GlobalHotkey } from "../application/auto-type";
 import { AutoTypeService } from "../application/auto-type-service";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
+import { WindowCloseBehavior } from "../application/window-close-behavior";
 import { SettingsStore } from "../application/settings";
 import { SettingsTransferService } from "../application/settings-transfer-service";
 import { UrlOpener } from "../application/url-opener";
@@ -40,6 +41,7 @@ interface AppProps {
   clipboardWriter: ClipboardWriter;
   windowEvents: WindowEvents;
   windowProtection: WindowProtection;
+  windowCloseBehavior: WindowCloseBehavior;
   mergeSource: VaultMergeSource;
   autoTypeService: AutoTypeService;
   globalHotkey: GlobalHotkey;
@@ -63,6 +65,7 @@ function App({
   clipboardWriter,
   windowEvents,
   windowProtection,
+  windowCloseBehavior,
   mergeSource,
   autoTypeService,
   globalHotkey,
@@ -80,6 +83,10 @@ function App({
   const { settings, effective } = appSettings;
 
   useWindowAppearance(effective, windowProtection);
+
+  useEffect(() => {
+    void windowCloseBehavior.setCloseToTray(effective.closeToTray);
+  }, [effective.closeToTray, windowCloseBehavior]);
 
   useAutoLock(
     screen.kind === "unlocked" ? screen : undefined,

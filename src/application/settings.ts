@@ -111,6 +111,12 @@ export const DEFAULT_THEME: Theme = "dark";
 export const DEFAULT_CONTENT_PROTECTION = true;
 
 /**
+ * Whether closing the window hides Argus to the system tray instead of
+ * quitting. Off by default: the close button quits, like any other app.
+ */
+export const DEFAULT_CLOSE_TO_TRAY = false;
+
+/**
  * Entry fields that can be individually hidden from the entry creation form.
  * Title is always shown (it's the only required field); Group falls back to
  * whichever group the entry is being created in when hidden.
@@ -190,6 +196,8 @@ export interface AppSettings {
   readonly theme?: Theme;
   /** Undefined until the user changes it, at which point `DEFAULT_CONTENT_PROTECTION` applies. */
   readonly contentProtection?: boolean;
+  /** Undefined until the user changes it, at which point `DEFAULT_CLOSE_TO_TRAY` applies. */
+  readonly closeToTray?: boolean;
   /** Which fields are shown on the entry creation form. Undefined until the
    * user changes it, at which point `DEFAULT_ENTRY_FIELD_VISIBILITY` applies.
    * Only applies to creating new entries; editing an existing entry always
@@ -236,6 +244,7 @@ export interface EffectiveSettings {
   readonly accentColor: AccentColor;
   readonly theme: Theme;
   readonly contentProtection: boolean;
+  readonly closeToTray: boolean;
   readonly entryFieldVisibility: EntryFieldVisibility;
   readonly entrySort: EntrySortId;
 }
@@ -253,6 +262,7 @@ export function resolveSettings(settings: AppSettings): EffectiveSettings {
     accentColor: settings.accentColor ?? DEFAULT_ACCENT_COLOR,
     theme: settings.theme ?? DEFAULT_THEME,
     contentProtection: settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,
+    closeToTray: settings.closeToTray ?? DEFAULT_CLOSE_TO_TRAY,
     entryFieldVisibility: settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
     entrySort: settings.entrySort ?? DEFAULT_ENTRY_SORT,
   };

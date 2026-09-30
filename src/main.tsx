@@ -16,6 +16,7 @@ import { TauriGlobalHotkey } from "./infrastructure/tauri-global-hotkey";
 import { AutoTypeService } from "./application/auto-type-service";
 import { TauriWindowEvents } from "./infrastructure/tauri-window-events";
 import { TauriWindowProtection } from "./infrastructure/tauri-window-protection";
+import { TauriWindowCloseBehavior } from "./infrastructure/tauri-window-close-behavior";
 
 const vaultFileDialog = new TauriVaultFileDialog();
 const fileStorage = new TauriFileStorage();
@@ -34,6 +35,7 @@ const urlOpener = new TauriUrlOpener();
 const clipboardWriter = new TauriClipboard();
 const windowEvents = new TauriWindowEvents();
 const windowProtection = new TauriWindowProtection();
+const windowCloseBehavior = new TauriWindowCloseBehavior();
 const autoTypeService = new AutoTypeService(new TauriAutoTyper());
 const globalHotkey = new TauriGlobalHotkey();
 
@@ -47,6 +49,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       clipboardWriter={clipboardWriter}
       windowEvents={windowEvents}
       windowProtection={windowProtection}
+      windowCloseBehavior={windowCloseBehavior}
       mergeSource={mergeSource}
       autoTypeService={autoTypeService}
       globalHotkey={globalHotkey}

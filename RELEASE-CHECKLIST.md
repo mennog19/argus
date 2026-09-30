@@ -5,9 +5,6 @@ Pre-release assessment of Argus, based on a code review on 2026-09-27.
 At the time of review, lint was clean and all 1,133 tests passed at 100% coverage. The items below are about behaviour and security defaults, not code quality.
 
 # todo
-AES-KDF isn't capped for KDBX3. This is already listed in Known limitations.
-Creating field references in the UI.
-Minimize to tray. Make this a settin to fully close or minimize to tray.
 Opening a .kdbx by double-click (no file association is configured).
 upgrade KDBX3 to 4. option
 ## Release engineering

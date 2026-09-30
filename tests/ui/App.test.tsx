@@ -13,6 +13,7 @@ import { SettingsTransferService } from "../../src/application/settings-transfer
 import { UrlOpener } from "../../src/application/url-opener";
 import { WindowEvents } from "../../src/application/window-events";
 import { WindowProtection } from "../../src/application/window-protection";
+import { WindowCloseBehavior } from "../../src/application/window-close-behavior";
 import { VaultMergeSource } from "../../src/application/vault-merge-source";
 import { AutoTyper, GlobalHotkey } from "../../src/application/auto-type";
 import { AutoTypeService } from "../../src/application/auto-type-service";
@@ -69,6 +70,12 @@ function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): Window
   return { setContentProtected: vi.fn().mockResolvedValue(undefined), ...overrides };
 }
 
+function fakeWindowCloseBehavior(
+  overrides: Partial<WindowCloseBehavior> = {},
+): WindowCloseBehavior {
+  return { setCloseToTray: vi.fn().mockResolvedValue(undefined), ...overrides };
+}
+
 function fakeMergeSource(overrides: Partial<VaultMergeSource> = {}): VaultMergeSource {
   return { pickFile: vi.fn(), pickKeyFile: vi.fn(), openFile: vi.fn(), ...overrides };
 }
@@ -105,6 +112,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -126,6 +134,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -152,6 +161,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -181,6 +191,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -227,6 +238,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -264,6 +276,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -306,6 +319,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -342,6 +356,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -372,6 +387,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -408,6 +424,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -443,6 +460,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -487,6 +505,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -530,6 +549,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -583,6 +603,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -626,6 +647,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -669,6 +691,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -709,6 +732,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -746,6 +770,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -785,6 +810,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -826,6 +852,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -864,6 +891,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -906,6 +934,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -950,6 +979,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -996,6 +1026,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1039,6 +1070,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1078,6 +1110,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1119,6 +1152,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={windowProtection}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1142,6 +1176,48 @@ describe("App", () => {
     expect(windowProtection.setContentProtected).toHaveBeenCalledWith(false);
   });
 
+  it("persists a minimize-to-tray change and applies it via WindowCloseBehavior", async () => {
+    const user = userEvent.setup();
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const settingsStore = fakeSettingsStore();
+    const windowCloseBehavior = fakeWindowCloseBehavior();
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
+        settingsStore={settingsStore}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={windowCloseBehavior}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(windowCloseBehavior.setCloseToTray).toHaveBeenCalledWith(false);
+
+    await user.click(screen.getByRole("checkbox", { name: /system tray/i }));
+
+    expect(settingsStore.save).toHaveBeenCalledWith(expect.objectContaining({ closeToTray: true }));
+    expect(windowCloseBehavior.setCloseToTray).toHaveBeenLastCalledWith(true);
+  });
+
   it("persists an entry field visibility change made in the vault shell's settings screen", async () => {
     const user = userEvent.setup();
     const opened: OpenedVault = {
@@ -1161,6 +1237,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1201,6 +1278,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1244,6 +1322,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1285,6 +1364,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1325,6 +1405,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1373,6 +1454,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -1425,6 +1507,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -1476,6 +1559,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -1528,6 +1612,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -1581,6 +1666,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1628,6 +1714,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1673,6 +1760,7 @@ describe("App", () => {
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
         windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
@@ -1724,6 +1812,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
@@ -1873,6 +1962,7 @@ describe("App", () => {
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
           windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService(options.autoTyper)}
           globalHotkey={globalHotkey}
