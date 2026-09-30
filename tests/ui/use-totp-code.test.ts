@@ -110,7 +110,6 @@ describe("useTotpCode", () => {
     });
     await flushCrypto();
     expect(result.current!.value).toHaveLength(6);
-    const first = result.current!;
 
     rerender({ config: configB });
     await flushCrypto();
