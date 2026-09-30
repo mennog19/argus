@@ -9,6 +9,7 @@ const FIELD_NAMES: Record<EntryFieldName, string> = {
   tags: "tags",
   customFields: "custom fields",
   icon: "icon",
+  expiry: "expiry date",
 };
 
 /**

@@ -626,3 +626,83 @@ describe("entry times", () => {
     expect(kdbxEntry.fields.get("Title")).toBe("Renamed");
   });
 });
+
+describe("entry expiry", () => {
+  const EXPIRY = new Date("2026-06-01T12:00:00Z");
+
+  function dbWithEntry(configure: (entry: ReturnType<Kdbx["createEntry"]>) => void = () => {}) {
+    const db = createDb();
+    const kdbxEntry = db.createEntry(db.getDefaultGroup());
+    kdbxEntry.fields.set("Title", "Mail");
+    configure(kdbxEntry);
+    return { db, kdbxEntry };
+  }
+
+  it("maps an entry set to expire onto its expiry date", () => {
+    const { db } = dbWithEntry((entry) => {
+      entry.times.expires = true;
+      entry.times.expiryTime = EXPIRY;
+    });
+
+    expect(vaultFromKdbx(db).rootGroup.entries[0].expiresAt).toEqual(EXPIRY);
+  });
+
+  it("ignores an expiry date the entry isn't set to expire at", () => {
+    const { db } = dbWithEntry((entry) => {
+      entry.times.expires = false;
+      entry.times.expiryTime = EXPIRY;
+    });
+
+    expect(vaultFromKdbx(db).rootGroup.entries[0].expiresAt).toBeUndefined();
+  });
+
+  it("writes a new expiry date as an edit, keeping the old version in history", () => {
+    const { db, kdbxEntry } = dbWithEntry();
+    const vault = vaultFromKdbx(db);
+    const [entry] = vault.rootGroup.entries;
+
+    applyVaultToKdbx(db, vault.updateEntry(entry.update({ expiresAt: EXPIRY })));
+
+    expect(kdbxEntry.times.expires).toBe(true);
+    expect(kdbxEntry.times.expiryTime).toEqual(EXPIRY);
+    expect(kdbxEntry.history).toHaveLength(1);
+    expect(kdbxEntry.history[0].times.expires).toBeFalsy();
+  });
+
+  it("turns expiry off while keeping the stored date, as KeePass does", () => {
+    const { db, kdbxEntry } = dbWithEntry((entry) => {
+      entry.times.expires = true;
+      entry.times.expiryTime = EXPIRY;
+    });
+    const vault = vaultFromKdbx(db);
+    const [entry] = vault.rootGroup.entries;
+
+    applyVaultToKdbx(db, vault.updateEntry(entry.update({ expiresAt: undefined })));
+
+    expect(kdbxEntry.times.expires).toBe(false);
+    expect(kdbxEntry.times.expiryTime).toEqual(EXPIRY);
+  });
+
+  it("leaves an unchanged expiring entry alone", () => {
+    const { db, kdbxEntry } = dbWithEntry((entry) => {
+      entry.times.expires = true;
+      entry.times.expiryTime = EXPIRY;
+    });
+
+    applyVaultToKdbx(db, vaultFromKdbx(db));
+
+    expect(kdbxEntry.history).toHaveLength(0);
+  });
+
+  it("deletes a purged entry outright instead of moving it to the recycle bin", () => {
+    const { db, kdbxEntry } = dbWithEntry();
+    const recycleBin = db.getDefaultGroup().groups.find((g) => g.name === "Recycle Bin")!;
+    const vault = vaultFromKdbx(db);
+
+    applyVaultToKdbx(db, vault.purgeEntry(vault.rootGroup.entries[0].id));
+
+    expect([...db.getDefaultGroup().allEntries()]).toHaveLength(0);
+    expect(recycleBin.entries).toHaveLength(0);
+    expect(db.deletedObjects.some((deleted) => deleted.uuid?.equals(kdbxEntry.uuid))).toBe(true);
+  });
+});

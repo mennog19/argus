@@ -37,7 +37,8 @@ and compare the output against the matching `.sha256` value published with that 
 - **TOTP** — reads and generates time-based one-time codes stored using KeePassXC's TOTP conventions.
 - **Search** — full-text search across title, username, URL, notes, tags, and custom fields. Press **Ctrl+F** anywhere in an unlocked vault to jump to the search box.
 - **Password generator** — random-character passwords with a configurable length and character sets, shared settings, and a quick-generate action.
-- **Password health check** — local-only detection of reused, weak, and fair-strength passwords across the vault. No online breach checking, and nothing ever leaves your device to compute it.
+- **Entry expiry** — the KDBX expiry date is shown and editable, and expired entries are flagged in the list and the health check. A setting decides what happens once an entry expires: keep it marked as expired (as KeePass does), move it to the recycle bin, or delete it permanently.
+- **Password health check** — local-only detection of expired entries and of reused, weak, and fair-strength passwords across the vault. No online breach checking, and nothing ever leaves your device to compute it.
 - **Auto-type** — an opt-in, off-by-default global hotkey that types a matching entry's credentials into whichever window is focused. In a browser, entries are matched on the real address in the address bar rather than the page title. Windows-only, and always confirmed through a picker that names the target window before anything is typed.
 - **Clipboard auto-clear** — copied passwords are cleared from the clipboard automatically after a timeout of up to 10 minutes.
 - **Vault merge** — reconcile a vault that was edited from two places (e.g. after using it on two machines) with a guided merge wizard.

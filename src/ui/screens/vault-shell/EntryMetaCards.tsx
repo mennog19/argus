@@ -1,4 +1,5 @@
 import { CustomField, Entry, Group } from "../../../domain";
+import { formatDateTime } from "../../format";
 
 interface EntryMetaCardsProps {
   entry: Entry;
@@ -15,6 +16,12 @@ export function EntryMetaCards({ entry, group, customFields }: EntryMetaCardsPro
           <span>Group</span>
           <span>{group.name}</span>
         </div>
+        {entry.expiresAt && (
+          <div className="detail-meta-row">
+            <span>{entry.isExpired(new Date()) ? "Expired" : "Expires"}</span>
+            <span>{formatDateTime(entry.expiresAt)}</span>
+          </div>
+        )}
       </div>
 
       {entry.notes && (

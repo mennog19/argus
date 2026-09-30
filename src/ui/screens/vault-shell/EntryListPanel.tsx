@@ -49,6 +49,7 @@ export function EntryListPanel({
   const trimmedQuery = searchQuery.trim();
   const isSearching = trimmedQuery !== "";
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const now = new Date();
 
   useEffect(() => {
     if (searchFocusRequest > 0) {
@@ -96,6 +97,7 @@ export function EntryListPanel({
         )}
         {entries.map(({ entry }) => {
           const id = entry.id.toString();
+          const expired = entry.isExpired(now);
           return (
             <button
               key={id}
@@ -114,8 +116,11 @@ export function EntryListPanel({
             >
               <EntryAvatar entry={entry} />
               <div className="entry-row-text">
-                <div className="entry-row-title">
-                  {references.resolve(entry.title) || "(untitled)"}
+                <div className="entry-row-title-line">
+                  <div className="entry-row-title">
+                    {references.resolve(entry.title) || "(untitled)"}
+                  </div>
+                  {expired && <span className="expired-badge">Expired</span>}
                 </div>
                 <div className="entry-row-username">{references.resolve(entry.username)}</div>
               </div>

@@ -262,4 +262,52 @@ describe("HealthScreen", () => {
 
     expect(onSelectEntry).toHaveBeenCalledWith(entry, group);
   });
+
+  describe("expired entries", () => {
+    const PAST = new Date(Date.now() - 86_400_000);
+    const FUTURE = new Date(Date.now() + 86_400_000);
+
+    it("counts expired entries in their own category, whatever their password", () => {
+      const group = Group.create("Personal");
+      const entries: EntryWithGroup[] = [
+        entryIn(group, {
+          title: "Old Strong",
+          password: new Password(STRONG_PASSWORD),
+          expiresAt: PAST,
+        }),
+        entryIn(group, {
+          title: "Still Valid",
+          password: new Password(OTHER_STRONG_PASSWORD),
+          expiresAt: FUTURE,
+        }),
+      ];
+
+      render(<HealthScreen entries={entries} onSelectEntry={vi.fn()} />);
+
+      expect(tileFor("Expired")).toHaveTextContent("1");
+      expect(tileFor("Strong")).toHaveTextContent("2");
+      // A strong password on an expired entry still needs attention.
+      expect(screen.getByText(/1 of 2 passwords are healthy/i)).toBeInTheDocument();
+      expect(overviewRowFor("Expired entries")).toHaveTextContent("50%");
+    });
+
+    it("lists expired entries, linked ones included, and opens one when picked", async () => {
+      const user = userEvent.setup();
+      const onSelectEntry = vi.fn();
+      const group = Group.create("Personal");
+      const target = entryIn(group, { title: "Main", password: new Password(STRONG_PASSWORD) });
+      const reference = target.entry.id.toString().replace(/-/g, "");
+      const linked = entryIn(group, {
+        title: "Linked",
+        password: new Password(`{REF:P@I:${reference}}`),
+        expiresAt: PAST,
+      });
+
+      render(<HealthScreen entries={[target, linked]} onSelectEntry={onSelectEntry} />);
+      await user.click(tileFor("Expired"));
+      await user.click(screen.getByRole("button", { name: /Linked/ }));
+
+      expect(onSelectEntry).toHaveBeenCalledWith(linked.entry, group);
+    });
+  });
 });

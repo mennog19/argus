@@ -12,6 +12,7 @@ const ENTRY_FIELD_TOGGLES: ReadonlyArray<{
   { key: "notes", label: "Notes" },
   { key: "group", label: "Group" },
   { key: "tags", label: "Tags" },
+  { key: "expiry", label: "Expiry date" },
 ];
 
 interface EntryCreationSectionProps {

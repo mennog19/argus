@@ -5,6 +5,7 @@ import {
   AutoTypeSettings,
   DEFAULT_SETTINGS,
   ENTRY_SORT_IDS,
+  EXPIRED_ENTRY_ACTIONS,
   GROUP_DELETE_MODES,
   MAX_CLIPBOARD_CLEAR_SECONDS,
   MAX_IDLE_TIMEOUT_MINUTES,
@@ -53,6 +54,9 @@ export function parseStoredSettings(text: string): AppSettings {
     autoType: lenient(raw.autoType, parseAutoType),
     groupDeleteMode: lenient(raw.groupDeleteMode, (value) =>
       oneOf(value, GROUP_DELETE_MODES, "groupDeleteMode"),
+    ),
+    expiredEntryAction: lenient(raw.expiredEntryAction, (value) =>
+      oneOf(value, EXPIRED_ENTRY_ACTIONS, "expiredEntryAction"),
     ),
     accentColor: lenient(raw.accentColor, parseAccentColor),
     theme: lenient(raw.theme, (value) => oneOf(value, THEMES, "theme")),

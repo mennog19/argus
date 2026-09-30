@@ -9,6 +9,7 @@ import {
   DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   DEFAULT_ENTRY_SORT,
+  DEFAULT_EXPIRED_ENTRY_ACTION,
   DEFAULT_GROUP_DELETE_MODE,
   DEFAULT_SETTINGS,
   DEFAULT_THEME,
@@ -131,6 +132,7 @@ describe("withSetting", () => {
     });
     expectRecorded("autoType", { enabled: true, hotkey: "Alt+Space" });
     expectRecorded("groupDeleteMode", "keepContents");
+    expectRecorded("expiredEntryAction", "recycle");
     expectRecorded("accentColor", { kind: "preset", id: "teal" });
     expectRecorded("theme", "light");
     expectRecorded("contentProtection", false);
@@ -165,6 +167,7 @@ describe("resolveSettings", () => {
       autoLock: DEFAULT_AUTO_LOCK,
       autoType: DEFAULT_AUTO_TYPE,
       groupDeleteMode: DEFAULT_GROUP_DELETE_MODE,
+      expiredEntryAction: DEFAULT_EXPIRED_ENTRY_ACTION,
       accentColor: DEFAULT_ACCENT_COLOR,
       theme: DEFAULT_THEME,
       contentProtection: DEFAULT_CONTENT_PROTECTION,
@@ -185,6 +188,7 @@ describe("resolveSettings", () => {
       },
       autoType: { enabled: true, hotkey: "Alt+Space" },
       groupDeleteMode: "keepContents",
+      expiredEntryAction: "delete",
       accentColor: { kind: "custom", hue: 120 },
       theme: "light",
       contentProtection: false,

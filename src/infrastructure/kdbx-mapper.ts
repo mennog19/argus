@@ -47,6 +47,8 @@ function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
     tags: new Tags(tags),
     customFields: new CustomFields(customFields),
     icon: iconFromKdbx(kdbxEntry),
+    // KDBX keeps a date in ExpiryTime even when Expires is off; it only counts when on.
+    expiresAt: kdbxEntry.times.expires ? kdbxEntry.times.expiryTime : undefined,
     history: kdbxEntry.history.map(entryFromKdbx),
   });
 }
@@ -98,6 +100,7 @@ function snapshotEntry(entry: Entry): string {
       .map((field) => ({ key: field.key, value: field.value, isProtected: field.isProtected }))
       .sort((a, b) => a.key.localeCompare(b.key)),
     icon: entry.icon.toString(),
+    expiresAt: entry.expiresAt?.toISOString(),
   });
 }
 
@@ -139,6 +142,12 @@ function writeEntryFields(
   // represent (a custom image, an unmapped KeePass icon) survives other edits.
   if (!iconFromKdbx(kdbxEntry).equals(entry.icon)) {
     writeIconToKdbx(kdbxEntry, entry.icon);
+  }
+
+  // Turning expiry off keeps the old ExpiryTime, as KeePass does.
+  kdbxEntry.times.expires = entry.expiresAt !== undefined;
+  if (entry.expiresAt) {
+    kdbxEntry.times.expiryTime = entry.expiresAt;
   }
 
   kdbxEntry.times.update();
@@ -343,6 +352,7 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
   const isUnvisitedGroup = (g: KdbxGroup) => !visitedGroups.has(kdbxUuidToDomainId(g.uuid));
 
   const recycleBinId = vault.recycleBinId?.toString();
+  const purgedEntryIds = new Set(vault.purgedEntryIds.map((id) => id.toString()));
   const isInRecycleBin = (item: KdbxGroup | KdbxEntry): boolean => {
     for (let g = item.parentGroup; g; g = g.parentGroup) {
       if (kdbxUuidToDomainId(g.uuid) === recycleBinId) {
@@ -354,11 +364,12 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
 
   // db.remove() moves an item into the recycle bin, which is a no-op (or a
   // flattening move) for something already inside it — so emptying the bin
-  // would leave everything in the saved file. Items already in the bin are
-  // detached with no destination instead, which kdbxweb records as a
-  // deleted object so KeePass-style sync doesn't resurrect them.
+  // would leave everything in the saved file. Items already in the bin, and
+  // entries the domain purged, are detached with no destination instead,
+  // which kdbxweb records as a deleted object so KeePass-style sync doesn't
+  // resurrect them.
   const discard = (item: KdbxGroup | KdbxEntry) => {
-    if (isInRecycleBin(item)) {
+    if (isInRecycleBin(item) || purgedEntryIds.has(kdbxUuidToDomainId(item.uuid))) {
       db.move(item, undefined);
     } else {
       db.remove(item);

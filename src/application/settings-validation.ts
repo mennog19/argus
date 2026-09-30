@@ -1,8 +1,10 @@
 import {
   ACCENT_COLOR_PRESET_IDS,
   AccentColor,
+  DEFAULT_ENTRY_FIELD_VISIBILITY,
   ENTRY_FIELD_KEYS,
   EntryFieldVisibility,
+  LATER_ENTRY_FIELD_KEYS,
 } from "./settings";
 
 /*
@@ -100,7 +102,10 @@ export function parseFieldVisibility(value: unknown): EntryFieldVisibility {
   }
   const visibility: Record<string, boolean> = {};
   for (const key of ENTRY_FIELD_KEYS) {
-    visibility[key] = parseBoolean(value[key], `Entry field "${key}"`);
+    const label = `Entry field "${key}"`;
+    visibility[key] = LATER_ENTRY_FIELD_KEYS.has(key)
+      ? parseOptionalBoolean(value[key], label, DEFAULT_ENTRY_FIELD_VISIBILITY[key])
+      : parseBoolean(value[key], label);
   }
   return visibility as EntryFieldVisibility;
 }

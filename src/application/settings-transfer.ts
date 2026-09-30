@@ -3,6 +3,9 @@ import {
   AppSettings,
   AutoLockSettings,
   EntryFieldVisibility,
+  DEFAULT_EXPIRED_ENTRY_ACTION,
+  EXPIRED_ENTRY_ACTIONS,
+  ExpiredEntryAction,
   GROUP_DELETE_MODES,
   GroupDeleteMode,
   MAX_CLIPBOARD_CLEAR_SECONDS,
@@ -58,6 +61,9 @@ export interface PortableSettings {
   readonly entryCreation: {
     readonly fieldVisibility: EntryFieldVisibility;
   };
+  readonly entries: {
+    readonly expiredAction: ExpiredEntryAction;
+  };
 }
 
 /**
@@ -74,6 +80,7 @@ export function toPortableSettings(settings: AppSettings): PortableSettings {
     contentProtection,
     groupDeleteMode,
     entryFieldVisibility,
+    expiredEntryAction,
   } = resolveSettings(settings);
   return {
     format: PORTABLE_SETTINGS_FORMAT,
@@ -89,6 +96,7 @@ export function toPortableSettings(settings: AppSettings): PortableSettings {
     },
     groups: { deleteMode: groupDeleteMode },
     entryCreation: { fieldVisibility: entryFieldVisibility },
+    entries: { expiredAction: expiredEntryAction },
   };
 }
 
@@ -121,6 +129,7 @@ export function applyPortableSettings(
     contentProtection: portable.security.contentProtection,
     groupDeleteMode: portable.groups.deleteMode,
     entryFieldVisibility: portable.entryCreation.fieldVisibility,
+    expiredEntryAction: portable.entries.expiredAction,
   };
 }
 
@@ -150,6 +159,8 @@ export function parsePortableSettings(text: string): PortableSettings {
   const security = section(raw, "security");
   const groups = section(raw, "groups");
   const entryCreation = section(raw, "entryCreation");
+  // Added after version 1 files were already being exported.
+  const entries = raw.entries === undefined ? {} : section(raw, "entries");
 
   return {
     format: PORTABLE_SETTINGS_FORMAT,
@@ -181,6 +192,12 @@ export function parsePortableSettings(text: string): PortableSettings {
     },
     groups: { deleteMode: oneOf(groups.deleteMode, GROUP_DELETE_MODES, "Group delete mode") },
     entryCreation: { fieldVisibility: parseFieldVisibility(entryCreation.fieldVisibility) },
+    entries: {
+      expiredAction:
+        entries.expiredAction === undefined
+          ? DEFAULT_EXPIRED_ENTRY_ACTION
+          : oneOf(entries.expiredAction, EXPIRED_ENTRY_ACTIONS, "Expired entry action"),
+    },
   };
 }
 

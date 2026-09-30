@@ -20,6 +20,7 @@ import { collectAllEntries, fieldReferencesOf } from "./vault-browsing";
 import { useAppSettings } from "./use-app-settings";
 import { useAutoLock } from "./use-auto-lock";
 import { useAutoType } from "./use-auto-type";
+import { useExpiredEntries } from "./use-expired-entries";
 import { useWindowAppearance } from "./use-window-appearance";
 import { AutoTypeErrorToast } from "./screens/AutoTypeErrorToast";
 import { AutoTypePicker } from "./screens/AutoTypePicker";
@@ -84,6 +85,12 @@ function App({
     effective.autoLock,
     windowEvents,
     (unlocked) => lock(unlocked.filePath),
+  );
+
+  useExpiredEntries(
+    screen.kind === "unlocked" ? screen : undefined,
+    effective.expiredEntryAction,
+    (nextVault, unlocked) => saveVault(nextVault, unlocked.filePath),
   );
 
   // Everything auto-type is allowed to offer: the whole vault minus the

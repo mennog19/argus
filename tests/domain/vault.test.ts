@@ -775,4 +775,77 @@ describe("Vault", () => {
       });
     });
   });
+
+  describe("expiry", () => {
+    const NOW = new Date("2026-06-01T12:00:00Z");
+    const PAST = new Date("2026-05-01T00:00:00Z");
+    const FUTURE = new Date("2026-07-01T00:00:00Z");
+
+    function vaultWith(...entries: Entry[]): { vault: Vault; work: Group } {
+      const work = Group.create("Work").addEntry(entries[1] ?? Entry.create());
+      const root = Group.create("Root").addEntry(entries[0]).addGroup(work);
+      return { vault: new Vault("Root", root), work };
+    }
+
+    it("lists the entries with an expiry date, nested ones included", () => {
+      const expired = Entry.create({ title: "Old", expiresAt: PAST });
+      const upcoming = Entry.create({ title: "Soon", expiresAt: FUTURE });
+      const { vault } = vaultWith(expired, upcoming);
+
+      expect(vault.entriesWithExpiry()).toEqual([expired, upcoming]);
+      expect(vault.expiredEntries(NOW)).toEqual([expired]);
+    });
+
+    it("leaves out entries already in the recycle bin", () => {
+      const expired = Entry.create({ title: "Old", expiresAt: PAST });
+      const { vault } = vaultWith(expired);
+
+      const binned = vault.deleteEntry(expired.id);
+
+      expect(binned.entriesWithExpiry()).toEqual([]);
+      expect(binned.expiredEntries(NOW)).toEqual([]);
+    });
+
+    describe("purgeEntry", () => {
+      it("removes the entry without a recycle bin and records it as purged", () => {
+        const expired = Entry.create({ title: "Old", expiresAt: PAST });
+        const { vault } = vaultWith(expired);
+
+        const purged = vault.purgeEntry(expired.id);
+
+        expect(purged.findEntry(expired.id)).toBeUndefined();
+        expect(purged.recycleBin).toBeUndefined();
+        expect(purged.purgedEntryIds).toEqual([expired.id]);
+      });
+
+      it("keeps earlier purges through later edits of any kind", () => {
+        const first = Entry.create({ title: "One" });
+        const second = Entry.create({ title: "Two" });
+        const { vault, work } = vaultWith(first, second);
+
+        const edited = vault
+          .purgeEntry(first.id)
+          .purgeEntry(second.id)
+          .addGroup(vault.rootGroup.id, Group.create("Personal"))
+          .deleteGroupKeepingContents(work.id)
+          .emptyRecycleBin();
+
+        expect(edited.purgedEntryIds).toEqual([first.id, second.id]);
+      });
+
+      it("keeps earlier purges when the recycle bin is created", () => {
+        const first = Entry.create({ title: "One" });
+        const second = Entry.create({ title: "Two" });
+        const { vault } = vaultWith(first, second);
+
+        const edited = vault.purgeEntry(first.id).deleteEntry(second.id);
+
+        expect(edited.purgedEntryIds).toEqual([first.id]);
+      });
+
+      it("throws for an entry that isn't in the vault", () => {
+        expect(() => Vault.create("Root").purgeEntry(EntryId.create())).toThrow(/Entry not found/);
+      });
+    });
+  });
 });

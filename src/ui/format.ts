@@ -48,6 +48,27 @@ export function formatDateTime(date: Date | undefined): string {
   return date ? DATE_TIME.format(date) : "Unknown date";
 }
 
+/** `date` as an `<input type="datetime-local">` value in local time, e.g. "2026-03-12T14:05". */
+export function toDateTimeLocalValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+/**
+ * The date a `datetime-local` value names, read as local time, or `undefined`
+ * when it's empty or not a date.
+ */
+export function parseDateTimeLocalValue(value: string): Date | undefined {
+  if (value === "") {
+    return undefined;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 /** Groups a TOTP code into 3-digit clusters for readability, e.g. "123 456". */
 export function formatTotpCode(code: string): string {
   return code.match(/.{1,3}/g)!.join(" ");
