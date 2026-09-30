@@ -59,4 +59,25 @@ describe("Icon", () => {
     expect(() => Icon.library("star", 360)).toThrow("Invalid icon hue: 360");
     expect(() => Icon.library("star", 1.5)).toThrow("Invalid icon hue: 1.5");
   });
+
+  describe("custom", () => {
+    const id = "0a1b2c3d-0000-4000-8000-00000000abcd";
+
+    it("points at a vault image icon by its id", () => {
+      const icon = Icon.custom(id);
+      expect(icon.kind).toBe("custom");
+      expect(icon.key).toBe(id);
+      expect(icon.toString()).toBe(`custom:${id}`);
+    });
+
+    it("round-trips through parse", () => {
+      expect(Icon.parse(`custom:${id}`)?.equals(Icon.custom(id))).toBe(true);
+    });
+
+    it("rejects anything but a lowercase UUID", () => {
+      expect(() => Icon.custom("star")).toThrow('Invalid custom icon id: "star"');
+      expect(() => Icon.custom(id.toUpperCase())).toThrow("Invalid custom icon id");
+      expect(Icon.parse(`custom:${id}:12`)).toBeUndefined();
+    });
+  });
 });

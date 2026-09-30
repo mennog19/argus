@@ -1,5 +1,5 @@
 import { MouseEvent, RefObject } from "react";
-import { Group, Icon } from "../../../domain";
+import { CustomIcon, Group, Icon } from "../../../domain";
 import { IconPicker } from "../../entry-icons/IconPicker";
 import { EditIcon, PaletteIcon, TrashIcon } from "../../icons";
 import { Anchor, floatingStyle, ICON_POPOVER_WIDTH, ROW_MENU_WIDTH } from "./floating-panel";
@@ -42,7 +42,7 @@ interface GroupIconPopoverProps {
   anchor: Anchor;
   panelRef: RefObject<HTMLDivElement | null>;
   error: string | undefined;
-  onChange: (icon: Icon) => void;
+  onChange: (icon: Icon, added?: CustomIcon) => void;
 }
 
 export function GroupIconPopover({

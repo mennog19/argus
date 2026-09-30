@@ -409,7 +409,7 @@ describe("GroupTree", () => {
       await user.click(screen.getByRole("button", { name: "Change icon" }));
       await user.click(screen.getByRole("button", { name: "Star" }));
 
-      expect(onChangeGroupIcon).toHaveBeenCalledWith(work.id, Icon.library("star"));
+      expect(onChangeGroupIcon).toHaveBeenCalledWith(work.id, Icon.library("star"), undefined);
     });
 
     it("closes the menu once the icon popover opens", async () => {

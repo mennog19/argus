@@ -46,7 +46,7 @@ and compare the output against the matching `.sha256` value published with that 
 
 ## KeePass / KeePassXC compatibility
 
-Argus targets full KDBX3/KDBX4 fidelity. It edits the original KDBX document in place rather than rebuilding it, so fields Argus doesn't show — attachments, custom icons, entry history, custom data — are written back untouched. TOTP secrets use KeePassXC's conventions, and `{REF:…}` field references are kept as references.
+Argus targets full KDBX3/KDBX4 fidelity. It edits the original KDBX document in place rather than rebuilding it, so fields Argus doesn't show — attachments, entry history, custom data — are written back untouched. Custom icons set in KeePass or KeePassXC are shown, and you can upload your own; they're stored in the vault as 128-pixel PNGs, so KeePass and KeePassXC show them too. TOTP secrets use KeePassXC's conventions, and `{REF:…}` field references are kept as references.
 
 Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lanes.
 

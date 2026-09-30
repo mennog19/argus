@@ -23,6 +23,7 @@ import { useAutoType } from "./use-auto-type";
 import { useExpiredEntries } from "./use-expired-entries";
 import { useWindowAppearance } from "./use-window-appearance";
 import { AutoTypeErrorToast } from "./screens/AutoTypeErrorToast";
+import { CustomIconsContext } from "./entry-icons/custom-icons-context";
 import { AutoTypePicker } from "./screens/AutoTypePicker";
 import { LockedScreen } from "./screens/LockedScreen";
 import { SaveConflictDialog } from "./screens/SaveConflictDialog";
@@ -255,11 +256,13 @@ function App({
         onImportSettings={appSettings.importSettings}
       />
       {autoType.request && (
-        <AutoTypePicker
-          request={autoType.request}
-          onTypeInto={autoType.typeInto}
-          onCancel={autoType.dismiss}
-        />
+        <CustomIconsContext value={{ icons: vault.customIcons }}>
+          <AutoTypePicker
+            request={autoType.request}
+            onTypeInto={autoType.typeInto}
+            onCancel={autoType.dismiss}
+          />
+        </CustomIconsContext>
       )}
       {autoType.error && (
         <AutoTypeErrorToast message={autoType.error} onDismiss={autoType.dismissError} />

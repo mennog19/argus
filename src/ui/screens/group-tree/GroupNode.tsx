@@ -142,7 +142,7 @@ export function GroupNode({ group, depth, parentId, siblings, shared }: GroupNod
           anchor={iconPopover.anchor}
           panelRef={tree.floatingRef}
           error={tree.error}
-          onChange={(icon) => void tree.changeIcon(group, icon)}
+          onChange={(icon, added) => void tree.changeIcon(group, icon, added)}
         />
       )}
 

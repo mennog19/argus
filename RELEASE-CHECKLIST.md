@@ -5,9 +5,6 @@ Pre-release assessment of Argus, based on a code review on 2026-09-27.
 At the time of review, lint was clean and all 1,133 tests passed at 100% coverage. The items below are about behaviour and security defaults, not code quality.
 
 # todo
-Lock on Windows session lock (Win+L): only sleep is detected, by watching for clock jumps. Locking on Win+L is standard in KeePass and KeePassXC.
-Entry expiry: the KDBX expiry field isn't shown or editable, and the health check ignores expired entries. KeePass users rely on this.
-Custom icons: icons set in KeePass or KeePassXC are preserved but never displayed. Brand icons are shown instead, so a KeePassXC user's icons seem to vanish. We also want support for custom icon upload. but with a warning that if they ever delete icons these can not be loaded.
 AES-KDF isn't capped for KDBX3. This is already listed in Known limitations.
 Creating field references in the UI.
 Minimize to tray. Make this a settin to fully close or minimize to tray.

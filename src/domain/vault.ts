@@ -1,3 +1,4 @@
+import { CustomIcon, CustomIcons } from "./custom-icon";
 import { Entry } from "./entry";
 import { EntryId } from "./entry-id";
 import { Group } from "./group";
@@ -96,6 +97,48 @@ function collectEntriesWithExpiry(
   return found;
 }
 
+/** `group`'s subtree with every entry and group showing `icon` switched to the automatic icon. */
+function withoutIcon(group: Group, icon: Icon): Group {
+  let next = group.icon.equals(icon) ? group.changeIcon(Icon.AUTO) : group;
+  for (const entry of group.entries) {
+    if (entry.icon.equals(icon)) {
+      next = next.replaceEntry(entry.update({ icon: Icon.AUTO }));
+    }
+  }
+  for (const child of group.groups) {
+    const updated = withoutIcon(child, icon);
+    if (updated !== child) {
+      next = next.replaceGroup(updated);
+    }
+  }
+  return next;
+}
+
+function countIconUses(group: Group, icon: Icon): number {
+  let count = group.icon.equals(icon) ? 1 : 0;
+  count += group.entries.filter((entry) => entry.icon.equals(icon)).length;
+  for (const child of group.groups) {
+    count += countIconUses(child, icon);
+  }
+  return count;
+}
+
+function referencedCustomIconIds(group: Group, found = new Set<string>()): Set<string> {
+  const icons = [
+    group.icon,
+    ...group.entries.flatMap((entry) => [entry.icon, ...entry.history.map((rev) => rev.icon)]),
+  ];
+  for (const icon of icons) {
+    if (icon.kind === "custom") {
+      found.add(icon.key);
+    }
+  }
+  for (const child of group.groups) {
+    referencedCustomIconIds(child, found);
+  }
+  return found;
+}
+
 const RECYCLE_BIN_NAME = "Recycle Bin";
 
 /**
@@ -114,17 +157,37 @@ export class Vault {
    * moves it to the recycle bin, so a purge has to be told apart from that.
    */
   readonly purgedEntryIds: readonly EntryId[];
+  /** The image icons stored in the vault, whether or not anything uses them. */
+  readonly customIcons: CustomIcons;
 
   constructor(
     name: string,
     rootGroup: Group,
     recycleBinId?: GroupId,
     purgedEntryIds: readonly EntryId[] = [],
+    customIcons: CustomIcons = CustomIcons.EMPTY,
   ) {
     this.name = name;
     this.rootGroup = rootGroup;
     this.recycleBinId = recycleBinId;
     this.purgedEntryIds = purgedEntryIds;
+    this.customIcons = customIcons;
+  }
+
+  /** This vault with `changes` applied; everything not named is carried over. */
+  private with(changes: {
+    rootGroup?: Group;
+    recycleBinId?: GroupId;
+    purgedEntryIds?: readonly EntryId[];
+    customIcons?: CustomIcons;
+  }): Vault {
+    return new Vault(
+      this.name,
+      changes.rootGroup ?? this.rootGroup,
+      changes.recycleBinId ?? this.recycleBinId,
+      changes.purgedEntryIds ?? this.purgedEntryIds,
+      changes.customIcons ?? this.customIcons,
+    );
   }
 
   static create(name: string): Vault {
@@ -145,7 +208,7 @@ export class Vault {
     if (!result.found) {
       throw new Error(notFoundMessage);
     }
-    return new Vault(this.name, result.group, this.recycleBinId, this.purgedEntryIds);
+    return this.with({ rootGroup: result.group });
   }
 
   findGroup(groupId: GroupId): Group | undefined {
@@ -236,7 +299,7 @@ export class Vault {
     const bin = Group.create(RECYCLE_BIN_NAME);
     const rootWithBin = this.rootGroup.addGroup(bin);
     return {
-      vault: new Vault(this.name, rootWithBin, bin.id, this.purgedEntryIds),
+      vault: this.with({ rootGroup: rootWithBin, recycleBinId: bin.id }),
       recycleBinId: bin.id,
     };
   }
@@ -289,10 +352,9 @@ export class Vault {
       }
       return updated;
     });
-    return new Vault(vault.name, result.group, recycleBinId, vault.purgedEntryIds).addGroup(
-      recycleBinId,
-      new Group(group.id, group.name),
-    );
+    return vault
+      .with({ rootGroup: result.group })
+      .addGroup(recycleBinId, new Group(group.id, group.name));
   }
 
   /**
@@ -387,7 +449,7 @@ export class Vault {
     if (!result.found) {
       return this;
     }
-    return new Vault(this.name, result.group, this.recycleBinId, this.purgedEntryIds);
+    return this.with({ rootGroup: result.group });
   }
 
   /** Entries that have an expiry date, leaving out those in the recycle bin. */
@@ -405,10 +467,46 @@ export class Vault {
    * recycle bin. Its history goes with it.
    */
   purgeEntry(entryId: EntryId): Vault {
-    const removed = this.removeEntry(entryId);
-    return new Vault(removed.name, removed.rootGroup, removed.recycleBinId, [
-      ...this.purgedEntryIds,
-      entryId,
-    ]);
+    return this.removeEntry(entryId).with({ purgedEntryIds: [...this.purgedEntryIds, entryId] });
+  }
+
+  addCustomIcon(icon: CustomIcon): Vault {
+    return this.with({ customIcons: this.customIcons.add(icon) });
+  }
+
+  /**
+   * Deletes a custom icon from the vault. Entries and groups showing it go
+   * back to the automatic icon; history revisions keep pointing at it, and
+   * simply show the automatic icon too, since nothing can load it any more.
+   */
+  removeCustomIcon(id: string): Vault {
+    if (!this.customIcons.has(id)) {
+      throw new Error(`Custom icon not found: ${id}`);
+    }
+    return this.with({
+      rootGroup: withoutIcon(this.rootGroup, Icon.custom(id)),
+      customIcons: this.customIcons.remove(id),
+    });
+  }
+
+  /** How many entries and groups (history aside) show custom icon `id`. */
+  customIconUsage(id: string): number {
+    return countIconUses(this.rootGroup, Icon.custom(id));
+  }
+
+  /**
+   * Copies in the custom icons from `source` that this vault's entries and
+   * groups (history included) refer to but it doesn't hold — what entries
+   * merged in from another vault need to keep their images.
+   */
+  adoptCustomIcons(source: CustomIcons): Vault {
+    let customIcons = this.customIcons;
+    for (const id of referencedCustomIconIds(this.rootGroup)) {
+      const icon = source.get(id);
+      if (icon && !customIcons.has(id)) {
+        customIcons = customIcons.add(icon);
+      }
+    }
+    return customIcons === this.customIcons ? this : this.with({ customIcons });
   }
 }

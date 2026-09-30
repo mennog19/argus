@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Entry, EntryId, Group, GroupId, Vault } from "../../domain";
+import { CustomIcon, Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
 import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
 import { SettingsImportResult } from "../../application/settings-transfer-service";
 import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
+import { CustomIconLibrary, CustomIconsContext } from "../entry-icons/custom-icons-context";
 import { useClipboardCopy } from "../use-clipboard-copy";
 import { sortEntries } from "../entry-sort";
 import { vaultCommands } from "../vault-commands";
@@ -96,6 +97,13 @@ export function VaultShell({
   const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
   const merge = useMergeFlow(mergeSource, filePath);
   const commands = vaultCommands(vault, onSave);
+  const customIconLibrary: CustomIconLibrary = {
+    icons: vault.customIcons,
+    editor: {
+      remove: commands.removeCustomIcon,
+      usage: (id) => vault.customIconUsage(id),
+    },
+  };
 
   // Owned at the shell rather than in the detail pane so a pending clipboard
   // wipe survives the user selecting another entry or opening the editor.
@@ -211,14 +219,19 @@ export function VaultShell({
     }
   }
 
-  async function handleCreateEntry(entry: Entry, groupId: GroupId) {
-    await commands.createEntry(entry, groupId);
+  async function handleCreateEntry(entry: Entry, groupId: GroupId, added?: CustomIcon) {
+    await commands.createEntry(entry, groupId, added);
     setFormMode("none");
     setSelectedEntryId(entry.id.toString());
   }
 
-  async function handleUpdateEntry(entry: Entry, targetGroupId: GroupId, currentGroupId: GroupId) {
-    await commands.updateEntry(entry, targetGroupId, currentGroupId);
+  async function handleUpdateEntry(
+    entry: Entry,
+    targetGroupId: GroupId,
+    currentGroupId: GroupId,
+    added?: CustomIcon,
+  ) {
+    await commands.updateEntry(entry, targetGroupId, currentGroupId, added);
     setFormMode("none");
   }
 
@@ -272,7 +285,9 @@ export function VaultShell({
           groupOptions={groupOptions}
           generatorPolicy={generatorPolicy}
           fieldVisibility={DEFAULT_ENTRY_FIELD_VISIBILITY}
-          onSubmit={(entry, groupId) => handleUpdateEntry(entry, groupId, selected.group.id)}
+          onSubmit={(entry, groupId, added) =>
+            handleUpdateEntry(entry, groupId, selected.group.id, added)
+          }
           onCancel={() => setFormMode("none")}
         />
       );
@@ -395,7 +410,7 @@ export function VaultShell({
   }
 
   return (
-    <>
+    <CustomIconsContext value={customIconLibrary}>
       <div className="vault-shell">
         <NavRail view={view} onNavigate={goToView} onLock={onLock} />
         {renderView()}
@@ -409,6 +424,6 @@ export function VaultShell({
           onCancel={merge.cancelUnlock}
         />
       )}
-    </>
+    </CustomIconsContext>
   );
 }

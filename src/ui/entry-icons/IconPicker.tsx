@@ -1,18 +1,25 @@
-import { CSSProperties, useState } from "react";
-import { Icon } from "../../domain";
+import { ChangeEvent, CSSProperties, useState } from "react";
+import { CustomIcon, Icon } from "../../domain";
+import { useAsyncAction } from "../use-async-action";
 import { BRAND_ICONS, BrandCatalog } from "./brand-icons";
-import { EntryAvatar, EntryTile } from "./EntryAvatar";
+import { iconImageFromFile } from "./custom-icon-image";
+import { useCustomIcons } from "./custom-icons-context";
+import { EntryTile } from "./EntryAvatar";
 import { LIBRARY_ICONS } from "./library-icons";
 import { resolveIcon } from "./resolve-entry-icon";
 import { HUES, sigilSeed } from "./sigil";
 
-type Tab = "library" | "brands";
+type Tab = "library" | "brands" | "custom";
 
 interface IconPickerProps {
   value: Icon;
   title: string;
   url: string;
-  onChange: (icon: Icon) => void;
+  /**
+   * `added` is set when the choice is an image the user just uploaded: it
+   * isn't in the vault yet, and the owner saves it along with the choice.
+   */
+  onChange: (icon: Icon, added?: CustomIcon) => void;
   brands?: BrandCatalog;
   /** Starts with the library/brand grid already expanded, skipping the "Change icon" click. */
   initiallyOpen?: boolean;
@@ -20,6 +27,27 @@ interface IconPickerProps {
 
 function matches(query: string, words: readonly string[]): boolean {
   return words.some((word) => word.toLowerCase().includes(query));
+}
+
+function initialTab(value: Icon): Tab {
+  if (value.kind === "brand") {
+    return "brands";
+  }
+  return value.kind === "custom" ? "custom" : "library";
+}
+
+/** A file name without its extension, as the icon's name in KeePass. */
+function iconName(fileName: string): string {
+  return fileName.replace(/\.[^.]*$/, "");
+}
+
+function usageWarning(usage: number): string {
+  if (usage === 0) {
+    return "Nothing uses it right now.";
+  }
+  return usage === 1
+    ? "1 entry or group uses it and will go back to its automatic icon."
+    : `${usage} entries and groups use it and will go back to their automatic icons.`;
 }
 
 export function IconPicker({
@@ -30,30 +58,76 @@ export function IconPicker({
   brands = BRAND_ICONS,
   initiallyOpen = false,
 }: IconPickerProps) {
+  const library = useCustomIcons();
   const [open, setOpen] = useState(initiallyOpen);
-  const [tab, setTab] = useState<Tab>(value.kind === "brand" ? "brands" : "library");
+  const [tab, setTab] = useState<Tab>(initialTab(value));
   const [query, setQuery] = useState("");
+  // Uploads not saved yet; they reach the vault through `onChange`'s owner.
+  const [uploaded, setUploaded] = useState<readonly CustomIcon[]>([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { busy, error, run } = useAsyncAction();
 
+  const customIcons = uploaded.reduce((icons, icon) => icons.add(icon), library.icons);
   const subject = { title, url, icon: value };
-  const resolved = resolveIcon(subject, brands);
+  const resolved = resolveIcon(subject, brands, customIcons);
   const seed = sigilSeed(title, url);
   const normalizedQuery = query.trim().toLowerCase();
+  const editor = library.editor;
+  // Only an icon already in the vault can be deleted from it.
+  const deleteTarget =
+    editor && value.kind === "custom" && library.icons.has(value.key)
+      ? { id: value.key, editor }
+      : undefined;
 
   let description: string;
   if (value.kind === "auto") {
     description = resolved.kind === "brand" ? `Automatic · ${resolved.icon.title}` : "Automatic";
   } else {
     // A chosen key the catalogs don't know resolves to something else; call it what it shows.
-    description =
-      resolved.kind === "library"
-        ? resolved.icon.label
-        : resolved.kind === "brand"
-          ? resolved.icon.title
-          : "Automatic";
+    switch (resolved.kind) {
+      case "library":
+        description = resolved.icon.label;
+        break;
+      case "brand":
+        description = resolved.icon.title;
+        break;
+      case "custom":
+        description = resolved.icon.name || "Custom image";
+        break;
+      default:
+        description = "Automatic";
+    }
   }
 
   // Switching icons keeps a manual colour override rather than dropping it.
   const currentHue = value.kind === "library" ? value.hue : undefined;
+
+  function chooseCustom(icon: CustomIcon) {
+    onChange(Icon.custom(icon.id), library.icons.has(icon.id) ? undefined : icon);
+  }
+
+  async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    // Cleared so picking the same file again still fires a change.
+    input.value = "";
+    if (!file) {
+      return;
+    }
+    await run(async () => {
+      const icon = CustomIcon.create(await iconImageFromFile(file), iconName(file.name));
+      setUploaded((current) => [...current, icon]);
+      onChange(Icon.custom(icon.id), icon);
+    }, "Couldn't add that image.");
+  }
+
+  async function handleDelete(id: string, remove: (id: string) => Promise<void>) {
+    const deleted = await run(() => remove(id), "Couldn't delete the icon.");
+    if (deleted) {
+      setConfirmingDelete(false);
+      setUploaded((current) => current.filter((icon) => icon.id !== id));
+    }
+  }
 
   const options =
     tab === "library"
@@ -62,24 +136,41 @@ export function IconPicker({
         ).map((icon) => ({
           id: icon.key,
           label: icon.label,
-          choice: Icon.library(icon.key, currentHue),
+          choose: () => onChange(Icon.library(icon.key, currentHue)),
           pressed: value.kind === "library" && value.key === icon.key,
           tile: <EntryTile resolved={{ kind: "library", icon, seed, hue: currentHue }} />,
         }))
-      : brands.all
-          .filter((brand) => matches(normalizedQuery, [brand.slug, brand.title, ...brand.domains]))
-          .map((brand) => ({
-            id: brand.slug,
-            label: brand.title,
-            choice: Icon.brand(brand.slug),
-            pressed: value.kind === "brand" && value.key === brand.slug,
-            tile: <EntryTile resolved={{ kind: "brand", icon: brand }} />,
+      : tab === "brands"
+        ? brands.all
+            .filter((brand) =>
+              matches(normalizedQuery, [brand.slug, brand.title, ...brand.domains]),
+            )
+            .map((brand) => ({
+              id: brand.slug,
+              label: brand.title,
+              choose: () => onChange(Icon.brand(brand.slug)),
+              pressed: value.kind === "brand" && value.key === brand.slug,
+              tile: <EntryTile resolved={{ kind: "brand", icon: brand }} />,
+            }))
+        : customIcons.values.map((icon) => ({
+            id: icon.id,
+            label: icon.name || "Custom image",
+            choose: () => chooseCustom(icon),
+            pressed: value.kind === "custom" && value.key === icon.id,
+            tile: <EntryTile resolved={{ kind: "custom", icon }} />,
           }));
+
+  function renderEmpty() {
+    if (tab === "custom") {
+      return <div className="icon-picker-empty">This vault has no custom icons yet.</div>;
+    }
+    return <div className="icon-picker-empty">Nothing matches "{query.trim()}".</div>;
+  }
 
   return (
     <div className="icon-picker">
       <div className="icon-picker-current">
-        <EntryAvatar entry={subject} size="lg" />
+        <EntryTile resolved={resolved} size="lg" />
         <div className="icon-picker-current-text">
           <span className="field-label">Icon</span>
           <span className="icon-picker-current-name">{description}</span>
@@ -146,18 +237,48 @@ export function IconPicker({
               >
                 Brands
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "custom"}
+                onClick={() => setTab("custom")}
+              >
+                Custom
+              </button>
             </div>
-            <input
-              type="search"
-              className="field-input icon-picker-search"
-              placeholder={tab === "library" ? "Search icons" : "Search brands"}
-              aria-label={tab === "library" ? "Search icons" : "Search brands"}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+            {tab === "custom" ? (
+              editor && (
+                <label className="btn-secondary icon-picker-upload" aria-disabled={busy}>
+                  Upload image…
+                  <input
+                    type="file"
+                    accept="image/*"
+                    aria-label="Upload image"
+                    disabled={busy}
+                    onChange={(event) => void handleUpload(event)}
+                  />
+                </label>
+              )
+            ) : (
+              <input
+                type="search"
+                className="field-input icon-picker-search"
+                placeholder={tab === "library" ? "Search icons" : "Search brands"}
+                aria-label={tab === "library" ? "Search icons" : "Search brands"}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            )}
           </div>
+          {tab === "custom" && editor && (
+            <p className="icon-picker-note">
+              Images are stored inside this vault. If you delete one, it can't be loaded again;
+              you'd have to upload the image once more.
+            </p>
+          )}
+          {error && <div className="field-error">{error}</div>}
           {options.length === 0 ? (
-            <div className="icon-picker-empty">Nothing matches "{query.trim()}".</div>
+            renderEmpty()
           ) : (
             <div className="icon-picker-grid">
               {options.map((option) => (
@@ -168,13 +289,50 @@ export function IconPicker({
                   title={option.label}
                   aria-label={option.label}
                   aria-pressed={option.pressed}
-                  onClick={() => onChange(option.choice)}
+                  onClick={option.choose}
                 >
                   {option.tile}
                 </button>
               ))}
             </div>
           )}
+          {tab === "custom" &&
+            deleteTarget &&
+            (confirmingDelete ? (
+              <div className="icon-picker-delete-confirm" role="alert">
+                <strong>Delete this icon from the vault?</strong>
+                <span>
+                  {usageWarning(deleteTarget.editor.usage(deleteTarget.id))} The image can't be
+                  loaded again after this. You'd have to upload it once more.
+                </span>
+                <div className="icon-picker-delete-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={busy}
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Keep it
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    disabled={busy}
+                    onClick={() => void handleDelete(deleteTarget.id, deleteTarget.editor.remove)}
+                  >
+                    Delete icon
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="link-muted icon-picker-delete"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                Delete this icon from the vault…
+              </button>
+            ))}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { Group, GroupId, Icon } from "../../../domain";
+import { CustomIcon, Group, GroupId, Icon } from "../../../domain";
 import { useAsyncAction } from "../../use-async-action";
 import { toggleMember } from "../../toggle-member";
 import { Anchor } from "./floating-panel";
@@ -22,7 +22,7 @@ export interface GroupTreeCallbacks {
   onCreateGroup: (parentId: GroupId, name: string) => Promise<void>;
   onRenameGroup: (groupId: GroupId, name: string) => Promise<void>;
   onDeleteGroup: (groupId: GroupId) => Promise<void>;
-  onChangeGroupIcon: (groupId: GroupId, icon: Icon) => Promise<void>;
+  onChangeGroupIcon: (groupId: GroupId, icon: Icon, added?: CustomIcon) => Promise<void>;
 }
 
 export interface GroupTreeEditor {
@@ -45,7 +45,7 @@ export interface GroupTreeEditor {
   submitAdd(parentId: GroupId): Promise<void>;
   submitRename(group: Group): Promise<void>;
   submitDelete(group: Group): Promise<void>;
-  changeIcon(group: Group, icon: Icon): Promise<void>;
+  changeIcon(group: Group, icon: Icon, added?: CustomIcon): Promise<void>;
 }
 
 /**
@@ -162,8 +162,8 @@ export function useGroupTreeEditor({
         closeEditor();
       }
     },
-    changeIcon: async (group, icon) => {
-      await run(() => onChangeGroupIcon(group.id, icon));
+    changeIcon: async (group, icon, added) => {
+      await run(() => onChangeGroupIcon(group.id, icon, added));
     },
   };
 }

@@ -1505,6 +1505,29 @@ input[type="radio"]:checked::after {
   fill: var(--brand-glyph);
 }
 
+/* A vault's own image icon, drawn as-is on a neutral tile. */
+.entry-tile-custom {
+  background: color-mix(in oklab, var(--color-text) 7%, var(--color-panel));
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  overflow: hidden;
+}
+
+.entry-tile-custom img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.entry-tile-lg.entry-tile-custom img {
+  width: 34px;
+  height: 34px;
+}
+
+.entry-tile-xs.entry-tile-custom img {
+  width: 14px;
+  height: 14px;
+}
+
 .entry-sigil-outer,
 .entry-sigil-inner {
   fill: none;
@@ -2187,6 +2210,64 @@ input[type="radio"]:checked::after {
   text-align: center;
   font-size: 13px;
   color: var(--color-text-dimmer);
+}
+
+.icon-picker-upload.btn-secondary {
+  position: relative;
+  margin-left: auto;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.icon-picker-upload[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The label is the visible control; the file input only opens the dialog. */
+.icon-picker-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.icon-picker-upload:focus-within {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.icon-picker-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-text-dim);
+}
+
+.icon-picker-delete.link-muted {
+  align-self: flex-start;
+  color: var(--color-danger);
+}
+
+.icon-picker-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--color-danger) 45%, transparent);
+  background: color-mix(in oklab, var(--color-danger) 8%, transparent);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.icon-picker-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 /* Tags editor */

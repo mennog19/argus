@@ -1,7 +1,9 @@
-import { Kdbx, KdbxEntry, KdbxGroup, ProtectedValue } from "kdbxweb";
+import { Kdbx, KdbxEntry, KdbxGroup, KdbxUuid, ProtectedValue } from "kdbxweb";
 import {
   CustomField,
   CustomFields,
+  CustomIcon,
+  CustomIcons,
   Entry,
   EntryId,
   Group,
@@ -74,11 +76,27 @@ function recycleBinIdFromKdbx(db: Kdbx): GroupId | undefined {
   return GroupId.fromString(kdbxUuidToDomainId(db.meta.recycleBinUuid));
 }
 
+function customIconsFromKdbx(db: Kdbx): CustomIcons {
+  return new CustomIcons(
+    Array.from(
+      db.meta.customIcons,
+      ([uuid, icon]) =>
+        new CustomIcon(
+          kdbxUuidToDomainId(new KdbxUuid(uuid)),
+          new Uint8Array(icon.data.slice(0)),
+          icon.name ?? "",
+        ),
+    ),
+  );
+}
+
 export function vaultFromKdbx(db: Kdbx): Vault {
   return new Vault(
     db.meta.name ?? "",
     groupFromKdbx(db.getDefaultGroup()),
     recycleBinIdFromKdbx(db),
+    [],
+    customIconsFromKdbx(db),
   );
 }
 
@@ -309,6 +327,49 @@ function syncGroup(
 }
 
 /**
+ * Brings `Meta/CustomIcons` in line with the vault's: new icons are added,
+ * and deleted ones removed along with every reference to them — history
+ * revisions included, as KeePass does — so no entry is left pointing at an
+ * image the file no longer holds. The deletion is recorded so a KeePass-style
+ * sync with an older copy doesn't bring the icon back.
+ */
+function syncCustomIcons(db: Kdbx, icons: CustomIcons): void {
+  const now = new Date();
+  const removed = new Set<string>();
+  for (const uuid of Array.from(db.meta.customIcons.keys())) {
+    const kdbxUuid = new KdbxUuid(uuid);
+    if (!icons.has(kdbxUuidToDomainId(kdbxUuid))) {
+      db.meta.customIcons.delete(uuid);
+      db.addDeletedObject(kdbxUuid, now);
+      removed.add(uuid);
+    }
+  }
+  for (const icon of icons.values) {
+    const uuid = domainIdToKdbxUuid(icon.id).id;
+    if (!db.meta.customIcons.has(uuid)) {
+      db.meta.customIcons.set(uuid, {
+        data: icon.data.slice().buffer,
+        name: icon.name || undefined,
+        lastModified: now,
+      });
+    }
+  }
+  if (removed.size === 0) {
+    return;
+  }
+  const root = db.getDefaultGroup();
+  const items = [
+    ...root.allGroups(),
+    ...Array.from(root.allEntries()).flatMap((entry) => [entry, ...entry.history]),
+  ];
+  for (const item of items) {
+    if (item.customIcon && removed.has(item.customIcon.id)) {
+      item.customIcon = undefined;
+    }
+  }
+}
+
+/**
  * Applies a domain `Vault`'s tree onto the live `Kdbx` document it was
  * loaded from, mutating existing groups/entries in place (matched by id) and
  * only touching entries whose mapped value actually changed. This is what
@@ -343,6 +404,8 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
     visitedGroups,
     visitedEntries,
   );
+
+  syncCustomIcons(db, vault.customIcons);
 
   if (vault.recycleBinId) {
     db.meta.recycleBinEnabled = true;

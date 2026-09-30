@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import {
   CustomField,
   CustomFields,
+  CustomIcon,
   Entry,
   Icon,
   generatePassword,
@@ -15,6 +16,7 @@ import {
   totpConfigFromCustomFields,
 } from "../../domain";
 import { EntryFieldVisibility } from "../../application/settings";
+import { useCustomIcons } from "../entry-icons/custom-icons-context";
 import { IconPicker } from "../entry-icons/IconPicker";
 import { parseDateTimeLocalValue, toDateTimeLocalValue } from "../format";
 import { EyeIcon, EyeOffIcon } from "../icons";
@@ -36,7 +38,8 @@ interface EntryFormProps {
   groupOptions: readonly GroupOption[];
   generatorPolicy: PasswordPolicyOptions;
   fieldVisibility: EntryFieldVisibility;
-  onSubmit: (entry: Entry, groupId: GroupId) => Promise<void>;
+  /** `added` is a just-uploaded image the entry's icon points at, to be saved with it. */
+  onSubmit: (entry: Entry, groupId: GroupId, added?: CustomIcon) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -68,6 +71,9 @@ export function EntryForm({
   const [groupId, setGroupId] = useState(initialGroupId);
   const [tags, setTags] = useState(initialEntry?.tags ?? new Tags());
   const [icon, setIcon] = useState(initialEntry?.icon ?? Icon.AUTO);
+  // Images uploaded while editing; only the one the entry ends up using is saved.
+  const [uploadedIcons, setUploadedIcons] = useState<readonly CustomIcon[]>([]);
+  const customIcons = useCustomIcons().icons;
   const [expires, setExpires] = useState(initialEntry?.expiresAt !== undefined);
   const [expiryInput, setExpiryInput] = useState(
     initialEntry?.expiresAt ? toDateTimeLocalValue(initialEntry.expiresAt) : "",
@@ -130,6 +136,17 @@ export function EntryForm({
       }
     }
 
+    const added =
+      icon.kind === "custom" ? uploadedIcons.find((upload) => upload.id === icon.key) : undefined;
+    // An icon deleted from the vault while this form was open can't be
+    // pointed at any more; the entry falls back to automatic, as it would
+    // have had it been saved before the delete.
+    const deleted =
+      icon.kind === "custom" &&
+      !added &&
+      !customIcons.has(icon.key) &&
+      !initialEntry?.icon.equals(icon);
+
     const fields = {
       title,
       username,
@@ -138,17 +155,27 @@ export function EntryForm({
       notes,
       tags,
       customFields,
-      icon,
+      icon: deleted ? Icon.AUTO : icon,
       expiresAt,
     };
     const entry = initialEntry ? initialEntry.update(fields) : Entry.create(fields);
 
-    await run(() => onSubmit(entry, GroupId.fromString(groupId)), "Failed to save entry.");
+    await run(() => onSubmit(entry, GroupId.fromString(groupId), added), "Failed to save entry.");
   }
 
   return (
     <form className="entry-form" onSubmit={(event) => void handleSubmit(event)}>
-      <IconPicker value={icon} title={title} url={url} onChange={setIcon} />
+      <IconPicker
+        value={icon}
+        title={title}
+        url={url}
+        onChange={(chosen, added) => {
+          setIcon(chosen);
+          if (added) {
+            setUploadedIcons((current) => [...current, added]);
+          }
+        }}
+      />
 
       <div className="field-group">
         <label className="field-label" htmlFor="entry-title">

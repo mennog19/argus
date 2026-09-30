@@ -1,5 +1,5 @@
 import { describe, expect, it, Mock, vi } from "vitest";
-import { Entry, Group, Icon, Vault } from "../../src/domain";
+import { CustomIcon, Entry, Group, Icon, Vault } from "../../src/domain";
 import { vaultCommands } from "../../src/ui/vault-commands";
 
 function setup() {
@@ -164,6 +164,39 @@ describe("vaultCommands", () => {
       const binned = vault.deleteGroup(work.id);
       await vaultCommands(binned, save).emptyRecycleBin();
       expect(saved(save).recycleBin?.groups).toEqual([]);
+    });
+  });
+
+  describe("custom icons", () => {
+    const upload = new CustomIcon("0a1b2c3d-0000-4000-8000-00000000abcd", new Uint8Array([1]));
+    const icon = Icon.custom(upload.id);
+
+    it("saves an uploaded image together with the group using it", async () => {
+      const { work, save, commands } = setup();
+      await commands.changeGroupIcon(work.id, icon, upload);
+      const next = saved(save);
+      expect(next.customIcons.get(upload.id)).toBe(upload);
+      expect(next.findGroup(work.id)?.icon).toBe(icon);
+    });
+
+    it("saves an uploaded image together with a new or edited entry", async () => {
+      const { entry, work, home, save, commands } = setup();
+      const created = Entry.create({ title: "Mail", icon });
+      await commands.createEntry(created, home.id, upload);
+      expect(saved(save).customIcons.has(upload.id)).toBe(true);
+
+      save.mockClear();
+      await commands.updateEntry(entry.update({ icon }), home.id, work.id, upload);
+      const next = saved(save);
+      expect(next.customIcons.has(upload.id)).toBe(true);
+      expect(next.findGroup(home.id)?.entries[0].icon).toBe(icon);
+    });
+
+    it("deletes an icon from the vault", async () => {
+      const { vault, save } = setup();
+      const commands = vaultCommands(vault.addCustomIcon(upload), save);
+      await commands.removeCustomIcon(upload.id);
+      expect(saved(save).customIcons.size).toBe(0);
     });
   });
 });

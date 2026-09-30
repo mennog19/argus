@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Icon } from "../../../src/domain";
+import { CustomIcon, CustomIcons, Icon } from "../../../src/domain";
 import { createBrandCatalog } from "../../../src/ui/entry-icons/brand-icons";
 import { resolveIcon } from "../../../src/ui/entry-icons/resolve-entry-icon";
 
@@ -71,5 +71,21 @@ describe("resolveIcon", () => {
       icon: Icon.AUTO,
     });
     expect(resolved.kind).toBe("brand");
+  });
+
+  it("shows a chosen custom icon the vault holds", () => {
+    const logo = new CustomIcon("0a1b2c3d-0000-4000-8000-00000000abcd", new Uint8Array([1]));
+    const resolved = resolveIcon(
+      { title: "Title", url: "https://github.com", icon: Icon.custom(logo.id) },
+      brands,
+      new CustomIcons([logo]),
+    );
+    expect(resolved).toEqual({ kind: "custom", icon: logo });
+  });
+
+  it("falls back to automatic for a custom icon the vault no longer holds", () => {
+    const icon = Icon.custom("0a1b2c3d-0000-4000-8000-00000000abcd");
+    expect(resolve("https://github.com", icon).kind).toBe("brand");
+    expect(resolveIcon({ title: "Title", url: "", icon }).kind).toBe("sigil");
   });
 });

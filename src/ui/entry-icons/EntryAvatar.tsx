@@ -1,4 +1,7 @@
 import { CSSProperties } from "react";
+import { BRAND_ICONS } from "./brand-icons";
+import { customIconUrl } from "./custom-icon-image";
+import { useCustomIcons } from "./custom-icons-context";
 import { IconSubject, ResolvedIcon, resolveIcon } from "./resolve-entry-icon";
 import { Sigil, sigilFor } from "./sigil";
 
@@ -48,6 +51,18 @@ export function EntryTile({
 }) {
   const sizeClass = size === "lg" ? " entry-tile-lg" : size === "xs" ? " entry-tile-xs" : "";
 
+  if (resolved.kind === "custom") {
+    return (
+      <div
+        className={`entry-tile entry-tile-custom${sizeClass}`}
+        data-kind="custom"
+        aria-hidden="true"
+      >
+        <img src={customIconUrl(resolved.icon)} alt="" draggable={false} />
+      </div>
+    );
+  }
+
   if (resolved.kind === "brand") {
     const { icon } = resolved;
     return (
@@ -87,7 +102,8 @@ export function EntryTile({
 
 /** An entry's icon: its chosen one, its site's logo, or its generated sigil. */
 export function EntryAvatar({ entry, size }: { entry: IconSubject; size?: EntryTileSize }) {
-  return <EntryTile resolved={resolveIcon(entry)} size={size} />;
+  const { icons } = useCustomIcons();
+  return <EntryTile resolved={resolveIcon(entry, BRAND_ICONS, icons)} size={size} />;
 }
 
 /** A group's icon: its chosen one, or a sigil generated from its name (groups have no URL to brand-match against). */
@@ -100,5 +116,11 @@ export function GroupAvatar({
   icon: IconSubject["icon"];
   size?: EntryTileSize;
 }) {
-  return <EntryTile resolved={resolveIcon({ title: name, url: "", icon })} size={size} />;
+  const { icons } = useCustomIcons();
+  return (
+    <EntryTile
+      resolved={resolveIcon({ title: name, url: "", icon }, BRAND_ICONS, icons)}
+      size={size}
+    />
+  );
 }

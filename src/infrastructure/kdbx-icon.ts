@@ -1,5 +1,6 @@
 import { Consts, KdbxEntry, KdbxGroup } from "kdbxweb";
 import { Icon } from "../domain";
+import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
 
 /** An entry or group, the two KDBX node types that carry an icon. */
 type KdbxIconHost = KdbxEntry | KdbxGroup;
@@ -131,14 +132,14 @@ for (const [key, id] of Object.entries(LIBRARY_ICON_KEEPASS_IDS)) {
 }
 
 /**
- * Reads an entry or group's icon. Argus's CustomData wins only while it
- * still agrees with the KeePass icon id — if another app changed the icon
- * since, that app's choice is what's shown. Custom (image) icons aren't
- * rendered yet, so they read as automatic.
+ * Reads an entry or group's icon. A custom (image) icon wins, as it does in
+ * KeePass. Otherwise Argus's CustomData wins only while it still agrees with
+ * the KeePass icon id — if another app changed the icon since, that app's
+ * choice is what's shown.
  */
 export function iconFromKdbx(kdbxItem: KdbxIconHost): Icon {
-  if (kdbxItem.customIcon) {
-    return Icon.AUTO;
+  if (kdbxItem.customIcon && !kdbxItem.customIcon.empty) {
+    return Icon.custom(kdbxUuidToDomainId(kdbxItem.customIcon));
   }
   const keepassId = kdbxItem.icon ?? Icons.Key;
   const stored = Icon.parse(kdbxItem.customData?.get(ICON_CUSTOM_DATA_KEY)?.value ?? "");
@@ -152,10 +153,13 @@ export function iconFromKdbx(kdbxItem: KdbxIconHost): Icon {
   return libraryKey ? Icon.library(libraryKey) : Icon.AUTO;
 }
 
-/** Writes an icon choice as both a KeePass standard icon and Argus CustomData. */
+/**
+ * Writes an icon choice as both a KeePass standard icon and Argus CustomData,
+ * or, for a custom icon, as the KDBX custom icon reference KeePass reads.
+ */
 export function writeIconToKdbx(kdbxItem: KdbxIconHost, icon: Icon): void {
-  kdbxItem.customIcon = undefined;
-  if (icon.kind === "auto") {
+  kdbxItem.customIcon = icon.kind === "custom" ? domainIdToKdbxUuid(icon.key) : undefined;
+  if (icon.kind === "auto" || icon.kind === "custom") {
     kdbxItem.icon = Icons.Key;
     kdbxItem.customData?.delete(ICON_CUSTOM_DATA_KEY);
     return;

@@ -1,6 +1,7 @@
-export type IconKind = "auto" | "library" | "brand";
+export type IconKind = "auto" | "library" | "brand" | "custom";
 
 const KEY_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Degrees on the hue wheel; whole numbers only, wrapping at 360. */
 const MAX_HUE = 359;
@@ -10,7 +11,8 @@ const MAX_HUE = 359;
  * for a known site, otherwise a generated sigil); `library` and `brand` are
  * explicit choices identified by a catalog key. The domain only validates the
  * shape — which keys exist is up to the UI's catalogs, so unknown keys (e.g.
- * written by a newer version) survive a round trip untouched.
+ * written by a newer version) survive a round trip untouched. `custom` points
+ * at one of the vault's own image icons by its (lowercase UUID) id.
  *
  * A library icon's tint is normally derived from the owner's title/URL (so it
  * matches the automatic sigil it replaced); `hue` overrides that with a fixed
@@ -33,14 +35,26 @@ export class Icon {
     return new Icon("brand", Icon.validKey(key), undefined);
   }
 
+  static custom(id: string): Icon {
+    if (!UUID_PATTERN.test(id)) {
+      throw new Error(`Invalid custom icon id: "${id}"`);
+    }
+    return new Icon("custom", id, undefined);
+  }
+
   /** Parses the `kind:key` or `library:key:hue` form produced by `toString()`; `undefined` if it isn't one. */
   static parse(value: string): Icon | undefined {
     if (value === "auto") {
       return Icon.AUTO;
     }
-    const match = /^(library|brand):([^:]+)(?::(\d+))?$/.exec(value);
+    const match = /^(library|brand|custom):([^:]+)(?::(\d+))?$/.exec(value);
     if (!match || !KEY_PATTERN.test(match[2])) {
       return undefined;
+    }
+    if (match[1] === "custom") {
+      return match[3] === undefined && UUID_PATTERN.test(match[2])
+        ? Icon.custom(match[2])
+        : undefined;
     }
     if (match[1] === "brand") {
       return match[3] === undefined ? Icon.brand(match[2]) : undefined;

@@ -1,4 +1,4 @@
-import { Group, GroupId, Icon } from "../../domain";
+import { CustomIcon, Group, GroupId, Icon } from "../../domain";
 import { GroupDeleteMode } from "../../application/settings";
 import { collectAllEntries } from "../vault-browsing";
 import { useGroupDragDrop } from "../use-group-drag-drop";
@@ -17,7 +17,7 @@ interface GroupTreeProps {
   onCreateGroup: (parentId: GroupId, name: string) => Promise<void>;
   onRenameGroup: (groupId: GroupId, name: string) => Promise<void>;
   onDeleteGroup: (groupId: GroupId) => Promise<void>;
-  onChangeGroupIcon: (groupId: GroupId, icon: Icon) => Promise<void>;
+  onChangeGroupIcon: (groupId: GroupId, icon: Icon, added?: CustomIcon) => Promise<void>;
   /** Only used to tell the user, while confirming a delete, what happens to the group's contents. */
   groupDeleteMode: GroupDeleteMode;
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */

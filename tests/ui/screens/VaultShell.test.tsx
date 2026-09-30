@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import {
   CustomField,
   CustomFields,
+  CustomIcon,
+  CustomIcons,
   Entry,
   Group,
   Icon,
@@ -2145,6 +2147,33 @@ describe("VaultShell entry sorting", () => {
       await user.click(within(dialog).getByRole("button", { name: "Delete" }));
       expect(await within(dialog).findByText("Disk full")).toBeInTheDocument();
       expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+  });
+
+  describe("custom icons", () => {
+    it("deletes an icon from the vault after warning what uses it", async () => {
+      const user = userEvent.setup();
+      const logo = new CustomIcon("0a1b2c3d-0000-4000-8000-00000000abcd", new Uint8Array([1]));
+      const entry = Entry.create({ title: "Bank", icon: Icon.custom(logo.id) });
+      const vault = new Vault(
+        "Root",
+        Group.create("Root").addEntry(entry),
+        undefined,
+        [],
+        new CustomIcons([logo]),
+      );
+      const { onSave } = renderShell(vault);
+
+      await user.click(screen.getByText("Bank"));
+      await user.click(screen.getByRole("button", { name: "Edit entry" }));
+      await user.click(screen.getByRole("button", { name: "Change icon" }));
+      await user.click(screen.getByRole("button", { name: "Delete this icon from the vault…" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("1 entry or group uses it");
+      await user.click(screen.getByRole("button", { name: "Delete icon" }));
+
+      const saved = vi.mocked(onSave).mock.calls[0][0];
+      expect(saved.customIcons.size).toBe(0);
+      expect(saved.findEntry(entry.id)?.icon).toBe(Icon.AUTO);
     });
   });
 });

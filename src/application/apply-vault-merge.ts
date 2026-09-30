@@ -1,4 +1,4 @@
-import { Entry, Group, GroupId, MatchedEntryPair, Vault } from "../domain";
+import { CustomIcons, Entry, Group, GroupId, MatchedEntryPair, Vault } from "../domain";
 
 export type ConflictResolution = "keep-mine" | "use-theirs" | "keep-both";
 
@@ -32,10 +32,19 @@ function ensureMergeGroup(vault: Vault): { vault: Vault; groupId: GroupId } {
  * location); "keep both" conflicts, accepted new entries, and any
  * identical pairs the user chose to import anyway are all added into a
  * single lazily-created group so the target vault's existing groups are
- * left untouched. Returns an ordinary in-memory `Vault` — callers persist it
+ * left untouched. Custom icons the brought-over entries use are copied from
+ * `sourceIcons`. Returns an ordinary in-memory `Vault` — callers persist it
  * the same way as any other edit.
  */
-export function applyVaultMerge(target: Vault, selections: VaultMergeSelections): Vault {
+export function applyVaultMerge(
+  target: Vault,
+  selections: VaultMergeSelections,
+  sourceIcons: CustomIcons = CustomIcons.EMPTY,
+): Vault {
+  return mergeEntries(target, selections).adoptCustomIcons(sourceIcons);
+}
+
+function mergeEntries(target: Vault, selections: VaultMergeSelections): Vault {
   let next = target;
 
   for (const { pair, resolution } of selections.resolvedConflicts) {

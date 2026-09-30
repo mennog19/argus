@@ -18,6 +18,7 @@ export {
 } from "./auto-type-match";
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";
+export { CustomIcon, CustomIcons } from "./custom-icon";
 export { Entry, type EntryFields, type EntryTimes } from "./entry";
 export { changedEntryFields, type EntryFieldName } from "./entry-changes";
 export { Icon, type IconKind } from "./icon";

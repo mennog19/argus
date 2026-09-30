@@ -4,8 +4,11 @@ import userEvent from "@testing-library/user-event";
 import {
   CustomField,
   CustomFields,
+  CustomIcon,
+  CustomIcons,
   Entry,
   Group,
+  Icon,
   Password,
   Tag,
   Tags,
@@ -653,6 +656,38 @@ describe("MergeWizardScreen", () => {
 
       expect(onClose).toHaveBeenCalled();
       expect(onApply).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("custom icons", () => {
+    const shared = new CustomIcon("0a1b2c3d-0000-4000-8000-00000000abcd", new Uint8Array([1]));
+    const theirs = new CustomIcon("0a1b2c3d-0000-4000-8000-00000000ef01", new Uint8Array([2]));
+
+    it("shows incoming entries' images and brings them over with the merge", async () => {
+      const user = userEvent.setup();
+      const target = Vault.create("Mine").addCustomIcon(shared);
+      const incoming = Entry.create({
+        title: "Logo Site",
+        username: "bob",
+        icon: Icon.custom(theirs.id),
+      });
+      const source = new Vault(
+        "Theirs",
+        Group.create("Theirs").addEntry(incoming),
+        undefined,
+        [],
+        new CustomIcons([shared, theirs]),
+      );
+      const { onApply } = renderWizard(target, source);
+
+      expect(document.querySelector(".entry-tile-custom img")).toBeInTheDocument();
+
+      await goToStep(user, "Review");
+      await user.click(screen.getByRole("button", { name: "Apply merge" }));
+
+      await waitFor(() => expect(onApply).toHaveBeenCalled());
+      const merged: Vault = onApply.mock.calls[0][0];
+      expect(merged.customIcons.values).toEqual([shared, theirs]);
     });
   });
 });

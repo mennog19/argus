@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { Icon } from "../../../src/domain";
-import { EntryAvatar } from "../../../src/ui/entry-icons/EntryAvatar";
+import { ReactNode } from "react";
+import { CustomIcon, CustomIcons, Icon } from "../../../src/domain";
+import { CustomIconsContext } from "../../../src/ui/entry-icons/custom-icons-context";
+import { EntryAvatar, GroupAvatar } from "../../../src/ui/entry-icons/EntryAvatar";
 import { sigilFor } from "../../../src/ui/entry-icons/sigil";
 
 function renderAvatar(url: string, icon = Icon.AUTO, size?: "sm" | "lg") {
@@ -68,5 +70,46 @@ describe("EntryAvatar", () => {
       "entry-tile-brand",
       "entry-tile-lg",
     );
+  });
+
+  describe("custom icons", () => {
+    const logo = new CustomIcon("0a1b2c3d-0000-4000-8000-00000000abcd", new Uint8Array([1, 2]));
+    const icon = Icon.custom(logo.id);
+
+    function withIcons(children: ReactNode) {
+      return (
+        <CustomIconsContext value={{ icons: new CustomIcons([logo]) }}>
+          {children}
+        </CustomIconsContext>
+      );
+    }
+
+    it("draws the vault's image for an entry, in every size", () => {
+      const { container } = render(
+        withIcons(
+          <>
+            <EntryAvatar entry={{ title: "Bank", url: "", icon }} />
+            <EntryAvatar entry={{ title: "Bank", url: "", icon }} size="lg" />
+            <EntryAvatar entry={{ title: "Bank", url: "", icon }} size="xs" />
+          </>,
+        ),
+      );
+      const tiles = container.querySelectorAll<HTMLElement>(".entry-tile");
+      expect(tiles[0]).toHaveClass("entry-tile-custom");
+      expect(tiles[0].dataset.kind).toBe("custom");
+      expect(tiles[1]).toHaveClass("entry-tile-lg");
+      expect(tiles[2]).toHaveClass("entry-tile-xs");
+      expect(tiles[0].querySelector("img")).toHaveAttribute("src", "data:image/png;base64,AQI=");
+    });
+
+    it("draws the vault's image for a group", () => {
+      const { container } = render(withIcons(<GroupAvatar name="Work" icon={icon} />));
+      expect(container.querySelector("img")).toBeInTheDocument();
+    });
+
+    it("falls back to automatic outside a vault that holds the image", () => {
+      const { root } = renderAvatar("", icon);
+      expect(root.dataset.kind).toBe("sigil");
+    });
   });
 });
