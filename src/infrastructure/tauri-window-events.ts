@@ -1,6 +1,7 @@
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WindowEvents } from "../application/window-events";
+import { unsubscribeOnceRegistered } from "./tauri-listener";
 
 /** Emitted by the Rust side (`session_lock.rs`) when the OS session locks. */
 const SESSION_LOCKED_EVENT = "session-locked";
@@ -38,26 +39,4 @@ export class TauriWindowEvents implements WindowEvents {
   onSessionLock(callback: () => void): () => void {
     return unsubscribeOnceRegistered(listen(SESSION_LOCKED_EVENT, () => callback()));
   }
-}
-
-/**
- * Tauri listeners register asynchronously; this returns a synchronous
- * unsubscribe that also works when called before registration resolves.
- */
-function unsubscribeOnceRegistered(registration: Promise<UnlistenFn>): () => void {
-  let unlisten: UnlistenFn | undefined;
-  let cancelled = false;
-
-  void registration.then((fn) => {
-    if (cancelled) {
-      fn();
-    } else {
-      unlisten = fn;
-    }
-  });
-
-  return () => {
-    cancelled = true;
-    unlisten?.();
-  };
 }

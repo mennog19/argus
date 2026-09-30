@@ -1,6 +1,7 @@
 mod atomic_write;
 mod auto_type;
 mod clipboard;
+mod open_vault;
 mod session_lock;
 mod tray;
 
@@ -86,8 +87,9 @@ pub fn run() {
     tauri::Builder::default()
         // Must be registered first: plugins run in registration order, and a
         // second launch needs to be caught before anything else initializes.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             tray::show_main_window(app);
+            open_vault::open_from_second_launch(app, &args, &cwd);
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -105,6 +107,7 @@ pub fn run() {
         .plugin(tauri_plugin_persisted_scope::init())
         .manage(auto_type::AutoTypeState::default())
         .manage(tray::CloseToTray::default())
+        .manage(open_vault::LaunchVault::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if tray::hide_on_close(window) {
@@ -117,6 +120,7 @@ pub fn run() {
         .setup(|app| {
             clipboard::clear_any_secret(app.handle());
             session_lock::watch(app.handle());
+            open_vault::remember_launch_vault(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -127,7 +131,8 @@ pub fn run() {
             auto_type::auto_type_send,
             clipboard::clipboard_write_secret,
             clipboard::clipboard_clear_secret,
-            tray::set_close_to_tray
+            tray::set_close_to_tray,
+            open_vault::launch_vault_path
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

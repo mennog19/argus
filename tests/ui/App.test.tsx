@@ -15,6 +15,7 @@ import { WindowEvents } from "../../src/application/window-events";
 import { WindowProtection } from "../../src/application/window-protection";
 import { WindowCloseBehavior } from "../../src/application/window-close-behavior";
 import { VaultMergeSource } from "../../src/application/vault-merge-source";
+import { VaultOpenRequests } from "../../src/application/vault-open-requests";
 import { AutoTyper, GlobalHotkey } from "../../src/application/auto-type";
 import { AutoTypeService } from "../../src/application/auto-type-service";
 import App from "../../src/ui/App";
@@ -66,6 +67,22 @@ function fakeWindowEvents(overrides: Partial<WindowEvents> = {}): WindowEvents {
   };
 }
 
+function fakeVaultOpenRequests(overrides: Partial<VaultOpenRequests> = {}): VaultOpenRequests {
+  return { onOpenRequest: vi.fn().mockReturnValue(vi.fn()), ...overrides };
+}
+
+/** Open requests that hand back the callback, to ask for a vault from the test. */
+function capturingVaultOpenRequests() {
+  let request: ((filePath: string) => void) | undefined;
+  const requests = fakeVaultOpenRequests({
+    onOpenRequest: vi.fn((callback: (filePath: string) => void) => {
+      request = callback;
+      return vi.fn();
+    }),
+  });
+  return { requests, request: (filePath: string) => act(() => request!(filePath)) };
+}
+
 function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): WindowProtection {
   return { setContentProtected: vi.fn().mockResolvedValue(undefined), ...overrides };
 }
@@ -111,6 +128,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -133,6 +151,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -160,6 +179,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -190,6 +210,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -237,6 +258,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -275,6 +297,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -318,6 +341,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -355,6 +379,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -386,6 +411,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -423,6 +449,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -459,6 +486,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -504,6 +532,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -548,6 +577,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -602,6 +632,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -646,6 +677,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -690,6 +722,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -731,6 +764,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -769,6 +803,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -809,6 +844,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -851,6 +887,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -890,6 +927,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -933,6 +971,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -978,6 +1017,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1025,6 +1065,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1069,6 +1110,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1109,6 +1151,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1151,6 +1194,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={windowProtection}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1195,6 +1239,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={windowCloseBehavior}
         mergeSource={fakeMergeSource()}
@@ -1236,6 +1281,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1277,6 +1323,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1321,6 +1368,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1363,6 +1411,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1404,6 +1453,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1453,6 +1503,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -1506,6 +1557,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -1558,6 +1610,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -1611,6 +1664,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -1665,6 +1719,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1713,6 +1768,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1759,6 +1815,7 @@ describe("App", () => {
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
+        vaultOpenRequests={fakeVaultOpenRequests()}
         windowProtection={fakeWindowProtection()}
         windowCloseBehavior={fakeWindowCloseBehavior()}
         mergeSource={fakeMergeSource()}
@@ -1811,6 +1868,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -1961,6 +2019,7 @@ describe("App", () => {
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
           windowProtection={fakeWindowProtection()}
           windowCloseBehavior={fakeWindowCloseBehavior()}
           mergeSource={fakeMergeSource()}
@@ -2110,6 +2169,118 @@ describe("App", () => {
       await user.click(screen.getByRole("button", { name: "Dismiss auto-type error" }));
 
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("opening a vault from Explorer", () => {
+    it("asks for the password of the vault Argus was launched with, not the most recent one", async () => {
+      const settings: AppSettings = {
+        recentVaults: [{ path: "C:/vaults/recent.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+      };
+      const settingsStore = fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) });
+
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService()}
+          settingsStore={settingsStore}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests({
+            onOpenRequest: vi.fn((callback: (filePath: string) => void) => {
+              callback("C:/vaults/launched.kdbx");
+              return vi.fn();
+            }),
+          })}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+        />,
+      );
+      // Settings finish loading after the launch vault was handed over.
+      await act(async () => {});
+
+      expect(settingsStore.load).toHaveBeenCalled();
+      expect(screen.getByText("launched.kdbx")).toBeInTheDocument();
+      expect(screen.queryByText("recent.kdbx")).not.toBeInTheDocument();
+    });
+
+    it("locks the open vault and asks for the password of the one opened while Argus runs", async () => {
+      const user = userEvent.setup();
+      const settings: AppSettings = {
+        recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+      };
+      const vaultAccessService = fakeVaultAccessService({
+        openVaultAtPath: vi.fn().mockResolvedValue(Vault.create("A")),
+      });
+      const { requests, request } = capturingVaultOpenRequests();
+
+      render(
+        <App
+          vaultAccessService={vaultAccessService}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={requests}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+        />,
+      );
+      await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
+      await user.click(screen.getByRole("button", { name: "Unlock" }));
+      expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+
+      request("C:/vaults/other.kdbx");
+
+      expect(await screen.findByText("other.kdbx")).toBeInTheDocument();
+      expect(screen.getByLabelText("Master password")).toHaveValue("");
+      expect(screen.queryByRole("button", { name: "Lock vault" })).not.toBeInTheDocument();
+      // The vault being replaced has to be dropped, not just hidden.
+      expect(vaultAccessService.closeVault).toHaveBeenCalled();
+    });
+
+    it("leaves the vault unlocked when asked to open the vault that is already open", async () => {
+      const user = userEvent.setup();
+      const settings: AppSettings = {
+        recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+      };
+      const vaultAccessService = fakeVaultAccessService({
+        openVaultAtPath: vi.fn().mockResolvedValue(Vault.create("A")),
+      });
+      const { requests, request } = capturingVaultOpenRequests();
+
+      render(
+        <App
+          vaultAccessService={vaultAccessService}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={requests}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+        />,
+      );
+      await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
+      await user.click(screen.getByRole("button", { name: "Unlock" }));
+      expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+
+      request("C:/vaults/a.kdbx");
+
+      expect(screen.getByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+      expect(vaultAccessService.closeVault).not.toHaveBeenCalled();
     });
   });
 });

@@ -17,11 +17,13 @@ import { SettingsStore } from "../application/settings";
 import { SettingsTransferService } from "../application/settings-transfer-service";
 import { UrlOpener } from "../application/url-opener";
 import { VaultMergeSource } from "../application/vault-merge-source";
+import { VaultOpenRequests } from "../application/vault-open-requests";
 import { collectAllEntries, fieldReferencesOf } from "./vault-browsing";
 import { useAppSettings } from "./use-app-settings";
 import { useAutoLock } from "./use-auto-lock";
 import { useAutoType } from "./use-auto-type";
 import { useExpiredEntries } from "./use-expired-entries";
+import { useVaultOpenRequests } from "./use-vault-open-requests";
 import { useWindowAppearance } from "./use-window-appearance";
 import { AutoTypeErrorToast } from "./screens/AutoTypeErrorToast";
 import { CustomIconsContext } from "./entry-icons/custom-icons-context";
@@ -45,6 +47,7 @@ interface AppProps {
   mergeSource: VaultMergeSource;
   autoTypeService: AutoTypeService;
   globalHotkey: GlobalHotkey;
+  vaultOpenRequests: VaultOpenRequests;
 }
 
 type Screen =
@@ -69,6 +72,7 @@ function App({
   mergeSource,
   autoTypeService,
   globalHotkey,
+  vaultOpenRequests,
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
@@ -77,7 +81,10 @@ function App({
   const appSettings = useAppSettings(settingsStore, settingsTransferService, (loaded) => {
     const mostRecent = loaded.recentVaults[0];
     if (mostRecent) {
-      setScreen({ kind: "locked", filePath: mostRecent.path });
+      // Unless a vault Argus was launched to open got here first.
+      setScreen((current) =>
+        current.kind === "welcome" ? { kind: "locked", filePath: mostRecent.path } : current,
+      );
     }
   });
   const { settings, effective } = appSettings;
@@ -100,6 +107,17 @@ function App({
     effective.expiredEntryAction,
     (nextVault, unlocked) => saveVault(nextVault, unlocked.filePath),
   );
+
+  // A vault opened from Explorer replaces whatever is open: that one is
+  // locked, and the new one asks for its own master password. Asking for the
+  // vault that's already unlocked just leaves it be.
+  useVaultOpenRequests(vaultOpenRequests, (filePath) => {
+    if (screen.kind === "unlocked" && screen.filePath === filePath) {
+      return;
+    }
+    setConflict(undefined);
+    lock(filePath);
+  });
 
   // Everything auto-type is allowed to offer: the whole vault minus the
   // recycle bin, so a deleted login can't be typed back into a live site.
