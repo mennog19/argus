@@ -31,6 +31,7 @@ and compare the output against the matching `.sha256` value published with that 
 ## Features
 
 - **Vault management** — open, create, and save `.kdbx` files; edit groups, entries, and a recycle bin for soft-deleted items.
+- **KDBX4 upgrade** — a KDBX3 vault can be upgraded to KDBX4 from Settings, which switches its key derivation from AES-KDF to Argon2id. A copy of the KDBX3 file is kept next to the vault as `<vault>.kdbx3-backup.kdbx`, which later saves never rotate away.
 - **Entries** — title, username, password, URL, notes, tags, and arbitrary custom fields (including protected/hidden ones), matching KeePass conventions. URLs can be typed without a scheme (`github.com/login`); they open as https.
 - **Field references** — KeePass `{REF:…}` placeholders (such as the ones KeePassXC writes when you clone an entry with "reference username and password") are resolved when shown, copied, or auto-typed. The stored entry keeps the reference, so KeePass and KeePassXC still see it as a link.
 - **Entry history** — every edit keeps the previous version, as in KeePass. Each entry lists its earlier versions with what changed, and any of them can be viewed, restored, or deleted, e.g. to purge an old password from the file.

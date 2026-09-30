@@ -6,7 +6,12 @@ import {
   VaultAccessService,
   VaultSaveConflictError,
 } from "../../src/application/vault-access-service";
-import { VaultKey, VaultRepository, VaultSession } from "../../src/application/vault-repository";
+import {
+  VaultFormat,
+  VaultKey,
+  VaultRepository,
+  VaultSession,
+} from "../../src/application/vault-repository";
 
 /**
  * A repository whose sessions delegate to one shared pair of mocks, so tests
@@ -32,6 +37,7 @@ function fakeRepository(
     changeMasterPassword?: RekeyFake;
     rekeyFile?: RekeyFileFake;
     generateKeyFile?: () => Promise<ArrayBuffer>;
+    format?: VaultFormat;
     /** What `session.vault` becomes once the session has saved, as the real one re-reads it. */
     vaultAfterSave?: Vault;
   } = {},
@@ -40,6 +46,7 @@ function fakeRepository(
   const changeMasterPassword = vi.fn<RekeyFake>(
     overrides.changeMasterPassword ?? (() => Promise.resolve()),
   );
+  const upgradeFormat = vi.fn<() => void>();
   const openVault = vi.fn<OpenFake>(overrides.openVault);
   const createVault = vi.fn<CreateFake>(overrides.createVault);
   const sessionFor = (vault: Vault): VaultSession => {
@@ -54,6 +61,8 @@ function fakeRepository(
         return fileBytes;
       },
       changeMasterPassword,
+      format: overrides.format ?? { major: 4, minor: 0 },
+      upgradeFormat,
     };
   };
   const repository = {
@@ -68,7 +77,7 @@ function fakeRepository(
   } satisfies VaultRepository;
   // Only the session's mocks are merged in: overwriting `openVault` here with
   // the raw override would bypass the wrapper that builds the session.
-  return Object.assign(repository, { saveVault, changeMasterPassword });
+  return Object.assign(repository, { saveVault, changeMasterPassword, upgradeFormat });
 }
 
 function emptyBytes(): ArrayBuffer {
@@ -444,20 +453,29 @@ describe("VaultAccessService", () => {
   });
 
   describe("getFileInfo", () => {
-    it("reports the file's size and last-modified time", async () => {
-      const repository = fakeRepository();
-      const dialog = fakeDialog();
+    it("reports the file's size and last-modified time, and the open vault's format", async () => {
+      const repository = fakeRepository({ format: { major: 3, minor: 1 } });
       const fileStorage = fakeFileStorage({
         size: vi.fn().mockResolvedValue(49152),
         lastModified: vi.fn().mockResolvedValue(1_700_000_000_000),
       });
-      const service = new VaultAccessService(repository, dialog, fileStorage);
+      const service = await serviceWithOpenVault(repository, fileStorage);
 
       const result = await service.getFileInfo("C:/vaults/mine.kdbx");
 
       expect(fileStorage.size).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
       expect(fileStorage.lastModified).toHaveBeenCalledWith("C:/vaults/mine.kdbx");
-      expect(result).toEqual({ sizeBytes: 49152, lastModifiedMs: 1_700_000_000_000 });
+      expect(result).toEqual({
+        sizeBytes: 49152,
+        lastModifiedMs: 1_700_000_000_000,
+        format: { major: 3, minor: 1 },
+      });
+    });
+
+    it("rejects when no vault is open", async () => {
+      const service = new VaultAccessService(fakeRepository(), fakeDialog(), fakeFileStorage());
+
+      await expect(service.getFileInfo("C:/vaults/mine.kdbx")).rejects.toThrow("No vault is open");
     });
   });
 
@@ -701,6 +719,103 @@ describe("VaultAccessService", () => {
 
       expect(fileStorage.copyFile).not.toHaveBeenCalled();
       expect(fileStorage.grantAccess).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("upgradeVaultFormat", () => {
+    it("upgrades the open vault's format, then saves it with its backups rotated", async () => {
+      const vault = Vault.create("My Vault");
+      const saved = Vault.create("As Saved");
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        vaultAfterSave: saved,
+      });
+      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(service.upgradeVaultFormat(vault, "C:/vaults/mine.kdbx")).resolves.toBe(saved);
+
+      expect(repository.upgradeFormat).toHaveBeenCalledOnce();
+      expect(repository.upgradeFormat.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.saveVault.mock.invocationCallOrder[0],
+      );
+      expect(repository.saveVault).toHaveBeenCalledWith(vault);
+      expect(fileStorage.copyFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        "C:/vaults/mine.kdbx.bak1",
+      );
+      expect(fileStorage.writeFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        expect.any(ArrayBuffer),
+      );
+    });
+
+    it("keeps a copy of the KDBX 3 file that backup rotation doesn't touch", async () => {
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
+      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await service.upgradeVaultFormat(Vault.create("My Vault"), "C:/vaults/mine.kdbx");
+
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        ".kdbx3-backup.kdbx",
+      );
+      expect(fileStorage.copyFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        "C:/vaults/mine.kdbx.kdbx3-backup.kdbx",
+      );
+      const copied = vi
+        .mocked(fileStorage.copyFile)
+        .mock.calls.findIndex(([, destination]) => destination.endsWith(".kdbx3-backup.kdbx"));
+      const copiedAt = vi.mocked(fileStorage.copyFile).mock.invocationCallOrder[copied];
+      expect(copiedAt).toBeLessThan(repository.upgradeFormat.mock.invocationCallOrder[0]);
+    });
+
+    it("doesn't upgrade when the KDBX 3 copy can't be made", async () => {
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({
+        exists: vi.fn().mockResolvedValue(true),
+        copyFile: vi.fn().mockRejectedValue(new Error("Disk full.")),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.upgradeVaultFormat(Vault.create("My Vault"), "C:/vaults/mine.kdbx"),
+      ).rejects.toThrow("Disk full.");
+      expect(repository.upgradeFormat).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
+    it("refuses to upgrade at all when the file changed on disk", async () => {
+      const repository = fakeRepository({
+        openVault: vi.fn().mockResolvedValue(Vault.create("My Vault")),
+      });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+        exists: vi.fn().mockResolvedValue(true),
+        lastModified: vi.fn().mockResolvedValueOnce(1000).mockResolvedValueOnce(2000),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.upgradeVaultFormat(Vault.create("My Vault"), "C:/vaults/mine.kdbx"),
+      ).rejects.toBeInstanceOf(VaultSaveConflictError);
+      // Upgrading first would leave the open document KDBX 4 while the file on
+      // disk is still KDBX 3, to be written by whichever save came next.
+      expect(repository.upgradeFormat).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+      expect(fileStorage.copyFile).not.toHaveBeenCalled();
+    });
+
+    it("refuses to upgrade when no vault is open", async () => {
+      const service = new VaultAccessService(fakeRepository(), fakeDialog(), fakeFileStorage());
+
+      await expect(
+        service.upgradeVaultFormat(Vault.create("Unopened"), "C:/vaults/mine.kdbx"),
+      ).rejects.toThrow("No vault is open");
     });
   });
 

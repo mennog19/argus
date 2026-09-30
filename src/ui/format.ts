@@ -1,3 +1,4 @@
+import { VaultFormat } from "../application/vault-repository";
 import { GroupContents } from "./vault-browsing";
 
 /** Last path segment, accepting both `/` and `\` separators. */
@@ -18,6 +19,11 @@ export function formatFileSize(bytes: number): string {
   }
   const mb = kb / 1024;
   return `${mb.toFixed(1)} MB`;
+}
+
+/** A vault's file format as KeePass names it, e.g. "KDBX 3.1". */
+export function formatVaultFormat({ major, minor }: VaultFormat): string {
+  return `KDBX ${major}.${minor}`;
 }
 
 /** Coarse "N units ago" rendering of an ISO timestamp, relative to `now`. */

@@ -1,5 +1,7 @@
 import { MasterPasswordChangeResult } from "../../../application/vault-access-service";
+import { VaultFormat } from "../../../application/vault-repository";
 import { ChangeMasterPasswordCard } from "../ChangeMasterPasswordCard";
+import { UpgradeFormatCard } from "./UpgradeFormatCard";
 
 interface DangerZoneSectionProps {
   /** Why the last merge attempt never got started, e.g. the picked file is this vault. */
@@ -9,18 +11,23 @@ interface DangerZoneSectionProps {
     currentPassword: string,
     newPassword: string,
   ) => Promise<MasterPasswordChangeResult>;
+  /** The open vault's format, once known. */
+  format: VaultFormat | undefined;
+  onUpgradeFormat: () => Promise<void>;
 }
 
 export function DangerZoneSection({
   mergeError,
   onOpenMergeWizard,
   onChangeMasterPassword,
+  format,
+  onUpgradeFormat,
 }: DangerZoneSectionProps) {
   return (
     <section className="detail-section danger-zone">
       <div className="detail-section-label danger-zone-label">Danger zone</div>
       <p className="danger-zone-lead">
-        These change the vault itself. Both are applied straight to the file on disk — make sure you
+        These change the vault itself. Each is applied straight to the file on disk — make sure you
         have a backup first.
       </p>
 
@@ -39,6 +46,8 @@ export function DangerZoneSection({
         </div>
 
         <ChangeMasterPasswordCard onChangeMasterPassword={onChangeMasterPassword} />
+
+        <UpgradeFormatCard format={format} onUpgradeFormat={onUpgradeFormat} />
       </div>
     </section>
   );

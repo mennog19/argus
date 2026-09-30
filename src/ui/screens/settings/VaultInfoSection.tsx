@@ -1,5 +1,5 @@
 import { VaultFileInfo } from "../../../application/vault-access-service";
-import { basename, formatFileSize, formatRelativeTime } from "../../format";
+import { basename, formatFileSize, formatRelativeTime, formatVaultFormat } from "../../format";
 
 interface VaultInfoSectionProps {
   filePath: string;
@@ -24,6 +24,12 @@ export function VaultInfoSection({ filePath, fileInfo, entryCount }: VaultInfoSe
           <span className="detail-field-row-label">Size</span>
           <span className="detail-field-value">
             {fileInfo ? formatFileSize(fileInfo.sizeBytes) : "—"}
+          </span>
+        </div>
+        <div className="detail-field-row">
+          <span className="detail-field-row-label">Format</span>
+          <span className="detail-field-value">
+            {fileInfo ? formatVaultFormat(fileInfo.format) : "—"}
           </span>
         </div>
         <div className="detail-field-row">

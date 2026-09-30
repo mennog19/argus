@@ -9,6 +9,7 @@ import {
 } from "kdbxweb";
 import {
   IncorrectMasterPasswordError,
+  VaultFormat,
   VaultKey,
   VaultRepository,
   VaultSession,
@@ -91,6 +92,10 @@ class KdbxVaultSession implements VaultSession {
     return this.current;
   }
 
+  get format(): VaultFormat {
+    return { major: this.db.versionMajor, minor: this.db.versionMinor };
+  }
+
   async save(vault: Vault): Promise<ArrayBuffer> {
     applyVaultToKdbx(this.db, vault);
     const fileBytes = await this.db.save();
@@ -108,6 +113,17 @@ class KdbxVaultSession implements VaultSession {
       throw new IncorrectMasterPasswordError();
     }
     await this.db.credentials.setPassword(ProtectedValue.fromString(newMasterPassword));
+  }
+
+  upgradeFormat(): void {
+    if (this.db.versionMajor >= 4) {
+      return;
+    }
+    // KDBX 3 has only AES-KDF, so kdbxweb's upgrade has to pick a KDF, and
+    // picks its own cheap Argon2d defaults. Replace them with the settings a
+    // vault Argus creates gets, or the upgrade would weaken the file.
+    this.db.upgrade();
+    applyDefaultKdf(this.db);
   }
 
   private async matchesCurrentPassword(candidate: string): Promise<boolean> {

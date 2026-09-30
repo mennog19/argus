@@ -17,6 +17,7 @@ import { AutoTypeService } from "./application/auto-type-service";
 import { TauriWindowEvents } from "./infrastructure/tauri-window-events";
 import { TauriWindowProtection } from "./infrastructure/tauri-window-protection";
 import { TauriWindowCloseBehavior } from "./infrastructure/tauri-window-close-behavior";
+import { TauriVaultOpenRequests } from "./infrastructure/tauri-vault-open-requests";
 
 const vaultFileDialog = new TauriVaultFileDialog();
 const fileStorage = new TauriFileStorage();
@@ -38,6 +39,7 @@ const windowProtection = new TauriWindowProtection();
 const windowCloseBehavior = new TauriWindowCloseBehavior();
 const autoTypeService = new AutoTypeService(new TauriAutoTyper());
 const globalHotkey = new TauriGlobalHotkey();
+const vaultOpenRequests = new TauriVaultOpenRequests();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -53,6 +55,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       mergeSource={mergeSource}
       autoTypeService={autoTypeService}
       globalHotkey={globalHotkey}
+      vaultOpenRequests={vaultOpenRequests}
     />
   </React.StrictMode>,
 );

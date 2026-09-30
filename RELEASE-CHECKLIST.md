@@ -4,9 +4,6 @@ Pre-release assessment of Argus, based on a code review on 2026-09-27.
 
 At the time of review, lint was clean and all 1,133 tests passed at 100% coverage. The items below are about behaviour and security defaults, not code quality.
 
-# todo
-Opening a .kdbx by double-click (no file association is configured).
-upgrade KDBX3 to 4. option
 ## Release engineering
 
 - [ ] **Code signing.** Without it, Windows SmartScreen will warn users off an unsigned password manager.

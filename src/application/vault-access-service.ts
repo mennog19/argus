@@ -1,7 +1,7 @@
 import { Vault } from "../domain";
 import { FileStorage } from "./file-storage";
 import { VaultFileDialog } from "./vault-file-dialog";
-import { VaultKey, VaultRepository, VaultSession } from "./vault-repository";
+import { VaultFormat, VaultKey, VaultRepository, VaultSession } from "./vault-repository";
 
 export interface OpenedVault {
   vault: Vault;
@@ -21,6 +21,8 @@ export type NewVaultKeyFile =
 export interface VaultFileInfo {
   sizeBytes: number;
   lastModifiedMs: number;
+  /** The open vault's format, which is what its last open or save left on disk. */
+  format: VaultFormat;
 }
 
 export interface SaveVaultOptions {
@@ -52,6 +54,13 @@ export class VaultSaveConflictError extends Error {
 }
 
 const BACKUP_SUFFIXES = [".bak1", ".bak2", ".bak3"];
+
+/**
+ * Suffix of the copy `upgradeVaultFormat` keeps of a vault's KDBX 3 file.
+ * Outside the rolling backups, so later saves never rotate it away, and ending
+ * in `.kdbx` so KeePass opens it as is.
+ */
+const KDBX3_COPY_SUFFIX = ".kdbx3-backup.kdbx";
 
 /**
  * Orchestrates the open-existing / create-new vault flows: prompt for a
@@ -271,6 +280,32 @@ export class VaultAccessService {
   }
 
   /**
+   * Upgrades the open vault from KDBX 3 to KDBX 4 and immediately persists it
+   * via `saveVault`. The conflict check runs before the upgrade for the same
+   * reason as in `changeMasterPassword`: the upgrade changes the open
+   * document, which a conflict found afterwards would leave out of step with
+   * the file on disk.
+   *
+   * First copies the KDBX 3 file to `<path>.kdbx3-backup.kdbx`, overwriting
+   * any copy an earlier upgrade left. `.bak1` gets it too, but only until three
+   * more saves rotate it out; this copy stays until the user deletes it. A
+   * failed copy stops the upgrade before the file is touched.
+   *
+   * Resolves to the vault as saved, like `saveVault`.
+   */
+  async upgradeVaultFormat(vault: Vault, filePath: string): Promise<Vault> {
+    const session = this.openSession();
+    const fileExists = await this.fileStorage.exists(filePath);
+    await this.assertNoConflict(filePath, fileExists);
+    if (fileExists) {
+      await this.fileStorage.grantAccess(filePath, KDBX3_COPY_SUFFIX);
+      await this.fileStorage.copyFile(filePath, filePath + KDBX3_COPY_SUFFIX);
+    }
+    session.upgradeFormat();
+    return this.saveVault(vault, filePath);
+  }
+
+  /**
    * Re-encrypts each existing backup of `filePath` under the new password.
    * Runs only after the vault itself has been saved, and never throws: the
    * password change has already happened by then, and reporting it as failed
@@ -332,13 +367,17 @@ export class VaultAccessService {
     }
   }
 
-  /** Current on-disk size and last-modified time of the vault at `filePath`. */
+  /**
+   * Current on-disk size and last-modified time of the open vault, saved at
+   * `filePath`, and the format it's in.
+   */
   async getFileInfo(filePath: string): Promise<VaultFileInfo> {
+    const { format } = this.openSession();
     const [sizeBytes, lastModifiedMs] = await Promise.all([
       this.fileStorage.size(filePath),
       this.fileStorage.lastModified(filePath),
     ]);
-    return { sizeBytes, lastModifiedMs };
+    return { sizeBytes, lastModifiedMs, format };
   }
 
   private async rotateBackups(filePath: string): Promise<void> {

@@ -1,17 +1,19 @@
 mod atomic_write;
 mod auto_type;
 mod clipboard;
+mod open_vault;
 mod session_lock;
 mod tray;
 
 use tauri_plugin_fs::FsExt;
 
-/// Rolling-backup suffixes `VaultAccessService` rotates next to a vault; the
-/// only paths `grant_file_access` is willing to widen scope to.
-const ALLOWED_BACKUP_SUFFIXES: [&str; 3] = [".bak1", ".bak2", ".bak3"];
+/// Suffixes of the backups `VaultAccessService` writes next to a vault: the
+/// rolling backups it rotates, and the copy a KDBX 4 upgrade keeps of the
+/// KDBX 3 file. The only paths `grant_file_access` is willing to widen scope to.
+const ALLOWED_BACKUP_SUFFIXES: [&str; 4] = [".bak1", ".bak2", ".bak3", ".kdbx3-backup.kdbx"];
 
 /// Appends `suffix` to `anchor`, but only when `suffix` is one of the fixed
-/// rolling-backup suffixes. A plain function (no `AppHandle`) so the
+/// backup suffixes. A plain function (no `AppHandle`) so the
 /// allow-list check is unit-testable without a running Tauri app.
 fn derive_backup_path(anchor: &str, suffix: &str) -> Result<String, String> {
     if !ALLOWED_BACKUP_SUFFIXES.contains(&suffix) {
@@ -20,9 +22,9 @@ fn derive_backup_path(anchor: &str, suffix: &str) -> Result<String, String> {
     Ok(format!("{anchor}{suffix}"))
 }
 
-/// Adds `anchor`'s `.bak1`/`.bak2`/`.bak3` rolling backup to the filesystem
-/// scope, so later `plugin-fs` calls against it are not rejected as
-/// out-of-scope.
+/// Adds one of `anchor`'s backups (`.bak1`/`.bak2`/`.bak3`, or the KDBX 3
+/// copy) to the filesystem scope, so later `plugin-fs` calls against it are
+/// not rejected as out-of-scope.
 ///
 /// The dialog plugin grants access to exactly the file the user picked, so
 /// the backups `VaultAccessService` writes next to a vault stay forbidden
@@ -86,8 +88,9 @@ pub fn run() {
     tauri::Builder::default()
         // Must be registered first: plugins run in registration order, and a
         // second launch needs to be caught before anything else initializes.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             tray::show_main_window(app);
+            open_vault::open_from_second_launch(app, &args, &cwd);
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -105,6 +108,7 @@ pub fn run() {
         .plugin(tauri_plugin_persisted_scope::init())
         .manage(auto_type::AutoTypeState::default())
         .manage(tray::CloseToTray::default())
+        .manage(open_vault::LaunchVault::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if tray::hide_on_close(window) {
@@ -117,6 +121,7 @@ pub fn run() {
         .setup(|app| {
             clipboard::clear_any_secret(app.handle());
             session_lock::watch(app.handle());
+            open_vault::remember_launch_vault(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -127,7 +132,8 @@ pub fn run() {
             auto_type::auto_type_send,
             clipboard::clipboard_write_secret,
             clipboard::clipboard_clear_secret,
-            tray::set_close_to_tray
+            tray::set_close_to_tray,
+            open_vault::launch_vault_path
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -155,6 +161,16 @@ mod tests {
     fn allows_all_three_rolling_backup_suffixes() {
         assert!(derive_backup_path("C:/vaults/mine.kdbx", ".bak2").is_ok());
         assert!(derive_backup_path("C:/vaults/mine.kdbx", ".bak3").is_ok());
+    }
+
+    #[test]
+    fn allows_the_kdbx3_copy_an_upgrade_keeps() {
+        let result = derive_backup_path("C:/vaults/mine.kdbx", ".kdbx3-backup.kdbx");
+
+        assert_eq!(
+            result,
+            Ok("C:/vaults/mine.kdbx.kdbx3-backup.kdbx".to_string())
+        );
     }
 
     #[test]
