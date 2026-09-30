@@ -21,6 +21,7 @@ const FULL_SETTINGS: AppSettings = {
   },
   autoType: { enabled: true, hotkey: "CommandOrControl+Alt+K" },
   groupDeleteMode: "keepContents",
+  expiredEntryAction: "delete",
   accentColor: { kind: "custom", hue: 200 },
   theme: "light",
   contentProtection: false,
@@ -32,6 +33,7 @@ const FULL_SETTINGS: AppSettings = {
     notes: false,
     tags: true,
     group: true,
+    expiry: false,
   },
   entrySort: "title-desc",
 };
@@ -101,6 +103,7 @@ describe("parseStoredSettings", () => {
       theme: "sepia",
       contentProtection: "yes",
       groupDeleteMode: "shred",
+      expiredEntryAction: "archive",
       entrySort: "random",
       accentColor: { kind: "custom", hue: 400 },
       entryFieldVisibility: { username: true },
@@ -117,6 +120,16 @@ describe("parseStoredSettings", () => {
   it("drops a clipboard clear delay over 10 minutes", () => {
     expect(parse({ clipboardClearSeconds: 601 }).clipboardClearSeconds).toBeUndefined();
     expect(parse({ clipboardClearSeconds: 600 }).clipboardClearSeconds).toBe(600);
+  });
+
+  it("keeps field visibility written before the expiry field existed, with it shown", () => {
+    const withoutExpiry: Record<string, boolean> = { ...FULL_SETTINGS.entryFieldVisibility };
+    delete withoutExpiry.expiry;
+
+    expect(parse({ entryFieldVisibility: withoutExpiry }).entryFieldVisibility).toEqual({
+      ...withoutExpiry,
+      expiry: true,
+    });
   });
 
   describe("autoLock", () => {

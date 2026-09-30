@@ -6,6 +6,7 @@ import { AppearanceSection } from "./settings/AppearanceSection";
 import { AutoTypeSection } from "./settings/AutoTypeSection";
 import { DangerZoneSection } from "./settings/DangerZoneSection";
 import { EntryCreationSection } from "./settings/EntryCreationSection";
+import { ExpiredEntriesSection } from "./settings/ExpiredEntriesSection";
 import { GroupsSection } from "./settings/GroupsSection";
 import { SecuritySection } from "./settings/SecuritySection";
 import { SettingChangeHandler } from "../setting-change";
@@ -65,6 +66,10 @@ export function SettingsScreen({
           />
           <EntryCreationSection
             entryFieldVisibility={settings.entryFieldVisibility}
+            onSettingChange={onSettingChange}
+          />
+          <ExpiredEntriesSection
+            expiredEntryAction={settings.expiredEntryAction}
             onSettingChange={onSettingChange}
           />
           <section className="detail-section">

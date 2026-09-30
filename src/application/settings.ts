@@ -62,6 +62,17 @@ export type GroupDeleteMode = (typeof GROUP_DELETE_MODES)[number];
 
 export const DEFAULT_GROUP_DELETE_MODE: GroupDeleteMode = "deleteContents";
 
+/**
+ * What happens to an entry once its expiry date passes: `"mark"` only flags
+ * it as expired (KeePass's behavior); `"recycle"` moves it into the recycle
+ * bin; `"delete"` removes it from the vault outright, history and all.
+ */
+export const EXPIRED_ENTRY_ACTIONS = ["mark", "recycle", "delete"] as const;
+
+export type ExpiredEntryAction = (typeof EXPIRED_ENTRY_ACTIONS)[number];
+
+export const DEFAULT_EXPIRED_ENTRY_ACTION: ExpiredEntryAction = "mark";
+
 /** One of the app's built-in accent color presets (see `ui/accent-color.ts` for their hues). */
 export const ACCENT_COLOR_PRESET_IDS = [
   "blue",
@@ -112,7 +123,14 @@ export const ENTRY_FIELD_KEYS = [
   "notes",
   "tags",
   "group",
+  "expiry",
 ] as const;
+
+/**
+ * Fields added after settings files without them were already written. A
+ * file that leaves one out gets it at its default rather than being rejected.
+ */
+export const LATER_ENTRY_FIELD_KEYS: ReadonlySet<EntryFieldKey> = new Set(["expiry"]);
 
 export type EntryFieldKey = (typeof ENTRY_FIELD_KEYS)[number];
 
@@ -126,6 +144,7 @@ export const DEFAULT_ENTRY_FIELD_VISIBILITY: EntryFieldVisibility = {
   notes: true,
   tags: true,
   group: true,
+  expiry: true,
 };
 
 /**
@@ -163,6 +182,8 @@ export interface AppSettings {
   readonly autoType?: AutoTypeSettings;
   /** Undefined until the user changes it, at which point `DEFAULT_GROUP_DELETE_MODE` applies. */
   readonly groupDeleteMode?: GroupDeleteMode;
+  /** Undefined until the user changes it, at which point `DEFAULT_EXPIRED_ENTRY_ACTION` applies. */
+  readonly expiredEntryAction?: ExpiredEntryAction;
   /** Undefined until the user changes it, at which point `DEFAULT_ACCENT_COLOR` applies. */
   readonly accentColor?: AccentColor;
   /** Undefined until the user changes it, at which point `DEFAULT_THEME` applies. */
@@ -211,6 +232,7 @@ export interface EffectiveSettings {
   readonly autoLock: AutoLockSettings;
   readonly autoType: AutoTypeSettings;
   readonly groupDeleteMode: GroupDeleteMode;
+  readonly expiredEntryAction: ExpiredEntryAction;
   readonly accentColor: AccentColor;
   readonly theme: Theme;
   readonly contentProtection: boolean;
@@ -227,6 +249,7 @@ export function resolveSettings(settings: AppSettings): EffectiveSettings {
     autoLock: settings.autoLock ?? DEFAULT_AUTO_LOCK,
     autoType: settings.autoType ?? DEFAULT_AUTO_TYPE,
     groupDeleteMode: settings.groupDeleteMode ?? DEFAULT_GROUP_DELETE_MODE,
+    expiredEntryAction: settings.expiredEntryAction ?? DEFAULT_EXPIRED_ENTRY_ACTION,
     accentColor: settings.accentColor ?? DEFAULT_ACCENT_COLOR,
     theme: settings.theme ?? DEFAULT_THEME,
     contentProtection: settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,

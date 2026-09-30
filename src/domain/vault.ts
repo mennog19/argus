@@ -81,6 +81,21 @@ function findEntryInTree(group: Group, id: EntryId): Entry | undefined {
   return undefined;
 }
 
+function collectEntriesWithExpiry(
+  group: Group,
+  skipGroupId: GroupId | undefined,
+  found: Entry[],
+): Entry[] {
+  if (skipGroupId?.equals(group.id)) {
+    return found;
+  }
+  found.push(...group.entries.filter((entry) => entry.expiresAt !== undefined));
+  for (const child of group.groups) {
+    collectEntriesWithExpiry(child, skipGroupId, found);
+  }
+  return found;
+}
+
 const RECYCLE_BIN_NAME = "Recycle Bin";
 
 /**
@@ -93,11 +108,23 @@ export class Vault {
   readonly name: string;
   readonly rootGroup: Group;
   readonly recycleBinId: GroupId | undefined;
+  /**
+   * Entries removed with {@link purgeEntry} since the vault was loaded. The
+   * file mapper treats any other entry missing from the tree as deleted and
+   * moves it to the recycle bin, so a purge has to be told apart from that.
+   */
+  readonly purgedEntryIds: readonly EntryId[];
 
-  constructor(name: string, rootGroup: Group, recycleBinId?: GroupId) {
+  constructor(
+    name: string,
+    rootGroup: Group,
+    recycleBinId?: GroupId,
+    purgedEntryIds: readonly EntryId[] = [],
+  ) {
     this.name = name;
     this.rootGroup = rootGroup;
     this.recycleBinId = recycleBinId;
+    this.purgedEntryIds = purgedEntryIds;
   }
 
   static create(name: string): Vault {
@@ -118,7 +145,7 @@ export class Vault {
     if (!result.found) {
       throw new Error(notFoundMessage);
     }
-    return new Vault(this.name, result.group, this.recycleBinId);
+    return new Vault(this.name, result.group, this.recycleBinId, this.purgedEntryIds);
   }
 
   findGroup(groupId: GroupId): Group | undefined {
@@ -208,7 +235,10 @@ export class Vault {
     }
     const bin = Group.create(RECYCLE_BIN_NAME);
     const rootWithBin = this.rootGroup.addGroup(bin);
-    return { vault: new Vault(this.name, rootWithBin, bin.id), recycleBinId: bin.id };
+    return {
+      vault: new Vault(this.name, rootWithBin, bin.id, this.purgedEntryIds),
+      recycleBinId: bin.id,
+    };
   }
 
   /** Soft-deletes an entry by moving it into the recycle bin (created lazily if needed). */
@@ -259,7 +289,7 @@ export class Vault {
       }
       return updated;
     });
-    return new Vault(vault.name, result.group, recycleBinId).addGroup(
+    return new Vault(vault.name, result.group, recycleBinId, vault.purgedEntryIds).addGroup(
       recycleBinId,
       new Group(group.id, group.name),
     );
@@ -357,6 +387,28 @@ export class Vault {
     if (!result.found) {
       return this;
     }
-    return new Vault(this.name, result.group, this.recycleBinId);
+    return new Vault(this.name, result.group, this.recycleBinId, this.purgedEntryIds);
+  }
+
+  /** Entries that have an expiry date, leaving out those in the recycle bin. */
+  entriesWithExpiry(): Entry[] {
+    return collectEntriesWithExpiry(this.rootGroup, this.recycleBinId, []);
+  }
+
+  /** Entries whose expiry date `now` has reached, leaving out those in the recycle bin. */
+  expiredEntries(now: Date): Entry[] {
+    return this.entriesWithExpiry().filter((entry) => entry.isExpired(now));
+  }
+
+  /**
+   * Deletes an entry outright, wherever it is, without it passing through the
+   * recycle bin. Its history goes with it.
+   */
+  purgeEntry(entryId: EntryId): Vault {
+    const removed = this.removeEntry(entryId);
+    return new Vault(removed.name, removed.rootGroup, removed.recycleBinId, [
+      ...this.purgedEntryIds,
+      entryId,
+    ]);
   }
 }

@@ -16,11 +16,19 @@ import {
 } from "../../domain";
 import { EntryFieldVisibility } from "../../application/settings";
 import { IconPicker } from "../entry-icons/IconPicker";
+import { parseDateTimeLocalValue, toDateTimeLocalValue } from "../format";
 import { EyeIcon, EyeOffIcon } from "../icons";
 import { useAsyncAction } from "../use-async-action";
 import { GroupOption } from "../vault-browsing";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import { TagsEditor } from "./TagsEditor";
+
+/** Where the expiry date starts when the user first switches expiry on: a year out, as KeePass does. */
+function defaultExpiry(): Date {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 1);
+  return date;
+}
 
 interface EntryFormProps {
   initialEntry?: Entry;
@@ -60,6 +68,10 @@ export function EntryForm({
   const [groupId, setGroupId] = useState(initialGroupId);
   const [tags, setTags] = useState(initialEntry?.tags ?? new Tags());
   const [icon, setIcon] = useState(initialEntry?.icon ?? Icon.AUTO);
+  const [expires, setExpires] = useState(initialEntry?.expiresAt !== undefined);
+  const [expiryInput, setExpiryInput] = useState(
+    initialEntry?.expiresAt ? toDateTimeLocalValue(initialEntry.expiresAt) : "",
+  );
   const { busy, error, run, fail } = useAsyncAction();
 
   function handleGenerate() {
@@ -103,6 +115,21 @@ export function EntryForm({
       }
     }
 
+    let expiresAt: Date | undefined;
+    if (expires) {
+      expiresAt = parseDateTimeLocalValue(expiryInput);
+      if (!expiresAt) {
+        fail("Pick an expiry date, or turn expiry off.");
+        return;
+      }
+      // The input only has minute precision; an untouched date keeps its
+      // stored seconds, so opening and saving an entry isn't an edit.
+      const initialExpiresAt = initialEntry?.expiresAt;
+      if (initialExpiresAt && toDateTimeLocalValue(initialExpiresAt) === expiryInput) {
+        expiresAt = initialExpiresAt;
+      }
+    }
+
     const fields = {
       title,
       username,
@@ -112,6 +139,7 @@ export function EntryForm({
       tags,
       customFields,
       icon,
+      expiresAt,
     };
     const entry = initialEntry ? initialEntry.update(fields) : Entry.create(fields);
 
@@ -261,6 +289,35 @@ export function EntryForm({
         <div className="field-group">
           <span className="field-label">Tags</span>
           <TagsEditor tags={tags} onChange={setTags} />
+        </div>
+      )}
+
+      {fieldVisibility.expiry && (
+        <div className="field-group">
+          <label className="field-label" htmlFor="entry-expires-at">
+            Expires
+          </label>
+          <div className="entry-expiry-field">
+            <input
+              type="checkbox"
+              aria-label="Entry expires"
+              checked={expires}
+              onChange={(event) => {
+                setExpires(event.target.checked);
+                if (event.target.checked && expiryInput === "") {
+                  setExpiryInput(toDateTimeLocalValue(defaultExpiry()));
+                }
+              }}
+            />
+            <input
+              id="entry-expires-at"
+              type="datetime-local"
+              className="field-input"
+              value={expiryInput}
+              disabled={!expires}
+              onChange={(event) => setExpiryInput(event.target.value)}
+            />
+          </div>
         </div>
       )}
 

@@ -53,6 +53,7 @@ const TEST_SETTINGS: EffectiveSettings = {
   autoLock: DEFAULT_AUTO_LOCK,
   autoType: DEFAULT_AUTO_TYPE,
   groupDeleteMode: "deleteContents",
+  expiredEntryAction: "mark",
   accentColor: DEFAULT_ACCENT_COLOR,
   theme: DEFAULT_THEME,
   contentProtection: true,
@@ -117,6 +118,7 @@ function renderShell(
     autoLock: overrides.autoLock ?? TEST_SETTINGS.autoLock,
     autoType: TEST_SETTINGS.autoType,
     groupDeleteMode: overrides.groupDeleteMode ?? TEST_SETTINGS.groupDeleteMode,
+    expiredEntryAction: TEST_SETTINGS.expiredEntryAction,
     accentColor: overrides.accentColor ?? TEST_SETTINGS.accentColor,
     theme: overrides.theme ?? TEST_SETTINGS.theme,
     contentProtection: overrides.contentProtection ?? TEST_SETTINGS.contentProtection,
@@ -710,6 +712,45 @@ describe("VaultShell", () => {
     await user.click(screen.getByText("(untitled)"));
 
     expect(screen.getByRole("heading", { name: "(untitled)" })).toBeInTheDocument();
+  });
+
+  describe("expiry", () => {
+    it("badges an expired entry in the list and its detail, and says when it expired", async () => {
+      const user = userEvent.setup();
+      const expiresAt = new Date(Date.now() - 86_400_000);
+      let vault = Vault.create("Mine");
+      vault = vault
+        .addEntry(vault.rootGroup.id, Entry.create({ title: "Old Login", expiresAt }))
+        .addEntry(vault.rootGroup.id, Entry.create({ title: "Current Login" }));
+
+      renderShell(vault);
+
+      expect(rowButton("Old Login")).toHaveTextContent("Expired");
+      expect(rowButton("Current Login")).not.toHaveTextContent("Expired");
+
+      await user.click(rowButton("Old Login"));
+
+      const header = screen.getByRole("heading", { name: "Old Login" }).parentElement!;
+      expect(header).toHaveTextContent("Expired");
+      const row = screen.getByText(formatDateTime(expiresAt)).parentElement!;
+      expect(row).toHaveTextContent(/^Expired/);
+    });
+
+    it("shows when a still-valid entry expires, without a badge", async () => {
+      const user = userEvent.setup();
+      const expiresAt = new Date(Date.now() + 86_400_000);
+      let vault = Vault.create("Mine");
+      vault = vault.addEntry(vault.rootGroup.id, Entry.create({ title: "Login", expiresAt }));
+
+      renderShell(vault);
+      await user.click(rowButton("Login"));
+
+      expect(screen.getByRole("heading", { name: "Login" }).parentElement!).not.toHaveTextContent(
+        "Expired",
+      );
+      const row = screen.getByText(formatDateTime(expiresAt)).parentElement!;
+      expect(row).toHaveTextContent(/^Expires/);
+    });
   });
 
   describe("creating an entry", () => {

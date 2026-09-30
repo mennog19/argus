@@ -25,6 +25,7 @@ const CUSTOMIZED: AppSettings = {
   },
   contentProtection: false,
   groupDeleteMode: "keepContents",
+  expiredEntryAction: "recycle",
   entryFieldVisibility: {
     username: true,
     password: false,
@@ -33,6 +34,7 @@ const CUSTOMIZED: AppSettings = {
     notes: true,
     tags: false,
     group: true,
+    expiry: false,
   },
 };
 
@@ -65,6 +67,7 @@ describe("toPortableSettings", () => {
       },
       groups: { deleteMode: "keepContents" },
       entryCreation: { fieldVisibility: CUSTOMIZED.entryFieldVisibility },
+      entries: { expiredAction: "recycle" },
     });
   });
 
@@ -91,8 +94,10 @@ describe("toPortableSettings", () => {
           notes: true,
           tags: true,
           group: true,
+          expiry: true,
         },
       },
+      entries: { expiredAction: "mark" },
     });
   });
 
@@ -127,6 +132,7 @@ describe("applyPortableSettings", () => {
     expect(applied.contentProtection).toBe(false);
     expect(applied.groupDeleteMode).toBe("keepContents");
     expect(applied.entryFieldVisibility).toEqual(CUSTOMIZED.entryFieldVisibility);
+    expect(applied.expiredEntryAction).toBe("recycle");
   });
 
   it("keeps the machine-local settings", () => {
@@ -311,6 +317,21 @@ describe("parsePortableSettings", () => {
     expect(() => importRaw(raw)).toThrow(/Lock-after-inactivity minutes must be a whole number/i);
   });
 
+  it("imports a file from before the expired entry action existed as marking them", () => {
+    expect(importRaw(rawOf({ entries: undefined })).entries.expiredAction).toBe("mark");
+    expect(importRaw(rawOf({ entries: {} })).entries.expiredAction).toBe("mark");
+  });
+
+  it("rejects an entries section that isn't an object", () => {
+    expect(() => importRaw(rawOf({ entries: "mark" }))).toThrow(/"entries" section is missing/i);
+  });
+
+  it("rejects an unknown expired entry action", () => {
+    expect(() => importRaw(rawOf({ entries: { expiredAction: "archive" } }))).toThrow(
+      /Expired entry action must be one of: mark, recycle, delete/i,
+    );
+  });
+
   it("rejects an unknown group delete mode", () => {
     const raw = rawOf();
     (raw.groups as Record<string, unknown>).deleteMode = "recycle";
@@ -334,5 +355,27 @@ describe("parsePortableSettings", () => {
     delete visibility.totp;
 
     expect(() => importRaw(raw)).toThrow(/Entry field "totp" must be true or false/i);
+  });
+
+  it("imports field visibility from before the expiry field existed with it shown", () => {
+    const raw = rawOf();
+    const visibility = (raw.entryCreation as Record<string, unknown>).fieldVisibility as Record<
+      string,
+      unknown
+    >;
+    delete visibility.expiry;
+
+    expect(importRaw(raw).entryCreation.fieldVisibility.expiry).toBe(true);
+  });
+
+  it("rejects a non-boolean expiry field visibility", () => {
+    const raw = rawOf();
+    const visibility = (raw.entryCreation as Record<string, unknown>).fieldVisibility as Record<
+      string,
+      unknown
+    >;
+    visibility.expiry = "yes";
+
+    expect(() => importRaw(raw)).toThrow(/Entry field "expiry" must be true or false/i);
   });
 });

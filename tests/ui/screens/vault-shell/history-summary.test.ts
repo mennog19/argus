@@ -9,6 +9,7 @@ describe("describeChanges", () => {
   it("names a single field", () => {
     expect(describeChanges(["password"])).toBe("Password changed");
     expect(describeChanges(["url"])).toBe("URL changed");
+    expect(describeChanges(["expiry"])).toBe("Expiry date changed");
   });
 
   it("lists several fields, joining the last with 'and'", () => {

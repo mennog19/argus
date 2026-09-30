@@ -9,6 +9,7 @@ import {
   DEFAULT_ENTRY_FIELD_VISIBILITY,
   EffectiveSettings,
   EntryFieldVisibility,
+  ExpiredEntryAction,
   GroupDeleteMode,
   Theme,
 } from "../../../src/application/settings";
@@ -38,6 +39,7 @@ function renderSettings(
     autoLock?: AutoLockSettings;
     autoType?: AutoTypeSettings;
     groupDeleteMode?: GroupDeleteMode;
+    expiredEntryAction?: ExpiredEntryAction;
     accentColor?: AccentColor;
     theme?: Theme;
     contentProtection?: boolean;
@@ -67,6 +69,7 @@ function renderSettings(
     autoLock: overrides.autoLock ?? DEFAULT_AUTO_LOCK,
     autoType: overrides.autoType ?? DEFAULT_AUTO_TYPE,
     groupDeleteMode: overrides.groupDeleteMode ?? "deleteContents",
+    expiredEntryAction: overrides.expiredEntryAction ?? "mark",
     accentColor: overrides.accentColor ?? DEFAULT_ACCENT_COLOR,
     theme: overrides.theme ?? "dark",
     contentProtection: overrides.contentProtection ?? true,
@@ -138,6 +141,34 @@ describe("SettingsScreen", () => {
     const second = renderSettings({ groupDeleteMode: "keepContents" });
     fireEvent.click(screen.getByRole("radio", { name: /delete its entries/i }));
     expect(second.onSettingChange).toHaveBeenLastCalledWith("groupDeleteMode", "deleteContents");
+  });
+
+  it("shows the current expired entry action", () => {
+    renderSettings({ expiredEntryAction: "recycle" });
+
+    expect(screen.getByRole("radio", { name: /move it to the recycle bin/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /mark it as expired/i })).not.toBeChecked();
+  });
+
+  it.each([
+    [/mark it as expired/i, "mark", "delete"],
+    [/move it to the recycle bin/i, "recycle", "mark"],
+    [/delete it permanently/i, "delete", "mark"],
+  ] as const)("reports picking %s", (name, action, current) => {
+    const { onSettingChange } = renderSettings({ expiredEntryAction: current });
+
+    fireEvent.click(screen.getByRole("radio", { name }));
+
+    expect(onSettingChange).toHaveBeenLastCalledWith("expiredEntryAction", action);
+  });
+
+  it("warns that permanently deleting expired entries can't be undone", () => {
+    renderSettings({ expiredEntryAction: "mark" });
+    expect(screen.queryByText(/can't be undone/i)).not.toBeInTheDocument();
+
+    cleanup();
+    renderSettings({ expiredEntryAction: "delete" });
+    expect(screen.getByText(/can't be undone/i)).toBeInTheDocument();
   });
 
   it("shows the current clipboard clear delay", () => {
@@ -545,6 +576,18 @@ describe("SettingsScreen", () => {
       expect(screen.getByRole("checkbox", { name: "Notes" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "Group" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "Tags" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Expiry date" })).toBeChecked();
+    });
+
+    it("reports hiding the expiry date field", () => {
+      const { onSettingChange } = renderSettings();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Expiry date" }));
+
+      expect(onSettingChange).toHaveBeenCalledWith("entryFieldVisibility", {
+        ...DEFAULT_ENTRY_FIELD_VISIBILITY,
+        expiry: false,
+      });
     });
 
     it("reflects a field that's been turned off", () => {

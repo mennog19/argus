@@ -28,6 +28,12 @@ export interface EntryFields {
   tags?: Tags;
   customFields?: CustomFields;
   icon?: Icon;
+  /**
+   * When the entry stops being valid, as KeePass's "Expires" option. Unlike
+   * `times` this is content: the user sets it, so changing it is an edit.
+   * Passing `undefined` explicitly to `update` clears it.
+   */
+  expiresAt?: Date;
   times?: EntryTimes;
   history?: readonly Entry[];
 }
@@ -46,6 +52,7 @@ export class Entry {
   readonly tags: Tags;
   readonly customFields: CustomFields;
   readonly icon: Icon;
+  readonly expiresAt: Date | undefined;
   readonly times: EntryTimes;
   /**
    * Earlier versions of this entry, oldest first, the way KDBX keeps them:
@@ -64,6 +71,7 @@ export class Entry {
     this.tags = fields.tags ?? new Tags();
     this.customFields = fields.customFields ?? new CustomFields();
     this.icon = fields.icon ?? Icon.AUTO;
+    this.expiresAt = fields.expiresAt;
     this.times = fields.times ?? {};
     this.history = fields.history ?? [];
   }
@@ -86,9 +94,15 @@ export class Entry {
       tags: fields.tags ?? this.tags,
       customFields: fields.customFields ?? this.customFields,
       icon: fields.icon ?? this.icon,
+      expiresAt: "expiresAt" in fields ? fields.expiresAt : this.expiresAt,
       times: fields.times ?? this.times,
       history: fields.history ?? this.history,
     });
+  }
+
+  /** Whether the entry's expiry date has been reached by `now`. */
+  isExpired(now: Date): boolean {
+    return this.expiresAt !== undefined && this.expiresAt.getTime() <= now.getTime();
   }
 
   /** The same entry with `at` recorded as when it was last opened. */
@@ -112,6 +126,7 @@ export class Entry {
       tags: revision.tags,
       customFields: revision.customFields,
       icon: revision.icon,
+      expiresAt: revision.expiresAt,
     });
   }
 

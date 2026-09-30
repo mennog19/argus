@@ -463,6 +463,49 @@ describe("App", () => {
     expect(saveVault).toHaveBeenCalledWith(expect.anything(), "C:/vaults/personal.kdbx");
   });
 
+  it("moves entries that expired while the vault was closed to the recycle bin on unlock", async () => {
+    const user = userEvent.setup();
+    const empty = Vault.create("Personal");
+    const expired = Entry.create({ title: "Old Login", expiresAt: new Date(Date.now() - 1000) });
+    const opened: OpenedVault = {
+      vault: empty.addEntry(empty.rootGroup.id, expired),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const saveVault = vi.fn(async (vault: Vault) => vault);
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+          saveVault,
+        })}
+        settingsStore={fakeSettingsStore({
+          load: vi.fn().mockResolvedValue({ recentVaults: [], expiredEntryAction: "recycle" }),
+        })}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    expect(await screen.findByText("No entries in this group.")).toBeInTheDocument();
+    expect(saveVault).toHaveBeenCalledTimes(1);
+    const [saved, filePath] = saveVault.mock.calls[0] as unknown as [Vault, string];
+    expect(saved.recycleBin!.entries).toEqual([expired]);
+    expect(filePath).toBe("C:/vaults/personal.kdbx");
+  });
+
   it("carries on from the vault as saved, not the one it sent", async () => {
     const user = userEvent.setup();
     const opened: OpenedVault = {

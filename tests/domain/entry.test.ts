@@ -178,4 +178,48 @@ describe("Entry history", () => {
     expect(() => current.restoreRevision(2)).toThrow("No revision 2");
     expect(() => current.deleteRevision(-1)).toThrow("No revision -1");
   });
+
+  describe("expiry", () => {
+    const EXPIRY = new Date("2026-06-01T12:00:00Z");
+
+    it("has no expiry date unless given one", () => {
+      expect(Entry.create().expiresAt).toBeUndefined();
+      expect(Entry.create().isExpired(new Date())).toBe(false);
+    });
+
+    it("is expired from its expiry date on, not before", () => {
+      const entry = Entry.create({ expiresAt: EXPIRY });
+
+      expect(entry.isExpired(new Date(EXPIRY.getTime() - 1))).toBe(false);
+      expect(entry.isExpired(EXPIRY)).toBe(true);
+      expect(entry.isExpired(new Date(EXPIRY.getTime() + 1))).toBe(true);
+    });
+
+    it("keeps its expiry date through an update that doesn't mention it", () => {
+      const entry = Entry.create({ expiresAt: EXPIRY }).update({ title: "Renamed" });
+
+      expect(entry.expiresAt).toBe(EXPIRY);
+    });
+
+    it("changes or clears its expiry date through an update that passes one", () => {
+      const later = new Date("2027-01-01T00:00:00Z");
+      const entry = Entry.create({ expiresAt: EXPIRY });
+
+      expect(entry.update({ expiresAt: later }).expiresAt).toBe(later);
+      expect(entry.update({ expiresAt: undefined }).expiresAt).toBeUndefined();
+    });
+
+    it("brings back a revision's expiry date on restore", () => {
+      const revision = Entry.create({ title: "Old", expiresAt: EXPIRY });
+      const entry = new Entry(revision.id, { title: "New", history: [revision] });
+
+      expect(entry.restoreRevision(0).expiresAt).toBe(EXPIRY);
+      expect(
+        new Entry(revision.id, {
+          expiresAt: EXPIRY,
+          history: [revision.update({ expiresAt: undefined })],
+        }).restoreRevision(0).expiresAt,
+      ).toBeUndefined();
+    });
+  });
 });

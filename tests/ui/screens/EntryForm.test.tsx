@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   CustomField,
@@ -570,6 +570,7 @@ describe("EntryForm", () => {
         notes: false,
         tags: false,
         group: false,
+        expiry: false,
       };
 
       render(
@@ -591,12 +592,14 @@ describe("EntryForm", () => {
       expect(screen.queryByLabelText("Notes")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Group")).not.toBeInTheDocument();
       expect(screen.queryByText("Tags")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Expires")).not.toBeInTheDocument();
 
       await user.type(screen.getByLabelText("Title"), "GitHub");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
       const [entry, groupId] = onSubmit.mock.calls[0];
       expect(entry.title).toBe("GitHub");
+      expect(entry.expiresAt).toBeUndefined();
       expect(groupId).toEqual(GroupId.fromString("root-id"));
     });
 
@@ -614,6 +617,96 @@ describe("EntryForm", () => {
 
       expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
       expect(screen.getByLabelText("Username")).toBeInTheDocument();
+    });
+  });
+
+  describe("expiry", () => {
+    function renderForm(initialEntry?: Entry) {
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EntryForm
+          initialEntry={initialEntry}
+          initialGroupId="root-id"
+          groupOptions={groupOptions}
+          generatorPolicy={{}}
+          fieldVisibility={ALL_FIELDS_VISIBLE}
+          onSubmit={onSubmit}
+          onCancel={vi.fn()}
+        />,
+      );
+      return onSubmit;
+    }
+
+    it("creates an entry that never expires unless asked to", async () => {
+      const user = userEvent.setup();
+      const onSubmit = renderForm();
+
+      expect(screen.getByLabelText("Expires")).toBeDisabled();
+      await user.type(screen.getByLabelText("Title"), "GitHub");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onSubmit.mock.calls[0][0].expiresAt).toBeUndefined();
+    });
+
+    it("starts a newly switched-on expiry a year out, and saves the date picked", async () => {
+      const user = userEvent.setup();
+      const onSubmit = renderForm();
+
+      await user.type(screen.getByLabelText("Title"), "GitHub");
+      await user.click(screen.getByRole("checkbox", { name: "Entry expires" }));
+      const input = screen.getByLabelText("Expires");
+      expect(input).toBeEnabled();
+      expect((input as HTMLInputElement).value.slice(0, 4)).toBe(
+        String(new Date().getFullYear() + 1),
+      );
+
+      fireEvent.change(input, { target: { value: "2027-03-05T09:30" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onSubmit.mock.calls[0][0].expiresAt).toEqual(new Date(2027, 2, 5, 9, 30));
+    });
+
+    it("keeps an existing expiry date to the second when it's left alone", async () => {
+      const user = userEvent.setup();
+      const expiresAt = new Date(2027, 2, 5, 9, 30, 42);
+      const onSubmit = renderForm(Entry.create({ title: "GitHub", expiresAt }));
+
+      expect(screen.getByLabelText("Expires")).toHaveValue("2027-03-05T09:30");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onSubmit.mock.calls[0][0].expiresAt).toBe(expiresAt);
+    });
+
+    it("clears an existing expiry date when expiry is switched off", async () => {
+      const user = userEvent.setup();
+      const onSubmit = renderForm(Entry.create({ title: "GitHub", expiresAt: new Date() }));
+
+      await user.click(screen.getByRole("checkbox", { name: "Entry expires" }));
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onSubmit.mock.calls[0][0].expiresAt).toBeUndefined();
+    });
+
+    it("keeps the date typed in when expiry is switched off and on again", async () => {
+      const user = userEvent.setup();
+      renderForm(Entry.create({ title: "GitHub", expiresAt: new Date(2027, 2, 5, 9, 30) }));
+      const toggle = screen.getByRole("checkbox", { name: "Entry expires" });
+
+      await user.click(toggle);
+      await user.click(toggle);
+
+      expect(screen.getByLabelText("Expires")).toHaveValue("2027-03-05T09:30");
+    });
+
+    it("refuses to save an expiring entry without a date", async () => {
+      const user = userEvent.setup();
+      const onSubmit = renderForm(Entry.create({ title: "GitHub", expiresAt: new Date() }));
+
+      fireEvent.change(screen.getByLabelText("Expires"), { target: { value: "" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByText(/pick an expiry date/i)).toBeInTheDocument();
     });
   });
 });

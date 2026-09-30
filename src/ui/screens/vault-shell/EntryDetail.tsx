@@ -66,7 +66,10 @@ export function EntryDetail({
       <div className="detail-header">
         <EntryAvatar entry={entry} size="lg" />
         <div className="entry-row-text">
-          <h1 className="detail-title">{entry.title || "(untitled)"}</h1>
+          <div className="detail-title-line">
+            <h1 className="detail-title">{entry.title || "(untitled)"}</h1>
+            {entry.isExpired(new Date()) && <span className="expired-badge">Expired</span>}
+          </div>
           {entry.url && (
             <button
               type="button"

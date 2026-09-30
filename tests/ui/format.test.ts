@@ -7,6 +7,8 @@ import {
   formatRelativeTime,
   formatTotpCode,
   isSamePath,
+  parseDateTimeLocalValue,
+  toDateTimeLocalValue,
 } from "../../src/ui/format";
 
 describe("basename", () => {
@@ -151,5 +153,27 @@ describe("formatDateTime", () => {
 
   it("says so when there's no date", () => {
     expect(formatDateTime(undefined)).toBe("Unknown date");
+  });
+});
+
+describe("toDateTimeLocalValue", () => {
+  it("writes the local date and time to the minute, zero-padded", () => {
+    expect(toDateTimeLocalValue(new Date(2026, 2, 5, 9, 7, 45))).toBe("2026-03-05T09:07");
+  });
+});
+
+describe("parseDateTimeLocalValue", () => {
+  it("reads the value as local time", () => {
+    expect(parseDateTimeLocalValue("2026-03-05T09:07")).toEqual(new Date(2026, 2, 5, 9, 7));
+  });
+
+  it("round-trips with toDateTimeLocalValue", () => {
+    const value = "2027-12-31T23:59";
+
+    expect(toDateTimeLocalValue(parseDateTimeLocalValue(value)!)).toBe(value);
+  });
+
+  it.each(["", "not a date"])("is undefined for %o", (value) => {
+    expect(parseDateTimeLocalValue(value)).toBeUndefined();
   });
 });

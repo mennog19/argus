@@ -39,6 +39,7 @@ describe("changedEntryFields", () => {
       title: "Other",
       tags: new Tags([new Tag("a")]),
       customFields: new CustomFields([new CustomField("PIN", "1234", false)]),
+      expiresAt: new Date("2027-01-01T00:00:00Z"),
     });
 
     expect(changedEntryFields(base, changed)).toEqual([
@@ -50,6 +51,7 @@ describe("changedEntryFields", () => {
       "tags",
       "customFields",
       "icon",
+      "expiry",
     ]);
   });
 
@@ -71,5 +73,19 @@ describe("changedEntryFields", () => {
     });
 
     expect(changedEntryFields(base, changed)).toEqual(["customFields"]);
+  });
+
+  it("compares expiry dates by the moment they name", () => {
+    const expiring = base.update({ expiresAt: new Date("2027-01-01T00:00:00Z") });
+
+    expect(
+      changedEntryFields(
+        expiring,
+        expiring.update({ expiresAt: new Date("2027-01-01T00:00:00Z") }),
+      ),
+    ).toEqual([]);
+    expect(changedEntryFields(expiring, expiring.update({ expiresAt: undefined }))).toEqual([
+      "expiry",
+    ]);
   });
 });
