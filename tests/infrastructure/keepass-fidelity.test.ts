@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { Kdbx } from "kdbxweb";
+import { ByteUtils, Consts, Int64, Kdbx } from "kdbxweb";
 import { CustomField, Entry, Password, totpConfigFromCustomFields } from "../../src/domain";
 import { VaultSession } from "../../src/application/vault-repository";
-import { KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
+import { DEFAULT_KDF, KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 import {
   KEEPASS_FIXTURE_PASSWORD,
   KeePassFixture,
@@ -209,6 +209,68 @@ describe.each<{ file: KeePassFixture; version: [number, number]; name: string }>
         "second-password",
       ]);
     });
+  });
+});
+
+describe("upgrading KeePass's KDBX3 vault to KDBX 4", () => {
+  async function upgradeAndSave() {
+    const bytes = readKeePassFixture("kdbx3-aes.kdbx");
+    const session = await new KdbxVaultRepository().openVault(bytes, {
+      password: KEEPASS_FIXTURE_PASSWORD,
+    });
+    session.upgradeFormat();
+    const saved = await loadRaw(await session.save(session.vault));
+    return { original: await loadRaw(bytes), session, saved };
+  }
+
+  it("reports the format before and after", async () => {
+    const session = await new KdbxVaultRepository().openVault(
+      readKeePassFixture("kdbx3-aes.kdbx"),
+      { password: KEEPASS_FIXTURE_PASSWORD },
+    );
+
+    expect(session.format).toEqual({ major: 3, minor: 1 });
+    session.upgradeFormat();
+    expect(session.format).toEqual({ major: 4, minor: 0 });
+  });
+
+  it("writes KDBX 4 with Argon2id at DEFAULT_KDF strength and base64 dates", async () => {
+    const { saved } = await upgradeAndSave();
+
+    expect([saved.header.versionMajor, saved.header.versionMinor]).toEqual([4, 0]);
+    const params = saved.header.kdfParameters!;
+    expect(ByteUtils.bytesToBase64(params.get("$UUID") as ArrayBuffer)).toBe(Consts.KdfId.Argon2id);
+    expect((params.get("M") as Int64).value).toBe(DEFAULT_KDF.memoryBytes);
+    expect((params.get("I") as Int64).value).toBe(DEFAULT_KDF.iterations);
+    expect(params.get("P")).toBe(DEFAULT_KDF.parallelism);
+    expect(saved.header.keyEncryptionRounds).toBeUndefined();
+    expect(textualDateElements(saved)).toEqual([]);
+  });
+
+  it("keeps every group, entry, attachment, history revision and meta setting", async () => {
+    const { original, saved } = await upgradeAndSave();
+
+    const before = snapshotVault(original);
+    const after = snapshotVault(saved);
+    expect({ ...after, header: undefined }).toEqual({ ...before, header: undefined });
+    // KeePass's cipher choice isn't the upgrade's to change.
+    expect(after.header.dataCipherUuid).toBe(before.header.dataCipherUuid);
+    expect(after.header.compression).toBe(before.header.compression);
+    const everything = after.entries[findEntry(original, "Everything Entry").uuid.id];
+    expect(Object.keys(everything.binaries)).toEqual(["photo.bin", "secret.txt"]);
+  });
+
+  it("leaves a KDBX 4 vault's format and KDF alone", async () => {
+    const bytes = readKeePassFixture("kdbx4-argon2id.kdbx");
+    const session = await new KdbxVaultRepository().openVault(bytes, {
+      password: KEEPASS_FIXTURE_PASSWORD,
+    });
+
+    session.upgradeFormat();
+    const saved = await loadRaw(await session.save(session.vault));
+
+    expect(session.format).toEqual({ major: 4, minor: 1 });
+    expect(snapshotVault(saved).header).toEqual(snapshotVault(await loadRaw(bytes)).header);
   });
 });
 

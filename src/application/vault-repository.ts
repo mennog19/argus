@@ -22,6 +22,12 @@ export interface VaultKey {
   readonly keyFile?: ArrayBuffer;
 }
 
+/** A KDBX file format version, e.g. `{ major: 3, minor: 1 }` for KDBX 3.1. */
+export interface VaultFormat {
+  readonly major: number;
+  readonly minor: number;
+}
+
 /**
  * One opened vault document, live for as long as it stays open.
  *
@@ -42,6 +48,8 @@ export interface VaultSession {
    * rather than the one they saved.
    */
   readonly vault: Vault;
+  /** The file format the document is in: as opened, or as of the last `upgradeFormat`. */
+  readonly format: VaultFormat;
   /** Applies `vault`'s tree onto the open document and serializes it. */
   save(vault: Vault): Promise<ArrayBuffer>;
   /**
@@ -52,6 +60,13 @@ export interface VaultSession {
    * itself; follow with `save`.
    */
   changeMasterPassword(currentMasterPassword: string, newMasterPassword: string): Promise<void>;
+  /**
+   * Converts a KDBX 3 document to KDBX 4, deriving its key with Argon2id from
+   * then on. Does nothing to a document that is already KDBX 4. Like
+   * `changeMasterPassword`, doesn't persist anything by itself; follow with
+   * `save`.
+   */
+  upgradeFormat(): void;
 }
 
 /** Opens and creates KDBX vault documents. Holds no state of its own. */

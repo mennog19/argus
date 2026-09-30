@@ -27,7 +27,9 @@ function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): Va
     openVaultAtPath: vi.fn(),
     saveVault: vi.fn(async (vault: Vault) => vault),
     changeMasterPassword: vi.fn().mockResolvedValue(undefined),
-    getFileInfo: vi.fn().mockResolvedValue({ sizeBytes: 0, lastModifiedMs: 0 }),
+    getFileInfo: vi
+      .fn()
+      .mockResolvedValue({ sizeBytes: 0, lastModifiedMs: 0, format: { major: 4, minor: 1 } }),
     closeVault: vi.fn(),
     ...overrides,
   } as unknown as VaultAccessService;
@@ -782,6 +784,80 @@ describe("App", () => {
       expect(
         await screen.findByRole("heading", { name: /vault changed on disk/i }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("upgrading the vault format", () => {
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const kdbx3Info = { sizeBytes: 0, lastModifiedMs: 0, format: { major: 3, minor: 1 } };
+    const kdbx4Info = { sizeBytes: 0, lastModifiedMs: 0, format: { major: 4, minor: 0 } };
+
+    function renderApp(overrides: Partial<VaultAccessService>) {
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+            ...overrides,
+          })}
+          settingsStore={fakeSettingsStore()}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+        />,
+      );
+    }
+
+    async function openVaultAndUpgrade(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+      await user.click(await screen.findByRole("button", { name: "Settings" }));
+      await user.click(await screen.findByRole("button", { name: "Upgrade to KDBX 4" }));
+      await user.click(screen.getByRole("button", { name: "Upgrade to KDBX 4" }));
+    }
+
+    it("upgrades through the vault access service and shows the new format", async () => {
+      const user = userEvent.setup({ delay: null });
+      const upgraded = Vault.create("Personal");
+      const upgradeVaultFormat = vi.fn().mockResolvedValue(upgraded);
+      renderApp({
+        upgradeVaultFormat,
+        getFileInfo: vi.fn().mockResolvedValueOnce(kdbx3Info).mockResolvedValue(kdbx4Info),
+      });
+
+      await openVaultAndUpgrade(user);
+
+      expect(upgradeVaultFormat).toHaveBeenCalledWith(opened.vault, "C:/vaults/personal.kdbx");
+      expect(await screen.findByText("Upgraded to KDBX 4.")).toBeInTheDocument();
+      expect(await screen.findByText("KDBX 4.0")).toBeInTheDocument();
+    });
+
+    it("shows the conflict overlay, not a success, when the file changed on disk", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderApp({
+        upgradeVaultFormat: vi.fn().mockRejectedValue(new VaultSaveConflictError(opened.filePath)),
+        getFileInfo: vi.fn().mockResolvedValue(kdbx3Info),
+      });
+
+      await openVaultAndUpgrade(user);
+
+      expect(
+        await screen.findByRole("heading", { name: /vault changed on disk/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Upgraded to KDBX 4.")).not.toBeInTheDocument();
     });
   });
 

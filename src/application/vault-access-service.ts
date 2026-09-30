@@ -1,7 +1,7 @@
 import { Vault } from "../domain";
 import { FileStorage } from "./file-storage";
 import { VaultFileDialog } from "./vault-file-dialog";
-import { VaultKey, VaultRepository, VaultSession } from "./vault-repository";
+import { VaultFormat, VaultKey, VaultRepository, VaultSession } from "./vault-repository";
 
 export interface OpenedVault {
   vault: Vault;
@@ -21,6 +21,8 @@ export type NewVaultKeyFile =
 export interface VaultFileInfo {
   sizeBytes: number;
   lastModifiedMs: number;
+  /** The open vault's format, which is what its last open or save left on disk. */
+  format: VaultFormat;
 }
 
 export interface SaveVaultOptions {
@@ -271,6 +273,22 @@ export class VaultAccessService {
   }
 
   /**
+   * Upgrades the open vault from KDBX 3 to KDBX 4 and immediately persists it
+   * via `saveVault`, backup rotation included, so the previous KDBX 3 file
+   * survives as `.bak1`. The conflict check runs before the upgrade for the
+   * same reason as in `changeMasterPassword`: the upgrade changes the open
+   * document, which a conflict found afterwards would leave out of step with
+   * the file on disk.
+   *
+   * Resolves to the vault as saved, like `saveVault`.
+   */
+  async upgradeVaultFormat(vault: Vault, filePath: string): Promise<Vault> {
+    await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
+    this.openSession().upgradeFormat();
+    return this.saveVault(vault, filePath);
+  }
+
+  /**
    * Re-encrypts each existing backup of `filePath` under the new password.
    * Runs only after the vault itself has been saved, and never throws: the
    * password change has already happened by then, and reporting it as failed
@@ -332,13 +350,17 @@ export class VaultAccessService {
     }
   }
 
-  /** Current on-disk size and last-modified time of the vault at `filePath`. */
+  /**
+   * Current on-disk size and last-modified time of the open vault, saved at
+   * `filePath`, and the format it's in.
+   */
   async getFileInfo(filePath: string): Promise<VaultFileInfo> {
+    const { format } = this.openSession();
     const [sizeBytes, lastModifiedMs] = await Promise.all([
       this.fileStorage.size(filePath),
       this.fileStorage.lastModified(filePath),
     ]);
-    return { sizeBytes, lastModifiedMs };
+    return { sizeBytes, lastModifiedMs, format };
   }
 
   private async rotateBackups(filePath: string): Promise<void> {

@@ -212,6 +212,17 @@ function App({
     return result!;
   }
 
+  async function upgradeVaultFormat(vault: Vault, filePath: string) {
+    let saved: Vault | undefined;
+    await writeReportingConflicts({ nextVault: vault, filePath }, async () => {
+      saved = await vaultAccessService.upgradeVaultFormat(vault, filePath);
+    });
+    // `writeReportingConflicts` only resolves once the write above has.
+    setScreen({ kind: "unlocked", vault: saved!, filePath });
+    // Also what tells the settings screen the vault is now KDBX 4.
+    void refreshFileInfo(filePath);
+  }
+
   async function overwriteConflict(pending: SaveConflict) {
     const saved = await vaultAccessService.saveVault(pending.nextVault, pending.filePath, {
       force: true,
@@ -277,6 +288,7 @@ function App({
         onChangeMasterPassword={(currentPassword, newPassword) =>
           changeMasterPassword(vault, filePath, currentPassword, newPassword)
         }
+        onUpgradeFormat={() => upgradeVaultFormat(vault, filePath)}
         onExportSettings={appSettings.exportSettings}
         onImportSettings={appSettings.importSettings}
       />

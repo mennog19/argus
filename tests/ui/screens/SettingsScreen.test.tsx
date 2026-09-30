@@ -49,6 +49,7 @@ function renderSettings(
       currentPassword: string,
       newPassword: string,
     ) => Promise<MasterPasswordChangeResult>;
+    onUpgradeFormat?: () => Promise<void>;
     onOpenMergeWizard?: () => void;
     mergeError?: string;
     onExportSettings?: () => Promise<string | undefined>;
@@ -58,6 +59,7 @@ function renderSettings(
   const onChangeMasterPassword =
     overrides.onChangeMasterPassword ??
     vi.fn().mockResolvedValue({ removedBackups: [], unprotectedBackups: [] });
+  const onUpgradeFormat = overrides.onUpgradeFormat ?? vi.fn().mockResolvedValue(undefined);
   const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
   const onSettingChange = vi.fn();
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
@@ -86,6 +88,7 @@ function renderSettings(
       settings={settings}
       onSettingChange={onSettingChange}
       onChangeMasterPassword={onChangeMasterPassword}
+      onUpgradeFormat={onUpgradeFormat}
       mergeError={overrides.mergeError}
       onOpenMergeWizard={onOpenMergeWizard}
       onExportSettings={onExportSettings}
@@ -96,6 +99,7 @@ function renderSettings(
     container,
     unmount,
     onChangeMasterPassword,
+    onUpgradeFormat,
     onOpenMergeWizard,
     onSettingChange,
     onExportSettings,
@@ -108,7 +112,7 @@ describe("SettingsScreen", () => {
     renderSettings();
 
     expect(screen.getByText("personal.kdbx")).toBeInTheDocument();
-    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.getAllByText("—")).toHaveLength(3);
   });
 
   it("shows the number of stored passwords", () => {
@@ -118,11 +122,16 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("7")).toBeInTheDocument();
   });
 
-  it("shows the vault's size and last-saved time once file info loads", () => {
-    const fileInfo: VaultFileInfo = { sizeBytes: 49152, lastModifiedMs: Date.now() };
+  it("shows the vault's size, format and last-saved time once file info loads", () => {
+    const fileInfo: VaultFileInfo = {
+      sizeBytes: 49152,
+      lastModifiedMs: Date.now(),
+      format: { major: 4, minor: 1 },
+    };
     renderSettings({ fileInfo });
 
     expect(screen.getByText("48 KB")).toBeInTheDocument();
+    expect(screen.getByText("KDBX 4.1")).toBeInTheDocument();
     expect(screen.getByText("just now")).toBeInTheDocument();
   });
 
@@ -483,6 +492,28 @@ describe("SettingsScreen", () => {
       expect(dangerZone).toHaveTextContent("Danger zone");
       expect(dangerZone).toHaveTextContent(/merge another vault in/i);
       expect(dangerZone).toHaveTextContent(/change master password/i);
+    });
+  });
+
+  describe("file format", () => {
+    it("offers a KDBX 3 vault an upgrade, and passes it to onUpgradeFormat", async () => {
+      const user = userEvent.setup();
+      const { onUpgradeFormat } = renderSettings({
+        fileInfo: { sizeBytes: 1024, lastModifiedMs: Date.now(), format: { major: 3, minor: 1 } },
+      });
+
+      await user.click(screen.getByRole("button", { name: "Upgrade to KDBX 4" }));
+      await user.click(screen.getByRole("button", { name: "Upgrade to KDBX 4" }));
+
+      expect(onUpgradeFormat).toHaveBeenCalledOnce();
+    });
+
+    it("offers no upgrade to a vault that is already KDBX 4", () => {
+      renderSettings({
+        fileInfo: { sizeBytes: 1024, lastModifiedMs: Date.now(), format: { major: 4, minor: 0 } },
+      });
+
+      expect(screen.queryByRole("button", { name: /upgrade/i })).not.toBeInTheDocument();
     });
   });
 

@@ -53,6 +53,7 @@ interface VaultShellProps {
     currentPassword: string,
     newPassword: string,
   ) => Promise<MasterPasswordChangeResult>;
+  onUpgradeFormat: () => Promise<void>;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<SettingsImportResult | undefined>;
   /** Replaces the in-memory vault without writing the file — used for the
@@ -76,6 +77,7 @@ export function VaultShell({
   onLock,
   onSave,
   onChangeMasterPassword,
+  onUpgradeFormat,
   onExportSettings,
   onImportSettings,
   onVaultChange,
@@ -398,6 +400,7 @@ export function VaultShell({
             settings={settings}
             onSettingChange={onSettingChange}
             onChangeMasterPassword={onChangeMasterPassword}
+            onUpgradeFormat={onUpgradeFormat}
             mergeError={merge.error}
             onOpenMergeWizard={() => void merge.start()}
             onExportSettings={onExportSettings}
