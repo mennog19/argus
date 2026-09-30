@@ -66,7 +66,7 @@ describe("UpgradeFormatCard", () => {
 
     expect(onUpgradeFormat).toHaveBeenCalledOnce();
     expect(screen.getByText("Upgraded to KDBX 4.")).toBeInTheDocument();
-    expect(screen.getByText(/kept as its \.bak1 backup/i)).toBeInTheDocument();
+    expect(screen.getByText(/\.kdbx3-backup\.kdbx/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

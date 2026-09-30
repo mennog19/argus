@@ -56,6 +56,13 @@ export class VaultSaveConflictError extends Error {
 const BACKUP_SUFFIXES = [".bak1", ".bak2", ".bak3"];
 
 /**
+ * Suffix of the copy `upgradeVaultFormat` keeps of a vault's KDBX 3 file.
+ * Outside the rolling backups, so later saves never rotate it away, and ending
+ * in `.kdbx` so KeePass opens it as is.
+ */
+const KDBX3_COPY_SUFFIX = ".kdbx3-backup.kdbx";
+
+/**
  * Orchestrates the open-existing / create-new vault flows: prompt for a
  * file path via the native dialog, then read/write bytes through
  * `FileStorage` and parse/build them through `VaultRepository`. Returns
@@ -274,17 +281,27 @@ export class VaultAccessService {
 
   /**
    * Upgrades the open vault from KDBX 3 to KDBX 4 and immediately persists it
-   * via `saveVault`, backup rotation included, so the previous KDBX 3 file
-   * survives as `.bak1`. The conflict check runs before the upgrade for the
-   * same reason as in `changeMasterPassword`: the upgrade changes the open
+   * via `saveVault`. The conflict check runs before the upgrade for the same
+   * reason as in `changeMasterPassword`: the upgrade changes the open
    * document, which a conflict found afterwards would leave out of step with
    * the file on disk.
+   *
+   * First copies the KDBX 3 file to `<path>.kdbx3-backup.kdbx`, overwriting
+   * any copy an earlier upgrade left. `.bak1` gets it too, but only until three
+   * more saves rotate it out; this copy stays until the user deletes it. A
+   * failed copy stops the upgrade before the file is touched.
    *
    * Resolves to the vault as saved, like `saveVault`.
    */
   async upgradeVaultFormat(vault: Vault, filePath: string): Promise<Vault> {
-    await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
-    this.openSession().upgradeFormat();
+    const session = this.openSession();
+    const fileExists = await this.fileStorage.exists(filePath);
+    await this.assertNoConflict(filePath, fileExists);
+    if (fileExists) {
+      await this.fileStorage.grantAccess(filePath, KDBX3_COPY_SUFFIX);
+      await this.fileStorage.copyFile(filePath, filePath + KDBX3_COPY_SUFFIX);
+    }
+    session.upgradeFormat();
     return this.saveVault(vault, filePath);
   }
 

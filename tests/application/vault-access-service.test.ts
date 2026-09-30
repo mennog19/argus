@@ -750,6 +750,45 @@ describe("VaultAccessService", () => {
       );
     });
 
+    it("keeps a copy of the KDBX 3 file that backup rotation doesn't touch", async () => {
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
+      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(true) });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await service.upgradeVaultFormat(Vault.create("My Vault"), "C:/vaults/mine.kdbx");
+
+      expect(fileStorage.grantAccess).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        ".kdbx3-backup.kdbx",
+      );
+      expect(fileStorage.copyFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        "C:/vaults/mine.kdbx.kdbx3-backup.kdbx",
+      );
+      const copied = vi
+        .mocked(fileStorage.copyFile)
+        .mock.calls.findIndex(([, destination]) => destination.endsWith(".kdbx3-backup.kdbx"));
+      const copiedAt = vi.mocked(fileStorage.copyFile).mock.invocationCallOrder[copied];
+      expect(copiedAt).toBeLessThan(repository.upgradeFormat.mock.invocationCallOrder[0]);
+    });
+
+    it("doesn't upgrade when the KDBX 3 copy can't be made", async () => {
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({
+        exists: vi.fn().mockResolvedValue(true),
+        copyFile: vi.fn().mockRejectedValue(new Error("Disk full.")),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.upgradeVaultFormat(Vault.create("My Vault"), "C:/vaults/mine.kdbx"),
+      ).rejects.toThrow("Disk full.");
+      expect(repository.upgradeFormat).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+    });
+
     it("refuses to upgrade at all when the file changed on disk", async () => {
       const repository = fakeRepository({
         openVault: vi.fn().mockResolvedValue(Vault.create("My Vault")),
@@ -768,6 +807,7 @@ describe("VaultAccessService", () => {
       // disk is still KDBX 3, to be written by whichever save came next.
       expect(repository.upgradeFormat).not.toHaveBeenCalled();
       expect(fileStorage.writeFile).not.toHaveBeenCalled();
+      expect(fileStorage.copyFile).not.toHaveBeenCalled();
     });
 
     it("refuses to upgrade when no vault is open", async () => {

@@ -7,12 +7,13 @@ mod tray;
 
 use tauri_plugin_fs::FsExt;
 
-/// Rolling-backup suffixes `VaultAccessService` rotates next to a vault; the
-/// only paths `grant_file_access` is willing to widen scope to.
-const ALLOWED_BACKUP_SUFFIXES: [&str; 3] = [".bak1", ".bak2", ".bak3"];
+/// Suffixes of the backups `VaultAccessService` writes next to a vault: the
+/// rolling backups it rotates, and the copy a KDBX 4 upgrade keeps of the
+/// KDBX 3 file. The only paths `grant_file_access` is willing to widen scope to.
+const ALLOWED_BACKUP_SUFFIXES: [&str; 4] = [".bak1", ".bak2", ".bak3", ".kdbx3-backup.kdbx"];
 
 /// Appends `suffix` to `anchor`, but only when `suffix` is one of the fixed
-/// rolling-backup suffixes. A plain function (no `AppHandle`) so the
+/// backup suffixes. A plain function (no `AppHandle`) so the
 /// allow-list check is unit-testable without a running Tauri app.
 fn derive_backup_path(anchor: &str, suffix: &str) -> Result<String, String> {
     if !ALLOWED_BACKUP_SUFFIXES.contains(&suffix) {
@@ -21,9 +22,9 @@ fn derive_backup_path(anchor: &str, suffix: &str) -> Result<String, String> {
     Ok(format!("{anchor}{suffix}"))
 }
 
-/// Adds `anchor`'s `.bak1`/`.bak2`/`.bak3` rolling backup to the filesystem
-/// scope, so later `plugin-fs` calls against it are not rejected as
-/// out-of-scope.
+/// Adds one of `anchor`'s backups (`.bak1`/`.bak2`/`.bak3`, or the KDBX 3
+/// copy) to the filesystem scope, so later `plugin-fs` calls against it are
+/// not rejected as out-of-scope.
 ///
 /// The dialog plugin grants access to exactly the file the user picked, so
 /// the backups `VaultAccessService` writes next to a vault stay forbidden
@@ -160,6 +161,16 @@ mod tests {
     fn allows_all_three_rolling_backup_suffixes() {
         assert!(derive_backup_path("C:/vaults/mine.kdbx", ".bak2").is_ok());
         assert!(derive_backup_path("C:/vaults/mine.kdbx", ".bak3").is_ok());
+    }
+
+    #[test]
+    fn allows_the_kdbx3_copy_an_upgrade_keeps() {
+        let result = derive_backup_path("C:/vaults/mine.kdbx", ".kdbx3-backup.kdbx");
+
+        assert_eq!(
+            result,
+            Ok("C:/vaults/mine.kdbx.kdbx3-backup.kdbx".to_string())
+        );
     }
 
     #[test]
