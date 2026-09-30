@@ -1,26 +1,28 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TotpConfig } from "../../src/domain";
+import { generateTotpCode, TotpConfig } from "../../src/domain";
 import { useTotpCode } from "../../src/ui/use-totp-code";
 
-const MAX_CRYPTO_TURNS = 100;
+// Still the real implementation, only observed: the tests await the exact
+// promises the hook started instead of guessing how many event-loop turns
+// the Web Crypto HMAC chain needs, which varies with machine load.
+vi.mock("../../src/domain", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/domain")>();
+  return { ...actual, generateTotpCode: vi.fn(actual.generateTotpCode) };
+});
 
-// The Web Crypto HMAC chain (importKey then sign) resolves over several real
-// event-loop turns, not just one microtask — a single `advanceTimersByTimeAsync(0)`
-// can race ahead of it. How many turns it needs varies with machine load, so pump
-// them until `settled` holds rather than a fixed handful, capped so a genuine
-// failure still fails instead of hanging. The cases that assert nothing arrives
-// pass no predicate and simply burn the full budget.
-async function flushCrypto(settled: () => boolean = () => false): Promise<void> {
-  for (let turn = 0; turn < MAX_CRYPTO_TURNS && !settled(); turn++) {
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
-    });
-  }
+// Resolves every code generation the hook has kicked off so far, inside `act`
+// so the resulting state updates are flushed. The hook's own `.then` was
+// attached before ours, so its `setCode` has run by the time this returns.
+async function flushCrypto(): Promise<void> {
+  await act(async () => {
+    await Promise.all(vi.mocked(generateTotpCode).mock.results.map((r) => r.value));
+  });
 }
 
 describe("useTotpCode", () => {
   beforeEach(() => {
+    vi.mocked(generateTotpCode).mockClear();
     // Frozen, not auto-advancing: `advanceTimersByTimeAsync` still yields to the
     // real event loop for the crypto chain below, and a clock that only moves
     // when a test moves it keeps assertions on `secondsRemaining` from racing
@@ -43,7 +45,7 @@ describe("useTotpCode", () => {
     const config = new TotpConfig("JBSWY3DPEHPK3PXP", "SHA1", 6, 30);
 
     const { result } = renderHook(() => useTotpCode(config));
-    await flushCrypto(() => result.current !== undefined);
+    await flushCrypto();
 
     expect(result.current).toBeDefined();
     expect(result.current!.value).toMatch(/^\d{6}$/);
@@ -57,13 +59,13 @@ describe("useTotpCode", () => {
     const config = new TotpConfig("JBSWY3DPEHPK3PXP", "SHA1", 6, 30);
 
     const { result } = renderHook(() => useTotpCode(config));
-    await flushCrypto(() => result.current !== undefined);
+    await flushCrypto();
     const first = result.current!;
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
-    await flushCrypto(() => result.current !== first);
+    await flushCrypto();
 
     expect(result.current!.secondsRemaining).toBe(first.secondsRemaining - 1);
   });
@@ -72,14 +74,14 @@ describe("useTotpCode", () => {
     const config = new TotpConfig("JBSWY3DPEHPK3PXP", "SHA1", 6, 30);
 
     const { result } = renderHook(() => useTotpCode(config));
-    await flushCrypto(() => result.current !== undefined);
+    await flushCrypto();
     const first = result.current!;
     expect(first.secondsRemaining).toBe(1);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
-    await flushCrypto(() => result.current !== first);
+    await flushCrypto();
 
     expect(result.current!.secondsRemaining).toBe(30);
     expect(result.current!.value).not.toBe(first.value);
@@ -91,7 +93,7 @@ describe("useTotpCode", () => {
     const { result, rerender } = renderHook(({ config }) => useTotpCode(config), {
       initialProps: { config: config as TotpConfig | undefined },
     });
-    await flushCrypto(() => result.current !== undefined);
+    await flushCrypto();
     expect(result.current).toBeDefined();
 
     rerender({ config: undefined });
@@ -106,12 +108,12 @@ describe("useTotpCode", () => {
     const { result, rerender } = renderHook(({ config }) => useTotpCode(config), {
       initialProps: { config: configA },
     });
-    await flushCrypto(() => result.current !== undefined);
+    await flushCrypto();
     expect(result.current!.value).toHaveLength(6);
     const first = result.current!;
 
     rerender({ config: configB });
-    await flushCrypto(() => result.current !== first);
+    await flushCrypto();
 
     expect(result.current!.value).toHaveLength(8);
   });
@@ -130,7 +132,7 @@ describe("useTotpCode", () => {
     const config = new TotpConfig("JBSWY3DPEHPK3PXP", "SHA1", 6, 30);
 
     const { result, unmount } = renderHook(() => useTotpCode(config));
-    await flushCrypto(() => result.current !== undefined);
+    await flushCrypto();
     const codeBeforeUnmount = result.current;
 
     unmount();
