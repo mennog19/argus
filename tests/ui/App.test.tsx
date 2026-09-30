@@ -58,7 +58,11 @@ function fakeClipboardWriter(): ClipboardWriter {
 }
 
 function fakeWindowEvents(overrides: Partial<WindowEvents> = {}): WindowEvents {
-  return { onMinimize: vi.fn().mockReturnValue(vi.fn()), ...overrides };
+  return {
+    onMinimize: vi.fn().mockReturnValue(vi.fn()),
+    onSessionLock: vi.fn().mockReturnValue(vi.fn()),
+    ...overrides,
+  };
 }
 
 function fakeWindowProtection(overrides: Partial<WindowProtection> = {}): WindowProtection {
@@ -1305,7 +1309,12 @@ describe("App", () => {
     };
     const settings: AppSettings = {
       recentVaults: [],
-      autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
+      autoLock: {
+        idleTimeoutMinutes: 1,
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      },
     };
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ delay: null });
@@ -1352,7 +1361,12 @@ describe("App", () => {
     };
     const settings: AppSettings = {
       recentVaults: [],
-      autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
+      autoLock: {
+        idleTimeoutMinutes: 1,
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      },
     };
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ delay: null });
@@ -1403,7 +1417,7 @@ describe("App", () => {
     };
     const settings: AppSettings = {
       recentVaults: [],
-      autoLock: { lockOnMinimize: false, lockOnSleep: true },
+      autoLock: { lockOnMinimize: false, lockOnSleep: true, lockOnSessionLock: false },
     };
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ delay: null });
@@ -1455,7 +1469,7 @@ describe("App", () => {
     };
     const settings: AppSettings = {
       recentVaults: [],
-      autoLock: { lockOnMinimize: false, lockOnSleep: true },
+      autoLock: { lockOnMinimize: false, lockOnSleep: true, lockOnSessionLock: false },
     };
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ delay: null });
@@ -1502,7 +1516,7 @@ describe("App", () => {
     };
     const settings: AppSettings = {
       recentVaults: [],
-      autoLock: { lockOnMinimize: true, lockOnSleep: false },
+      autoLock: { lockOnMinimize: true, lockOnSleep: false, lockOnSessionLock: false },
     };
     const user = userEvent.setup();
     let minimizeCallback: (() => void) | undefined;
@@ -1585,6 +1599,58 @@ describe("App", () => {
 
     expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
     expect(minimizeRegistered).toBe(false);
+  });
+
+  it("locks the vault when the computer is locked, only if lock-on-session-lock is enabled", async () => {
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const settings: AppSettings = {
+      recentVaults: [],
+      autoLock: { lockOnMinimize: false, lockOnSleep: false, lockOnSessionLock: true },
+    };
+    const user = userEvent.setup();
+    let sessionLockCallback: (() => void) | undefined;
+    const windowEvents = fakeWindowEvents({
+      onSessionLock: vi.fn((callback: () => void) => {
+        sessionLockCallback = callback;
+        return vi.fn();
+      }),
+    });
+
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
+        settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+        settingsTransferService={fakeSettingsTransferService()}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={windowEvents}
+        windowProtection={fakeWindowProtection()}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    expect(await screen.findByRole("button", { name: "Lock vault" })).toBeInTheDocument();
+    expect(windowEvents.onMinimize).not.toHaveBeenCalled();
+    expect(sessionLockCallback).toBeDefined();
+
+    act(() => {
+      sessionLockCallback!();
+    });
+
+    expect(await screen.findByLabelText("Master password")).toBeInTheDocument();
   });
   describe("settings import/export", () => {
     async function openSettings(user: ReturnType<typeof userEvent.setup>) {

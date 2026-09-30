@@ -13,7 +13,12 @@ const FULL_SETTINGS: AppSettings = {
     excludeAmbiguous: true,
   },
   clipboardClearSeconds: 45,
-  autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: true, lockOnSleep: false },
+  autoLock: {
+    idleTimeoutMinutes: 10,
+    lockOnMinimize: true,
+    lockOnSleep: false,
+    lockOnSessionLock: false,
+  },
   autoType: { enabled: true, hotkey: "CommandOrControl+Alt+K" },
   groupDeleteMode: "keepContents",
   accentColor: { kind: "custom", hue: 200 },
@@ -115,23 +120,61 @@ describe("parseStoredSettings", () => {
   });
 
   describe("autoLock", () => {
+    it("keeps an autoLock written before lock-on-session-lock existed, with it turned off", () => {
+      expect(parse({ autoLock: { lockOnMinimize: true, lockOnSleep: true } }).autoLock).toEqual({
+        lockOnMinimize: true,
+        lockOnSleep: true,
+        lockOnSessionLock: false,
+      });
+    });
+
+    it("drops an autoLock with a non-boolean lockOnSessionLock", () => {
+      expect(
+        parse({ autoLock: { lockOnMinimize: true, lockOnSleep: true, lockOnSessionLock: "yes" } })
+          .autoLock,
+      ).toBeUndefined();
+    });
+
     it("accepts a missing or null idle timeout as disabled", () => {
-      expect(parse({ autoLock: { lockOnMinimize: false, lockOnSleep: true } }).autoLock).toEqual({
+      expect(
+        parse({ autoLock: { lockOnMinimize: false, lockOnSleep: true, lockOnSessionLock: false } })
+          .autoLock,
+      ).toEqual({
         lockOnMinimize: false,
         lockOnSleep: true,
+        lockOnSessionLock: false,
       });
       expect(
-        parse({ autoLock: { idleTimeoutMinutes: null, lockOnMinimize: false, lockOnSleep: true } })
-          .autoLock,
-      ).toEqual({ lockOnMinimize: false, lockOnSleep: true });
+        parse({
+          autoLock: {
+            idleTimeoutMinutes: null,
+            lockOnMinimize: false,
+            lockOnSleep: true,
+            lockOnSessionLock: false,
+          },
+        }).autoLock,
+      ).toEqual({ lockOnMinimize: false, lockOnSleep: true, lockOnSessionLock: false });
     });
 
     it.each([
       ["a non-object", true],
-      ["a bad idle timeout", { idleTimeoutMinutes: 1.5, lockOnMinimize: true, lockOnSleep: true }],
+      [
+        "a bad idle timeout",
+        {
+          idleTimeoutMinutes: 1.5,
+          lockOnMinimize: true,
+          lockOnSleep: true,
+          lockOnSessionLock: false,
+        },
+      ],
       [
         "an idle timeout over 24 hours",
-        { idleTimeoutMinutes: 1441, lockOnMinimize: true, lockOnSleep: true },
+        {
+          idleTimeoutMinutes: 1441,
+          lockOnMinimize: true,
+          lockOnSleep: true,
+          lockOnSessionLock: false,
+        },
       ],
       ["a missing flag", { lockOnMinimize: true }],
     ])("drops %s", (_label, autoLock) => {

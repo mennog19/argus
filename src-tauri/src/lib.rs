@@ -1,6 +1,7 @@
 mod atomic_write;
 mod auto_type;
 mod clipboard;
+mod session_lock;
 
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
@@ -110,6 +111,7 @@ pub fn run() {
         // crashed or was killed before its auto-clear or quit could wipe it.
         .setup(|app| {
             clipboard::clear_any_secret(app.handle());
+            session_lock::watch(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

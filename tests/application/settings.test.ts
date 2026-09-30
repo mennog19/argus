@@ -127,6 +127,7 @@ describe("withSetting", () => {
       idleTimeoutMinutes: 10,
       lockOnMinimize: true,
       lockOnSleep: false,
+      lockOnSessionLock: false,
     });
     expectRecorded("autoType", { enabled: true, hotkey: "Alt+Space" });
     expectRecorded("groupDeleteMode", "keepContents");
@@ -176,7 +177,12 @@ describe("resolveSettings", () => {
     const chosen = {
       generatorPolicy: { length: 24 },
       clipboardClearSeconds: 45,
-      autoLock: { idleTimeoutMinutes: 5, lockOnMinimize: true, lockOnSleep: true },
+      autoLock: {
+        idleTimeoutMinutes: 5,
+        lockOnMinimize: true,
+        lockOnSleep: true,
+        lockOnSessionLock: false,
+      },
       autoType: { enabled: true, hotkey: "Alt+Space" },
       groupDeleteMode: "keepContents",
       accentColor: { kind: "custom", hue: 120 },

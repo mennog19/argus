@@ -10,7 +10,8 @@ const ACTIVITY_EVENTS = ["mousemove", "keydown", "mousedown", "scroll"] as const
 
 /**
  * Calls `onLock` with `session` when any enabled auto-lock trigger fires:
- * inactivity, the system sleeping, or the window being minimized.
+ * inactivity, the system sleeping, the OS session locking, or the window
+ * being minimized.
  *
  * `session` restarts every trigger when it changes — the idle clock starts
  * over for a freshly unlocked or freshly saved vault — and `undefined` means
@@ -74,6 +75,10 @@ export function useAutoLock<Session extends object>(
 
     if (settings.lockOnMinimize) {
       cleanups.push(windowEvents.onMinimize(lock));
+    }
+
+    if (settings.lockOnSessionLock) {
+      cleanups.push(windowEvents.onSessionLock(lock));
     }
 
     return () => {

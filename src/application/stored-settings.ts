@@ -17,6 +17,7 @@ import {
   optionalPositiveInteger,
   parseAccentColor,
   parseBoolean,
+  parseOptionalBoolean,
   parseFieldVisibility,
   positiveInteger,
   SettingsImportError,
@@ -105,6 +106,7 @@ function parseAutoLock(value: unknown): AutoLockSettings {
     ),
     lockOnMinimize: parseBoolean(value.lockOnMinimize, "lockOnMinimize"),
     lockOnSleep: parseBoolean(value.lockOnSleep, "lockOnSleep"),
+    lockOnSessionLock: parseOptionalBoolean(value.lockOnSessionLock, "lockOnSessionLock", false),
   };
 }
 
