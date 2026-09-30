@@ -44,6 +44,7 @@ and compare the output against the matching `.sha256` value published with that 
 - **Clipboard auto-clear** — copied passwords are cleared from the clipboard automatically after a timeout of up to 10 minutes.
 - **Vault merge** — reconcile a vault that was edited from two places (e.g. after using it on two machines) with a guided merge wizard.
 - **Settings transfer** — export/import app settings independently of any vault. An imported file can never turn screen-capture protection off; only you can, from the settings screen.
+- **Update check** — opt-in and off by default. Once it's turned on in Settings, Argus asks GitHub for a newer release each time it starts and, if there is one, offers to install it. Nothing is installed until you say so.
 
 ## KeePass / KeePassXC compatibility
 
@@ -53,7 +54,8 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 
 ## Security model
 
-- **Local-only, always.** Argus has no accounts, no sync service, and sends no telemetry. The app makes no network requests of its own. Opening an entry's URL hands it to your default browser.
+- **Local-only, always.** Argus has no accounts, no sync service, and sends no telemetry. The only network request it makes of its own is the update check, which is off unless you turn it on. Opening an entry's URL hands it to your default browser.
+- **Updates.** With the update check on, Argus fetches `latest.json` from the newest published GitHub Release once per launch. The request carries nothing about you or your vaults. Every installer is signed with Argus's updater key, and Argus refuses one whose signature doesn't match the public key built into it, so a tampered download never runs. Releases are only built from commits on `main`. Before the installer starts, Argus wipes any password it put on the clipboard. Installing closes Argus, so the vault is locked and needs its master password again afterwards. An imported settings file can't turn the update check on.
 - **Master password and key files.** Vaults are unlocked with a master password, a KeePass/KeePassXC key file, or both. A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they already have. Argus remembers the _path_ of the key file each recent vault was last unlocked with (never its contents). New vaults can optionally get a key file too, either generated in KeePassXC's format or an existing file of your choosing. There is no biometric unlock in v1.
 - **Memory protection.** The app window uses OS-level content protection, and KDBX-protected fields (passwords, protected custom fields) follow `kdbxweb`'s in-memory protection conventions rather than being held as plain strings.
 - **Clipboard handling.** Copying a password to the clipboard starts an auto-clear timer so the secret doesn't linger there indefinitely. The clear only happens if the clipboard still holds what Argus copied, so anything you copied since is left alone. A copied secret is also cleared when the vault closes or Argus quits, and on the next launch after a crash. On Windows, copies are kept out of clipboard history (Win+V) and cloud clipboard sync.
@@ -69,7 +71,7 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 ## Known limitations
 
 - **Windows only.** Auto-type and the clipboard protections use Win32 APIs.
-- **No updater yet.** New versions have to be downloaded from the Releases page by hand.
+- **Updates need the check turned on.** With it off (the default), new versions have to be downloaded from the Releases page by hand. The check only runs at startup; there is no "check now" button.
 - **Field references are read-only links.** Argus resolves `{REF:…}` placeholders but has no UI for creating them.
 - **No attachments, by design.** Files stored inside a vault are easy to lose track of, so Argus doesn't show or add them. Attachments added in KeePass or KeePassXC are kept untouched when Argus saves.
 - **AES-KDF isn't capped.** The key-derivation limits above cover Argon2 (KDBX4). A KDBX3 file using AES-KDF with a huge round count can still make unlocking very slow.
@@ -155,14 +157,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-keepass-fix
 
 ### 5. Publish a release
 
-Bump `version` in `src-tauri/tauri.conf.json`, then push a matching tag:
+Releases are signed for the in-app updater. Once per repository, create a `release` environment that only `v*` tags may deploy to, and add the updater's private key to it as the `TAURI_SIGNING_PRIVATE_KEY` secret, plus its password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if it has one. The matching public key is `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`. Keep the private key backed up: without it, installed copies can't be updated, and a new key only reaches users who reinstall by hand.
+
+Bump `version` in `src-tauri/tauri.conf.json`, then push a matching tag. The tag has to point at a commit on `main`:
 
 ```powershell
 git tag v0.2.0
 git push origin v0.2.0
 ```
 
-The release workflow runs CI, builds both installers, and attaches them with their SHA-256 checksums to a draft GitHub Release. Review the draft and publish it.
+The release workflow runs CI, builds and signs both installers, and attaches them to a draft GitHub Release with their SHA-256 checksums and the `latest.json` update feed. Review the draft and publish it. Users with the update check on are offered it from their next launch.
+
+A local `pnpm tauri build` doesn't produce updater signatures and needs no key. To build signed installers the way the release does, set `TAURI_SIGNING_PRIVATE_KEY` and add `--ci --config src-tauri/tauri.release.conf.json`. Without `--ci`, a key with no password leaves the build waiting at a password prompt.
 
 ## Recommended IDE Setup
 

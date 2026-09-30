@@ -4,6 +4,13 @@ name: Release
 # attach them, with SHA-256 checksums, to a draft GitHub Release:
 #   git tag v0.1.0 && git push origin v0.1.0
 # Review the draft on GitHub, then publish it.
+#
+# The tag must point at a commit on `main`: that's the only branch updates are
+# built from. The installers are signed with the updater key (the
+# TAURI_SIGNING_PRIVATE_KEY secret, plus TAURI_SIGNING_PRIVATE_KEY_PASSWORD if
+# the key has one), and `latest.json` is the feed the in-app update check
+# reads. It only reaches users once the draft is published, since GitHub's
+# "latest release" link skips drafts.
 
 on:
   push:
@@ -21,6 +28,9 @@ jobs:
     name: Build installers and draft the release
     runs-on: windows-latest
     needs: [ci]
+    # The signing key is a secret of this environment, which only `v*` tags
+    # may use, so no other workflow or branch can read it.
+    environment: release
     permissions:
       contents: write
     defaults:
@@ -28,6 +38,16 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, so the tagged commit can be checked against main.
+          fetch-depth: 0
+
+      - name: Check the tag is on main
+        run: |
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Tag $env:GITHUB_REF_NAME points at a commit that isn't on main. Releases are only built from main."
+          }
 
       - name: Check the tag matches the app version
         run: |
@@ -48,7 +68,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm tauri build --bundles nsis,msi
+      # The release config turns on the updater artifacts: a `.sig` next to
+      # each installer, which fails the build if the signing key is missing.
+      # `--ci` stops the signer waiting at a password prompt when the key has
+      # no password: an empty secret doesn't reach Windows as a variable.
+      - name: Build and sign the installers
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --ci --bundles nsis,msi --config src-tauri/tauri.release.conf.json
 
       - name: Collect installers and write checksums
         run: |
@@ -64,6 +92,30 @@ jobs:
             $line
           }
           Set-Content -Path release/SHA256SUMS.txt -Value $sums -Encoding ascii
+
+          # The update feed. Each installer's updater signature goes in it;
+          # Argus refuses a download whose signature doesn't verify against
+          # the public key it was built with.
+          $base = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME"
+          function Get-FeedEntry($installer) {
+            $signature = "$($installer.FullName).sig"
+            if (-not (Test-Path $signature)) { throw "Missing updater signature for $($installer.Name)." }
+            [ordered]@{ signature = (Get-Content $signature -Raw).Trim(); url = "$base/$($installer.Name)" }
+          }
+          $nsis = $installers | Where-Object Extension -eq ".exe"
+          $msi = $installers | Where-Object Extension -eq ".msi"
+          $feed = [ordered]@{
+            version = $env:VERSION
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = [ordered]@{
+              # Installs made with either installer update through the same kind.
+              "windows-x86_64-nsis" = Get-FeedEntry $nsis
+              "windows-x86_64-msi" = Get-FeedEntry $msi
+              "windows-x86_64" = Get-FeedEntry $nsis
+            }
+          }
+          # Written without a byte-order mark, which a JSON parser may refuse.
+          [IO.File]::WriteAllText("$PWD/release/latest.json", ($feed | ConvertTo-Json -Depth 5))
 
           $notes = @(
             "Windows installers for Argus $env:VERSION. Either one installs the app."

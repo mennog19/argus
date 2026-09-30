@@ -117,6 +117,13 @@ export const DEFAULT_CONTENT_PROTECTION = true;
 export const DEFAULT_CLOSE_TO_TRAY = false;
 
 /**
+ * Whether Argus asks GitHub for a newer version when it starts. Off by
+ * default: it's the only network request Argus makes of its own, so the user
+ * opts into it.
+ */
+export const DEFAULT_CHECK_FOR_UPDATES = false;
+
+/**
  * Entry fields that can be individually hidden from the entry creation form.
  * Title is always shown (it's the only required field); Group falls back to
  * whichever group the entry is being created in when hidden.
@@ -198,6 +205,11 @@ export interface AppSettings {
   readonly contentProtection?: boolean;
   /** Undefined until the user changes it, at which point `DEFAULT_CLOSE_TO_TRAY` applies. */
   readonly closeToTray?: boolean;
+  /** Undefined until the user changes it, at which point `DEFAULT_CHECK_FOR_UPDATES` applies.
+   * Deliberately left out of the portable settings file: agreeing to network
+   * requests is for the user of each machine, not something a file someone
+   * sends them should switch on. */
+  readonly checkForUpdates?: boolean;
   /** Which fields are shown on the entry creation form. Undefined until the
    * user changes it, at which point `DEFAULT_ENTRY_FIELD_VISIBILITY` applies.
    * Only applies to creating new entries; editing an existing entry always
@@ -245,6 +257,7 @@ export interface EffectiveSettings {
   readonly theme: Theme;
   readonly contentProtection: boolean;
   readonly closeToTray: boolean;
+  readonly checkForUpdates: boolean;
   readonly entryFieldVisibility: EntryFieldVisibility;
   readonly entrySort: EntrySortId;
 }
@@ -263,6 +276,7 @@ export function resolveSettings(settings: AppSettings): EffectiveSettings {
     theme: settings.theme ?? DEFAULT_THEME,
     contentProtection: settings.contentProtection ?? DEFAULT_CONTENT_PROTECTION,
     closeToTray: settings.closeToTray ?? DEFAULT_CLOSE_TO_TRAY,
+    checkForUpdates: settings.checkForUpdates ?? DEFAULT_CHECK_FOR_UPDATES,
     entryFieldVisibility: settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
     entrySort: settings.entrySort ?? DEFAULT_ENTRY_SORT,
   };

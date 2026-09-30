@@ -774,6 +774,27 @@ describe("VaultAccessService", () => {
       expect(copiedAt).toBeLessThan(repository.upgradeFormat.mock.invocationCallOrder[0]);
     });
 
+    it("upgrades a vault whose file is gone without copying anything", async () => {
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockResolvedValue(new ArrayBuffer(4)),
+      });
+      const fileStorage = fakeFileStorage({ exists: vi.fn().mockResolvedValue(false) });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await service.upgradeVaultFormat(Vault.create("My Vault"), "C:/vaults/mine.kdbx");
+
+      expect(fileStorage.grantAccess).not.toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        ".kdbx3-backup.kdbx",
+      );
+      expect(fileStorage.copyFile).not.toHaveBeenCalled();
+      expect(repository.upgradeFormat).toHaveBeenCalledOnce();
+      expect(fileStorage.writeFile).toHaveBeenCalledWith(
+        "C:/vaults/mine.kdbx",
+        expect.any(ArrayBuffer),
+      );
+    });
+
     it("doesn't upgrade when the KDBX 3 copy can't be made", async () => {
       const repository = fakeRepository();
       const fileStorage = fakeFileStorage({

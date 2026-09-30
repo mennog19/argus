@@ -64,6 +64,9 @@ export function parseStoredSettings(text: string): AppSettings {
       parseBoolean(value, "contentProtection"),
     ),
     closeToTray: lenient(raw.closeToTray, (value) => parseBoolean(value, "closeToTray")),
+    checkForUpdates: lenient(raw.checkForUpdates, (value) =>
+      parseBoolean(value, "checkForUpdates"),
+    ),
     entryFieldVisibility: lenient(raw.entryFieldVisibility, parseFieldVisibility),
     entrySort: lenient(raw.entrySort, (value) => oneOf(value, ENTRY_SORT_IDS, "entrySort")),
   };

@@ -2422,6 +2422,21 @@ input[type="radio"]:checked::after {
   gap: 10px;
 }
 
+/* Release notes can run long; they scroll instead of pushing the buttons off-screen. */
+.modal-card p.update-notes {
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-input);
+  color: var(--color-text);
+}
+
+.modal-card p.field-error {
+  color: var(--color-danger);
+}
+
 .modal-card-wide {
   max-width: 720px;
   width: 100%;

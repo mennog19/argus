@@ -49,5 +49,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJGMDQ0NjE1RUE3NDg4N0IKUldSN2lIVHFGVVlFdjl0NnJtK3NUQytpK0lxNGpmYjFuMko4cnVQTUtuTjZIS05LakNQcGcvZzYK",
+      "endpoints": ["https://github.com/mennog19/argus/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
