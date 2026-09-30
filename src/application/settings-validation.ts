@@ -41,6 +41,14 @@ export function parseBoolean(value: unknown, label: string): boolean {
   return value;
 }
 
+/**
+ * `parseBoolean`, but absent means `fallback`: for flags added after files
+ * without them were already written.
+ */
+export function parseOptionalBoolean(value: unknown, label: string, fallback: boolean): boolean {
+  return value === undefined ? fallback : parseBoolean(value, label);
+}
+
 /** A whole number from 1 up to `max`, when there is one. */
 export function positiveInteger(value: unknown, label: string, max?: number): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {

@@ -24,9 +24,15 @@ export interface AutoLockSettings {
   readonly idleTimeoutMinutes?: number;
   readonly lockOnMinimize: boolean;
   readonly lockOnSleep: boolean;
+  /** Lock when the OS session is locked (e.g. Win+L). */
+  readonly lockOnSessionLock: boolean;
 }
 
-export const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+export const DEFAULT_AUTO_LOCK: AutoLockSettings = {
+  lockOnMinimize: false,
+  lockOnSleep: false,
+  lockOnSessionLock: false,
+};
 
 /**
  * Auto-type: an OS-wide hotkey that types the credentials of a matching entry

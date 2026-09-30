@@ -34,7 +34,11 @@ import { GROUP_DRAG_TYPE } from "../../../src/ui/group-drag";
 import { VaultShell } from "../../../src/ui/screens/VaultShell";
 import { formatDateTime } from "../../../src/ui/format";
 
-const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+const DEFAULT_AUTO_LOCK: AutoLockSettings = {
+  lockOnMinimize: false,
+  lockOnSleep: false,
+  lockOnSessionLock: false,
+};
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
   enabled: false,
   hotkey: "CommandOrControl+Shift+A",

@@ -109,6 +109,15 @@ export function SecuritySection({
             onChange={(event) => updateAutoLock({ lockOnSleep: event.target.checked })}
           />
         </label>
+        <label className="detail-field-row" htmlFor="settings-lock-session">
+          <span className="detail-field-row-label">Lock when the computer is locked</span>
+          <input
+            id="settings-lock-session"
+            type="checkbox"
+            checked={autoLock.lockOnSessionLock}
+            onChange={(event) => updateAutoLock({ lockOnSessionLock: event.target.checked })}
+          />
+        </label>
         <label className="detail-field-row" htmlFor="settings-content-protection">
           <span className="detail-field-row-label">
             Hide window from screen sharing &amp; recording

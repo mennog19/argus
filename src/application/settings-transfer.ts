@@ -17,6 +17,7 @@ import {
   optionalPositiveInteger,
   parseAccentColor,
   parseBoolean,
+  parseOptionalBoolean,
   parseFieldVisibility,
   positiveInteger,
   SettingsImportError,
@@ -47,6 +48,7 @@ export interface PortableSettings {
     readonly idleTimeoutMinutes?: number;
     readonly lockOnMinimize: boolean;
     readonly lockOnSleep: boolean;
+    readonly lockOnSessionLock: boolean;
     readonly clipboardClearSeconds: number;
     readonly contentProtection: boolean;
   };
@@ -81,6 +83,7 @@ export function toPortableSettings(settings: AppSettings): PortableSettings {
       idleTimeoutMinutes: autoLock.idleTimeoutMinutes,
       lockOnMinimize: autoLock.lockOnMinimize,
       lockOnSleep: autoLock.lockOnSleep,
+      lockOnSessionLock: autoLock.lockOnSessionLock,
       clipboardClearSeconds,
       contentProtection,
     },
@@ -107,6 +110,7 @@ export function applyPortableSettings(
     idleTimeoutMinutes: portable.security.idleTimeoutMinutes,
     lockOnMinimize: portable.security.lockOnMinimize,
     lockOnSleep: portable.security.lockOnSleep,
+    lockOnSessionLock: portable.security.lockOnSessionLock,
   };
   return {
     ...settings,
@@ -162,6 +166,12 @@ export function parsePortableSettings(text: string): PortableSettings {
       ),
       lockOnMinimize: parseBoolean(security.lockOnMinimize, "Lock when minimized"),
       lockOnSleep: parseBoolean(security.lockOnSleep, "Lock when the system sleeps"),
+      // Added after version 1 files were already being exported.
+      lockOnSessionLock: parseOptionalBoolean(
+        security.lockOnSessionLock,
+        "Lock when the computer is locked",
+        false,
+      ),
       clipboardClearSeconds: positiveInteger(
         security.clipboardClearSeconds,
         "Clipboard clear seconds",

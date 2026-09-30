@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { TauriWindowEvents } from "../../src/infrastructure/tauri-window-events";
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(),
 }));
 
 function flush(): Promise<void> {
@@ -63,5 +68,30 @@ describe("TauriWindowEvents", () => {
     await flush();
 
     expect(unlisten).toHaveBeenCalled();
+  });
+
+  describe("onSessionLock", () => {
+    it("calls the callback when the backend reports the session locked", () => {
+      vi.mocked(listen).mockResolvedValue(vi.fn());
+      const callback = vi.fn();
+
+      new TauriWindowEvents().onSessionLock(callback);
+      const [eventName, handler] = vi.mocked(listen).mock.calls[0];
+      handler({ event: eventName, id: 1, payload: null });
+
+      expect(eventName).toBe("session-locked");
+      expect(callback).toHaveBeenCalled();
+    });
+
+    it("unsubscribes via the underlying unlisten function", async () => {
+      const unlisten = vi.fn();
+      vi.mocked(listen).mockResolvedValue(unlisten);
+
+      const unsubscribe = new TauriWindowEvents().onSessionLock(vi.fn());
+      await flush();
+      unsubscribe();
+
+      expect(unlisten).toHaveBeenCalled();
+    });
   });
 });

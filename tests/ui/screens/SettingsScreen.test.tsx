@@ -18,7 +18,11 @@ import {
 } from "../../../src/application/vault-access-service";
 import { SettingsScreen } from "../../../src/ui/screens/SettingsScreen";
 
-const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
+const DEFAULT_AUTO_LOCK: AutoLockSettings = {
+  lockOnMinimize: false,
+  lockOnSleep: false,
+  lockOnSessionLock: false,
+};
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
   enabled: false,
   hotkey: "CommandOrControl+Shift+A",
@@ -191,7 +195,12 @@ describe("SettingsScreen", () => {
 
   it("caps the idle timeout at 24 hours, typed or stepped", () => {
     const { onSettingChange } = renderSettings({
-      autoLock: { idleTimeoutMinutes: 1440, lockOnMinimize: false, lockOnSleep: false },
+      autoLock: {
+        idleTimeoutMinutes: 1440,
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      },
     });
     const input = screen.getByLabelText(/lock after inactivity/i);
     expect(input).toHaveAttribute("max", "1440");
@@ -221,7 +230,12 @@ describe("SettingsScreen", () => {
 
   it("shows an already-configured idle timeout and toggles", () => {
     renderSettings({
-      autoLock: { idleTimeoutMinutes: 15, lockOnMinimize: true, lockOnSleep: true },
+      autoLock: {
+        idleTimeoutMinutes: 15,
+        lockOnMinimize: true,
+        lockOnSleep: true,
+        lockOnSessionLock: false,
+      },
     });
 
     expect(screen.getByLabelText(/lock after inactivity/i)).toHaveValue(15);
@@ -242,7 +256,12 @@ describe("SettingsScreen", () => {
 
   it("clears the idle timeout when the field is emptied", () => {
     const { onSettingChange } = renderSettings({
-      autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
+      autoLock: {
+        idleTimeoutMinutes: 10,
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      },
     });
 
     fireEvent.change(screen.getByLabelText(/lock after inactivity/i), { target: { value: "" } });
@@ -277,7 +296,12 @@ describe("SettingsScreen", () => {
 
   it("steps an already-configured idle timeout up and down", () => {
     const { onSettingChange } = renderSettings({
-      autoLock: { idleTimeoutMinutes: 10, lockOnMinimize: false, lockOnSleep: false },
+      autoLock: {
+        idleTimeoutMinutes: 10,
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      },
     });
 
     fireEvent.click(
@@ -299,7 +323,12 @@ describe("SettingsScreen", () => {
 
   it("clears the idle timeout when stepping down from 1 minute", () => {
     const { onSettingChange } = renderSettings({
-      autoLock: { idleTimeoutMinutes: 1, lockOnMinimize: false, lockOnSleep: false },
+      autoLock: {
+        idleTimeoutMinutes: 1,
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      },
     });
 
     fireEvent.click(
@@ -322,19 +351,42 @@ describe("SettingsScreen", () => {
     expect(onSettingChange).not.toHaveBeenCalled();
   });
 
+  it("toggles lock-on-session-lock on its own", () => {
+    const { onSettingChange } = renderSettings();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /computer is locked/i }));
+
+    expect(onSettingChange).toHaveBeenLastCalledWith(
+      "autoLock",
+      expect.objectContaining({
+        lockOnMinimize: false,
+        lockOnSleep: false,
+        lockOnSessionLock: true,
+      }),
+    );
+  });
+
   it("toggles lock-on-minimize and lock-on-sleep independently", () => {
     const { onSettingChange } = renderSettings();
 
     fireEvent.click(screen.getByRole("checkbox", { name: /minimized/i }));
     expect(onSettingChange).toHaveBeenLastCalledWith(
       "autoLock",
-      expect.objectContaining({ lockOnMinimize: true, lockOnSleep: false }),
+      expect.objectContaining({
+        lockOnMinimize: true,
+        lockOnSleep: false,
+        lockOnSessionLock: false,
+      }),
     );
 
     fireEvent.click(screen.getByRole("checkbox", { name: /system sleeps/i }));
     expect(onSettingChange).toHaveBeenLastCalledWith(
       "autoLock",
-      expect.objectContaining({ lockOnMinimize: false, lockOnSleep: true }),
+      expect.objectContaining({
+        lockOnMinimize: false,
+        lockOnSleep: true,
+        lockOnSessionLock: false,
+      }),
     );
   });
 

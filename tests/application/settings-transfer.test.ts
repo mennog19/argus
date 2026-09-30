@@ -17,7 +17,12 @@ const CUSTOMIZED: AppSettings = {
   theme: "light",
   accentColor: { kind: "custom", hue: 300 },
   clipboardClearSeconds: 45,
-  autoLock: { idleTimeoutMinutes: 5, lockOnMinimize: true, lockOnSleep: false },
+  autoLock: {
+    idleTimeoutMinutes: 5,
+    lockOnMinimize: true,
+    lockOnSleep: false,
+    lockOnSessionLock: false,
+  },
   contentProtection: false,
   groupDeleteMode: "keepContents",
   entryFieldVisibility: {
@@ -54,6 +59,7 @@ describe("toPortableSettings", () => {
         idleTimeoutMinutes: 5,
         lockOnMinimize: true,
         lockOnSleep: false,
+        lockOnSessionLock: false,
         clipboardClearSeconds: 45,
         contentProtection: false,
       },
@@ -71,6 +77,7 @@ describe("toPortableSettings", () => {
         idleTimeoutMinutes: undefined,
         lockOnMinimize: false,
         lockOnSleep: false,
+        lockOnSessionLock: false,
         clipboardClearSeconds: 20,
         contentProtection: true,
       },
@@ -115,6 +122,7 @@ describe("applyPortableSettings", () => {
       idleTimeoutMinutes: 5,
       lockOnMinimize: true,
       lockOnSleep: false,
+      lockOnSessionLock: false,
     });
     expect(applied.contentProtection).toBe(false);
     expect(applied.groupDeleteMode).toBe("keepContents");
@@ -243,7 +251,14 @@ describe("parsePortableSettings", () => {
     },
   );
 
-  it.each(["lockOnMinimize", "lockOnSleep", "contentProtection"])(
+  it("imports a file from before lock-on-session-lock existed with it turned off", () => {
+    const raw = rawOf();
+    delete (raw.security as Record<string, unknown>).lockOnSessionLock;
+
+    expect(importRaw(raw).security.lockOnSessionLock).toBe(false);
+  });
+
+  it.each(["lockOnMinimize", "lockOnSleep", "lockOnSessionLock", "contentProtection"])(
     "rejects a non-boolean %s",
     (field) => {
       const raw = rawOf();
