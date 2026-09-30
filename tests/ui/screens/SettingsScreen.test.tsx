@@ -44,6 +44,7 @@ function renderSettings(
     theme?: Theme;
     contentProtection?: boolean;
     closeToTray?: boolean;
+    checkForUpdates?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
     onChangeMasterPassword?: (
       currentPassword: string,
@@ -77,6 +78,7 @@ function renderSettings(
     theme: overrides.theme ?? "dark",
     contentProtection: overrides.contentProtection ?? true,
     closeToTray: overrides.closeToTray ?? false,
+    checkForUpdates: overrides.checkForUpdates ?? false,
     entryFieldVisibility: overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
     entrySort: "manual",
   };
@@ -462,6 +464,25 @@ describe("SettingsScreen", () => {
     const { onSettingChange: onSecondChange } = renderSettings({ closeToTray: true });
     fireEvent.click(screen.getByRole("checkbox", { name: /system tray/i }));
     expect(onSecondChange).toHaveBeenCalledWith("closeToTray", false);
+  });
+
+  it("shows the launch update check off by default", () => {
+    renderSettings();
+
+    expect(screen.getByRole("checkbox", { name: /check for updates/i })).not.toBeChecked();
+  });
+
+  it("reports turning the launch update check on and off", () => {
+    const { onSettingChange, unmount } = renderSettings({ checkForUpdates: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /check for updates/i }));
+    expect(onSettingChange).toHaveBeenCalledWith("checkForUpdates", true);
+    unmount();
+
+    const { onSettingChange: onSecondChange } = renderSettings({ checkForUpdates: true });
+    expect(screen.getByRole("checkbox", { name: /check for updates/i })).toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: /check for updates/i }));
+    expect(onSecondChange).toHaveBeenCalledWith("checkForUpdates", false);
   });
 
   describe("danger zone", () => {

@@ -4,6 +4,7 @@ mod clipboard;
 mod open_vault;
 mod session_lock;
 mod tray;
+mod updater;
 
 use tauri_plugin_fs::FsExt;
 
@@ -106,9 +107,13 @@ pub fn run() {
         // fresh launch is rejected by Tauri's fs scope before the master
         // password is ever checked.
         .plugin(tauri_plugin_persisted_scope::init())
+        // Only ever used through `updater.rs`, and only when the user has
+        // turned on update checks: nothing here reaches the network by itself.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(auto_type::AutoTypeState::default())
         .manage(tray::CloseToTray::default())
         .manage(open_vault::LaunchVault::default())
+        .manage(updater::PendingUpdate::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if tray::hide_on_close(window) {
@@ -133,7 +138,9 @@ pub fn run() {
             clipboard::clipboard_write_secret,
             clipboard::clipboard_clear_secret,
             tray::set_close_to_tray,
-            open_vault::launch_vault_path
+            open_vault::launch_vault_path,
+            updater::check_for_update,
+            updater::install_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

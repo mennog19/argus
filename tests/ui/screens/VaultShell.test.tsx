@@ -60,6 +60,7 @@ const TEST_SETTINGS: EffectiveSettings = {
   theme: DEFAULT_THEME,
   contentProtection: true,
   closeToTray: false,
+  checkForUpdates: false,
   entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
   entrySort: DEFAULT_ENTRY_SORT,
 };
@@ -126,6 +127,7 @@ function renderShell(
     theme: overrides.theme ?? TEST_SETTINGS.theme,
     contentProtection: overrides.contentProtection ?? TEST_SETTINGS.contentProtection,
     closeToTray: TEST_SETTINGS.closeToTray,
+    checkForUpdates: TEST_SETTINGS.checkForUpdates,
     entryFieldVisibility: overrides.entryFieldVisibility ?? TEST_SETTINGS.entryFieldVisibility,
     entrySort: overrides.entrySort ?? TEST_SETTINGS.entrySort,
   };

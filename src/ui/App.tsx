@@ -13,8 +13,9 @@ import { AutoTypeService } from "../application/auto-type-service";
 import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
 import { WindowCloseBehavior } from "../application/window-close-behavior";
-import { SettingsStore } from "../application/settings";
+import { resolveSettings, SettingsStore } from "../application/settings";
 import { SettingsTransferService } from "../application/settings-transfer-service";
+import { Updater } from "../application/updater";
 import { UrlOpener } from "../application/url-opener";
 import { VaultMergeSource } from "../application/vault-merge-source";
 import { VaultOpenRequests } from "../application/vault-open-requests";
@@ -23,6 +24,7 @@ import { useAppSettings } from "./use-app-settings";
 import { useAutoLock } from "./use-auto-lock";
 import { useAutoType } from "./use-auto-type";
 import { useExpiredEntries } from "./use-expired-entries";
+import { useLaunchUpdateCheck } from "./use-launch-update-check";
 import { useVaultOpenRequests } from "./use-vault-open-requests";
 import { useWindowAppearance } from "./use-window-appearance";
 import { AutoTypeErrorToast } from "./screens/AutoTypeErrorToast";
@@ -30,6 +32,7 @@ import { CustomIconsContext } from "./entry-icons/custom-icons-context";
 import { AutoTypePicker } from "./screens/AutoTypePicker";
 import { LockedScreen } from "./screens/LockedScreen";
 import { SaveConflictDialog } from "./screens/SaveConflictDialog";
+import { UpdateDialog } from "./screens/UpdateDialog";
 import { VaultShell } from "./screens/VaultShell";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import "./styles/theme.css";
@@ -48,6 +51,7 @@ interface AppProps {
   autoTypeService: AutoTypeService;
   globalHotkey: GlobalHotkey;
   vaultOpenRequests: VaultOpenRequests;
+  updater: Updater;
 }
 
 type Screen =
@@ -73,12 +77,19 @@ function App({
   autoTypeService,
   globalHotkey,
   vaultOpenRequests,
+  updater,
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "welcome" });
   const [conflict, setConflict] = useState<SaveConflict | undefined>(undefined);
   const [fileInfo, setFileInfo] = useState<VaultFileInfo | undefined>(undefined);
+  const updateCheck = useLaunchUpdateCheck(updater);
 
   const appSettings = useAppSettings(settingsStore, settingsTransferService, (loaded) => {
+    // Only the setting as saved at launch counts: turning it on later waits
+    // for the next start rather than checking mid-session.
+    if (resolveSettings(loaded).checkForUpdates) {
+      updateCheck.check();
+    }
     const mostRecent = loaded.recentVaults[0];
     if (mostRecent) {
       // Unless a vault Argus was launched to open got here first.
@@ -237,77 +248,92 @@ function App({
     lock(pending.filePath);
   }
 
-  if (screen.kind === "welcome") {
+  function renderScreen(screen: Screen) {
+    if (screen.kind === "welcome") {
+      return (
+        <WelcomeScreen
+          recentVaults={settings.recentVaults}
+          vaultAccessService={vaultAccessService}
+          onOpened={(opened: OpenedVault) =>
+            void rememberAndUnlock(opened.vault, opened.filePath, opened.keyFilePath)
+          }
+          onSelectRecent={lock}
+        />
+      );
+    }
+
+    if (screen.kind === "locked") {
+      const { filePath } = screen;
+      return (
+        <LockedScreen
+          // Remounting per vault resets the key file picked for the previous one.
+          key={filePath}
+          filePath={filePath}
+          initialKeyFilePath={
+            settings.recentVaults.find((entry) => entry.path === filePath)?.keyFilePath
+          }
+          vaultAccessService={vaultAccessService}
+          onUnlocked={(vault, keyFilePath) => void rememberAndUnlock(vault, filePath, keyFilePath)}
+          onChooseDifferentVault={() => setScreen({ kind: "welcome" })}
+        />
+      );
+    }
+
+    const { vault, filePath } = screen;
     return (
-      <WelcomeScreen
-        recentVaults={settings.recentVaults}
-        vaultAccessService={vaultAccessService}
-        onOpened={(opened: OpenedVault) =>
-          void rememberAndUnlock(opened.vault, opened.filePath, opened.keyFilePath)
-        }
-        onSelectRecent={lock}
-      />
+      <>
+        <VaultShell
+          vault={vault}
+          filePath={filePath}
+          fileInfo={fileInfo}
+          urlOpener={urlOpener}
+          clipboardWriter={clipboardWriter}
+          mergeSource={mergeSource}
+          settings={effective}
+          onSettingChange={appSettings.changeSetting}
+          onLock={() => lock(filePath)}
+          onSave={(nextVault) => saveVault(nextVault, filePath)}
+          // The vault changed in a way that doesn't warrant writing the file —
+          // today only the "entry was opened" stamp, which rides along with the
+          // next real save instead of re-encrypting the whole vault per click.
+          onVaultChange={(nextVault) => setScreen({ kind: "unlocked", vault: nextVault, filePath })}
+          onChangeMasterPassword={(currentPassword, newPassword) =>
+            changeMasterPassword(vault, filePath, currentPassword, newPassword)
+          }
+          onUpgradeFormat={() => upgradeVaultFormat(vault, filePath)}
+          onExportSettings={appSettings.exportSettings}
+          onImportSettings={appSettings.importSettings}
+        />
+        {autoType.request && (
+          <CustomIconsContext value={{ icons: vault.customIcons }}>
+            <AutoTypePicker
+              request={autoType.request}
+              onTypeInto={autoType.typeInto}
+              onCancel={autoType.dismiss}
+            />
+          </CustomIconsContext>
+        )}
+        {autoType.error && (
+          <AutoTypeErrorToast message={autoType.error} onDismiss={autoType.dismissError} />
+        )}
+        {conflict && (
+          <SaveConflictDialog
+            onDiscard={() => discardConflict(conflict)}
+            onOverwrite={() => void overwriteConflict(conflict)}
+          />
+        )}
+      </>
     );
   }
 
-  if (screen.kind === "locked") {
-    const { filePath } = screen;
-    return (
-      <LockedScreen
-        // Remounting per vault resets the key file picked for the previous one.
-        key={filePath}
-        filePath={filePath}
-        initialKeyFilePath={
-          settings.recentVaults.find((entry) => entry.path === filePath)?.keyFilePath
-        }
-        vaultAccessService={vaultAccessService}
-        onUnlocked={(vault, keyFilePath) => void rememberAndUnlock(vault, filePath, keyFilePath)}
-        onChooseDifferentVault={() => setScreen({ kind: "welcome" })}
-      />
-    );
-  }
-
-  const { vault, filePath } = screen;
   return (
     <>
-      <VaultShell
-        vault={vault}
-        filePath={filePath}
-        fileInfo={fileInfo}
-        urlOpener={urlOpener}
-        clipboardWriter={clipboardWriter}
-        mergeSource={mergeSource}
-        settings={effective}
-        onSettingChange={appSettings.changeSetting}
-        onLock={() => lock(filePath)}
-        onSave={(nextVault) => saveVault(nextVault, filePath)}
-        // The vault changed in a way that doesn't warrant writing the file —
-        // today only the "entry was opened" stamp, which rides along with the
-        // next real save instead of re-encrypting the whole vault per click.
-        onVaultChange={(nextVault) => setScreen({ kind: "unlocked", vault: nextVault, filePath })}
-        onChangeMasterPassword={(currentPassword, newPassword) =>
-          changeMasterPassword(vault, filePath, currentPassword, newPassword)
-        }
-        onUpgradeFormat={() => upgradeVaultFormat(vault, filePath)}
-        onExportSettings={appSettings.exportSettings}
-        onImportSettings={appSettings.importSettings}
-      />
-      {autoType.request && (
-        <CustomIconsContext value={{ icons: vault.customIcons }}>
-          <AutoTypePicker
-            request={autoType.request}
-            onTypeInto={autoType.typeInto}
-            onCancel={autoType.dismiss}
-          />
-        </CustomIconsContext>
-      )}
-      {autoType.error && (
-        <AutoTypeErrorToast message={autoType.error} onDismiss={autoType.dismissError} />
-      )}
-      {conflict && (
-        <SaveConflictDialog
-          onDiscard={() => discardConflict(conflict)}
-          onOverwrite={() => void overwriteConflict(conflict)}
+      {renderScreen(screen)}
+      {updateCheck.update && (
+        <UpdateDialog
+          update={updateCheck.update}
+          onInstall={(onProgress) => updater.installUpdate(onProgress)}
+          onDismiss={updateCheck.dismiss}
         />
       )}
     </>

@@ -10,6 +10,7 @@ import { ExpiredEntriesSection } from "./settings/ExpiredEntriesSection";
 import { GroupsSection } from "./settings/GroupsSection";
 import { SecuritySection } from "./settings/SecuritySection";
 import { SettingChangeHandler } from "../setting-change";
+import { UpdatesSection } from "./settings/UpdatesSection";
 import { VaultInfoSection } from "./settings/VaultInfoSection";
 import { WindowSection } from "./settings/WindowSection";
 
@@ -57,6 +58,10 @@ export function SettingsScreen({
             onSettingChange={onSettingChange}
           />
           <WindowSection closeToTray={settings.closeToTray} onSettingChange={onSettingChange} />
+          <UpdatesSection
+            checkForUpdates={settings.checkForUpdates}
+            onSettingChange={onSettingChange}
+          />
           <SecuritySection
             autoLock={settings.autoLock}
             clipboardClearSeconds={settings.clipboardClearSeconds}

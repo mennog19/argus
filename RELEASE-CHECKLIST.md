@@ -7,7 +7,9 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 ## Release engineering
 
 - [ ] **Code signing.** Without it, Windows SmartScreen will warn users off an unsigned password manager.
-- [ ] **Updater.** There's no updater (`tauri-plugin-updater`), so security fixes can't reach users. It's much harder to add after people have installed the app.
+- [x] **Updater.** `tauri-plugin-updater` is in, opt-in from Settings and off by default. With it on, Argus checks once at launch and shows a popup when a newer release exists. Installers are signed with the updater key and verified before they run. The feed is `latest.json` on the newest published release, and the release workflow refuses tags that aren't on `main`.
+  - Done: the key is the `TAURI_SIGNING_PRIVATE_KEY` secret of the `release` environment, and backed up. Losing it means installed copies can't be updated.
+  - Worth a manual test once: install one version, publish a newer one, and let the popup install it.
 - [x] **Release workflow.** The release is Windows-only. Pushing a `v*` tag runs CI, checks the tag matches the version in `tauri.conf.json`, builds the NSIS `.exe` and `.msi`, and attaches them to a **draft** GitHub Release with a `.sha256` file for each and a `SHA256SUMS.txt`. Review the draft on GitHub, then publish it.
 - [x] **Round-trip tests on KeePass-written files.** `tests/fixtures/keepass/` holds vaults written by KeePass 2.61 itself (KDBX 3.1 with AES-KDF, KDBX 4.1 with Argon2id and ChaCha20, and one needing a key file), made by `scripts/generate-keepass-fixtures.ps1`. The tests check that everything Argus didn't edit comes back exactly as KeePass wrote it.
   - These found that kdbxweb writes two KDBX 4.1 dates (on custom data items and custom icons) in a form KeePass 2 rejects, so KeePass couldn't reopen such a vault after Argus saved it. It's fixed with a patch to kdbxweb in `patches/`. Worth reporting upstream.

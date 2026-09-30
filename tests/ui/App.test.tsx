@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Entry, Vault } from "../../src/domain";
 import { ClipboardWriter } from "../../src/application/clipboard";
@@ -18,6 +18,7 @@ import { VaultMergeSource } from "../../src/application/vault-merge-source";
 import { VaultOpenRequests } from "../../src/application/vault-open-requests";
 import { AutoTyper, GlobalHotkey } from "../../src/application/auto-type";
 import { AutoTypeService } from "../../src/application/auto-type-service";
+import { Updater } from "../../src/application/updater";
 import App from "../../src/ui/App";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
@@ -112,6 +113,14 @@ function fakeAutoTypeService(autoTyper: AutoTyper = fakeAutoTyper()): AutoTypeSe
   return new AutoTypeService(autoTyper);
 }
 
+function fakeUpdater(overrides: Partial<Updater> = {}): Updater {
+  return {
+    checkForUpdate: vi.fn().mockResolvedValue(undefined),
+    installUpdate: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function fakeGlobalHotkey(overrides: Partial<GlobalHotkey> = {}): GlobalHotkey {
   return {
     register: vi.fn().mockResolvedValue(undefined),
@@ -136,6 +145,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -159,6 +169,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -187,6 +198,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -218,6 +230,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -266,6 +279,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -305,6 +319,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -349,6 +364,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -387,6 +403,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -419,6 +436,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -457,6 +475,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -494,6 +513,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -540,6 +560,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -585,6 +606,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -640,6 +662,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -685,6 +708,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -730,6 +754,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -772,6 +797,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -813,6 +839,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
     }
@@ -885,6 +912,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -926,6 +954,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -969,6 +998,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1009,6 +1039,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1053,6 +1084,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1099,6 +1131,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1147,6 +1180,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1192,6 +1226,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1233,6 +1268,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1276,6 +1312,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1321,6 +1358,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1363,6 +1401,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1405,6 +1444,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1450,6 +1490,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1493,6 +1534,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1535,6 +1577,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1585,6 +1628,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -1639,6 +1683,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -1692,6 +1737,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -1746,6 +1792,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -1801,6 +1848,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1850,6 +1898,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1897,6 +1946,7 @@ describe("App", () => {
         mergeSource={fakeMergeSource()}
         autoTypeService={fakeAutoTypeService()}
         globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
       />,
     );
 
@@ -1950,6 +2000,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
     }
@@ -2101,6 +2152,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService(options.autoTyper)}
           globalHotkey={globalHotkey}
+          updater={fakeUpdater()}
         />,
       );
 
@@ -2274,6 +2326,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
       // Settings finish loading after the launch vault was handed over.
@@ -2308,6 +2361,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
       await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
@@ -2347,6 +2401,7 @@ describe("App", () => {
           mergeSource={fakeMergeSource()}
           autoTypeService={fakeAutoTypeService()}
           globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
         />,
       );
       await user.type(await screen.findByLabelText("Master password"), "Hunter2-long");
@@ -2357,6 +2412,113 @@ describe("App", () => {
 
       expect(screen.getByRole("button", { name: "Lock vault" })).toBeInTheDocument();
       expect(vaultAccessService.closeVault).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("launch update check", () => {
+    const UPDATE = { version: "0.2.0", currentVersion: "0.1.0" };
+
+    function renderWithUpdates(settings: AppSettings, updater: Updater) {
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService()}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+          updater={updater}
+        />,
+      );
+    }
+
+    it("doesn't check when the user hasn't turned it on", async () => {
+      const updater = fakeUpdater({ checkForUpdate: vi.fn().mockResolvedValue(UPDATE) });
+
+      renderWithUpdates(DEFAULT_SETTINGS, updater);
+
+      expect(
+        await screen.findByRole("button", { name: /open existing vault/i }),
+      ).toBeInTheDocument();
+      expect(updater.checkForUpdate).not.toHaveBeenCalled();
+    });
+
+    it("doesn't check when the settings can't be loaded", async () => {
+      const updater = fakeUpdater();
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService()}
+          settingsStore={fakeSettingsStore({ load: vi.fn().mockRejectedValue(new Error("gone")) })}
+          settingsTransferService={fakeSettingsTransferService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+          updater={updater}
+        />,
+      );
+
+      expect(
+        await screen.findByRole("button", { name: /open existing vault/i }),
+      ).toBeInTheDocument();
+      expect(updater.checkForUpdate).not.toHaveBeenCalled();
+    });
+
+    it("shows nothing when Argus is up to date", async () => {
+      const updater = fakeUpdater();
+
+      renderWithUpdates({ ...DEFAULT_SETTINGS, checkForUpdates: true }, updater);
+
+      await waitFor(() => expect(updater.checkForUpdate).toHaveBeenCalledOnce());
+      expect(screen.queryByRole("dialog", { name: "Update available" })).toBeNull();
+    });
+
+    it("pops up over the lock screen when there is an update", async () => {
+      const updater = fakeUpdater({ checkForUpdate: vi.fn().mockResolvedValue(UPDATE) });
+
+      renderWithUpdates(
+        {
+          recentVaults: [{ path: "C:/vaults/a.kdbx", lastOpenedAt: "2026-01-01T00:00:00.000Z" }],
+          checkForUpdates: true,
+        },
+        updater,
+      );
+
+      expect(await screen.findByRole("dialog", { name: "Update available" })).toBeInTheDocument();
+      expect(screen.getByText("Argus 0.2.0 is available. You have 0.1.0.")).toBeInTheDocument();
+    });
+
+    it("installs through the updater", async () => {
+      const updater = fakeUpdater({
+        checkForUpdate: vi.fn().mockResolvedValue(UPDATE),
+        installUpdate: vi.fn(() => new Promise<void>(() => {})),
+      });
+      renderWithUpdates({ ...DEFAULT_SETTINGS, checkForUpdates: true }, updater);
+
+      fireEvent.click(await screen.findByRole("button", { name: /install and restart/i }));
+
+      expect(updater.installUpdate).toHaveBeenCalledOnce();
+    });
+
+    it("goes away on Not now", async () => {
+      const updater = fakeUpdater({ checkForUpdate: vi.fn().mockResolvedValue(UPDATE) });
+      renderWithUpdates({ ...DEFAULT_SETTINGS, checkForUpdates: true }, updater);
+
+      fireEvent.click(await screen.findByRole("button", { name: "Not now" }));
+
+      expect(screen.queryByRole("dialog", { name: "Update available" })).toBeNull();
+      expect(screen.getByRole("button", { name: /open existing vault/i })).toBeInTheDocument();
     });
   });
 });

@@ -6,6 +6,7 @@ import {
   DEFAULT_AUTO_LOCK,
   DEFAULT_AUTO_TYPE,
   DEFAULT_CLIPBOARD_CLEAR_SECONDS,
+  DEFAULT_CHECK_FOR_UPDATES,
   DEFAULT_CLOSE_TO_TRAY,
   DEFAULT_CONTENT_PROTECTION,
   DEFAULT_ENTRY_FIELD_VISIBILITY,
@@ -138,6 +139,7 @@ describe("withSetting", () => {
     expectRecorded("theme", "light");
     expectRecorded("contentProtection", false);
     expectRecorded("closeToTray", true);
+    expectRecorded("checkForUpdates", true);
     expectRecorded("entryFieldVisibility", {
       ...DEFAULT_ENTRY_FIELD_VISIBILITY,
       password: false,
@@ -174,6 +176,7 @@ describe("resolveSettings", () => {
       theme: DEFAULT_THEME,
       contentProtection: DEFAULT_CONTENT_PROTECTION,
       closeToTray: DEFAULT_CLOSE_TO_TRAY,
+      checkForUpdates: DEFAULT_CHECK_FOR_UPDATES,
       entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
       entrySort: DEFAULT_ENTRY_SORT,
     });
@@ -196,6 +199,7 @@ describe("resolveSettings", () => {
       theme: "light",
       contentProtection: false,
       closeToTray: true,
+      checkForUpdates: true,
       entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
       entrySort: "title-desc",
     } satisfies Omit<AppSettings, "recentVaults">;

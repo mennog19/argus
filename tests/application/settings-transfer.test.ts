@@ -25,6 +25,7 @@ const CUSTOMIZED: AppSettings = {
   },
   contentProtection: false,
   closeToTray: true,
+  checkForUpdates: true,
   groupDeleteMode: "keepContents",
   expiredEntryAction: "recycle",
   entryFieldVisibility: {
@@ -107,6 +108,10 @@ describe("toPortableSettings", () => {
   it("leaves the vault list out of the file", () => {
     expect(JSON.stringify(portableOf())).not.toContain("mine.kdbx");
   });
+
+  it("leaves the update check out of the file", () => {
+    expect(JSON.stringify(portableOf())).not.toMatch(/update/i);
+  });
 });
 
 describe("serializePortableSettings", () => {
@@ -144,6 +149,13 @@ describe("applyPortableSettings", () => {
 
     expect(applied.recentVaults).toEqual(CUSTOMIZED.recentVaults);
     expect(applied.generatorPolicy).toEqual({ length: 24 });
+    expect(applied.checkForUpdates).toBe(true);
+  });
+
+  it("never turns the update check on", () => {
+    const applied = applyPortableSettings(DEFAULT_SETTINGS, portableOf(CUSTOMIZED));
+
+    expect(applied.checkForUpdates).toBeUndefined();
   });
 
   it("turns idle-timeout locking off when the file leaves it out", () => {

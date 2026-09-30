@@ -26,6 +26,7 @@ const FULL_SETTINGS: AppSettings = {
   theme: "light",
   contentProtection: false,
   closeToTray: true,
+  checkForUpdates: true,
   entryFieldVisibility: {
     username: true,
     password: true,
@@ -104,6 +105,7 @@ describe("parseStoredSettings", () => {
       theme: "sepia",
       contentProtection: "yes",
       closeToTray: "yes",
+      checkForUpdates: "yes",
       groupDeleteMode: "shred",
       expiredEntryAction: "archive",
       entrySort: "random",
