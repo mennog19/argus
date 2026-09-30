@@ -8,7 +8,9 @@ overrides:
   '@xmldom/xmldom': ^0.8.15
 
 patchedDependencies:
-  kdbxweb@2.1.1: 7472a62bf016fec97aa4d9ad2509de1c336de6914b473fe4e4757fd3a06e6c5a
+  kdbxweb@2.1.1:
+    hash: 7472a62bf016fec97aa4d9ad2509de1c336de6914b473fe4e4757fd3a06e6c5a
+    path: patches/kdbxweb@2.1.1.patch
 
 importers:
 
