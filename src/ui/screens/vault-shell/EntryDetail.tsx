@@ -12,6 +12,7 @@ import { useAsyncAction } from "../../use-async-action";
 import { ClipboardCopy } from "../../use-clipboard-copy";
 import { EntryWithGroup } from "../../vault-browsing";
 import { CopyableFieldRow } from "./CopyableFieldRow";
+import { EntryHistory } from "./EntryHistory";
 import { EntryMetaCards } from "./EntryMetaCards";
 import { TotpCard } from "./TotpCard";
 
@@ -30,6 +31,8 @@ interface EntryDetailProps {
   onToggleReveal: () => void;
   onEdit: () => void;
   onDelete: () => Promise<void>;
+  onRestoreRevision: (index: number) => Promise<void>;
+  onDeleteRevision: (index: number) => Promise<void>;
 }
 
 export function EntryDetail({
@@ -42,6 +45,8 @@ export function EntryDetail({
   onToggleReveal,
   onEdit,
   onDelete,
+  onRestoreRevision,
+  onDeleteRevision,
 }: EntryDetailProps) {
   const { entry: storedEntry, group } = entryWithGroup;
   const entry = useMemo(() => references.resolveEntry(storedEntry), [references, storedEntry]);
@@ -157,6 +162,15 @@ export function EntryDetail({
         )}
 
         <EntryMetaCards entry={entry} group={group} customFields={otherCustomFields} />
+
+        {storedEntry.history.length > 0 && (
+          <EntryHistory
+            entry={storedEntry}
+            clipboard={clipboard}
+            onRestore={onRestoreRevision}
+            onDelete={onDeleteRevision}
+          />
+        )}
       </div>
     </div>
   );

@@ -47,6 +47,7 @@ function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
     tags: new Tags(tags),
     customFields: new CustomFields(customFields),
     icon: iconFromKdbx(kdbxEntry),
+    history: kdbxEntry.history.map(entryFromKdbx),
   });
 }
 
@@ -160,6 +161,43 @@ function writeAccessTime(kdbxEntry: KdbxEntry, entry: Entry): void {
   }
 }
 
+/**
+ * Whether `kdbxRevision` is the revision `revision` was mapped from: same
+ * modification time and same contents. Revisions are otherwise anonymous in
+ * KDBX, and KeePass itself tells them apart by modification time.
+ */
+function isSameRevision(kdbxRevision: KdbxEntry, revision: Entry): boolean {
+  return (
+    kdbxRevision.times.lastModTime?.getTime() === revision.times.modifiedAt?.getTime() &&
+    snapshotEntry(entryFromKdbx(kdbxRevision)) === snapshotEntry(revision)
+  );
+}
+
+/**
+ * Removes the revisions the domain entry no longer has, e.g. one deleted to
+ * purge an old password. The domain history must be the file's history with
+ * some revisions left out, in the same order; if it holds a revision the file
+ * doesn't, it wasn't mapped from this document and nothing is removed.
+ */
+function removeDeletedRevisions(kdbxEntry: KdbxEntry, entry: Entry): void {
+  const removed: number[] = [];
+  let kept = 0;
+  kdbxEntry.history.forEach((kdbxRevision, index) => {
+    if (kept < entry.history.length && isSameRevision(kdbxRevision, entry.history[kept])) {
+      kept++;
+    } else {
+      removed.push(index);
+    }
+  });
+  if (kept < entry.history.length) {
+    return;
+  }
+  // Highest index first, so the earlier indexes stay valid.
+  for (const index of removed.reverse()) {
+    kdbxEntry.removeHistory(index);
+  }
+}
+
 function syncEntry(
   entry: Entry,
   parentKdbxGroup: KdbxGroup,
@@ -182,6 +220,7 @@ function syncEntry(
   if (existing.parentGroup !== parentKdbxGroup) {
     db.move(existing, parentKdbxGroup);
   }
+  removeDeletedRevisions(existing, entry);
   if (snapshotEntry(entry) !== snapshotEntry(entryFromKdbx(existing))) {
     existing.pushHistory();
     writeEntryFields(existing, entry, db.meta.memoryProtection);

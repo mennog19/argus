@@ -19,6 +19,10 @@ export interface VaultCommands {
   moveEntry(entryId: EntryId, groupId: GroupId): Promise<void>;
   deleteEntry(entryId: EntryId): Promise<void>;
   restoreEntry(entryId: EntryId): Promise<void>;
+  /** Brings back `entry`'s history revision `index`; the version it replaces becomes a revision. */
+  restoreEntryRevision(entry: Entry, index: number): Promise<void>;
+  /** Removes `entry`'s history revision `index` from the file. */
+  deleteEntryRevision(entry: Entry, index: number): Promise<void>;
   deleteEntryForever(entryId: EntryId): Promise<void>;
   restoreGroup(groupId: GroupId): Promise<void>;
   deleteGroupForever(groupId: GroupId): Promise<void>;
@@ -60,6 +64,8 @@ export function vaultCommands(vault: Vault, save: (next: Vault) => Promise<void>
     moveEntry: (entryId, groupId) => saveIfChanged(vault.moveEntry(entryId, groupId)),
     deleteEntry: (entryId) => save(vault.deleteEntry(entryId)),
     restoreEntry: (entryId) => save(vault.restoreEntry(entryId, vault.rootGroup.id)),
+    restoreEntryRevision: (entry, index) => save(vault.updateEntry(entry.restoreRevision(index))),
+    deleteEntryRevision: (entry, index) => save(vault.updateEntry(entry.deleteRevision(index))),
     deleteEntryForever: (entryId) => save(vault.removeEntry(entryId)),
     restoreGroup: (groupId) => save(vault.restoreGroup(groupId, vault.rootGroup.id)),
     deleteGroupForever: (groupId) => save(vault.removeGroup(groupId)),

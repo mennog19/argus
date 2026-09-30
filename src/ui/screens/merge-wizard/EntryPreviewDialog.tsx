@@ -22,45 +22,45 @@ export function EntryPreviewDialog({ entry, revealSecrets, onClose }: EntryPrevi
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-card merge-preview"
+        className="modal-card entry-preview"
         role="dialog"
         aria-modal="true"
         aria-label={`Entry ${title}`}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="merge-preview-header">
+        <header className="entry-preview-header">
           <EntryAvatar entry={entry} />
-          <div className="merge-preview-heading">
+          <div className="entry-preview-heading">
             <h2>{title}</h2>
             <p>{entry.username || "No username"}</p>
           </div>
           <button
             type="button"
-            className="merge-preview-close"
+            className="entry-preview-close"
             aria-label="Close"
             onClick={onClose}
           >
             <XIcon size={13} />
           </button>
         </header>
-        <dl className="merge-preview-body">
+        <dl className="entry-preview-body">
           {MERGE_FIELDS.filter((field) => field !== "title").map((field) => (
-            <div className="merge-preview-row" key={field}>
+            <div className="entry-preview-row" key={field}>
               <dt>{FIELD_LABELS[field]}</dt>
               <dd>{displayValue(entry, field, revealSecrets)}</dd>
             </div>
           ))}
-          <div className="merge-preview-row">
+          <div className="entry-preview-row">
             <dt>Tags</dt>
             <dd>{tags.length === 0 ? "—" : tags.join(", ")}</dd>
           </div>
           {extraFields.map((field) => (
-            <div className="merge-preview-row" key={field.key}>
+            <div className="entry-preview-row" key={field.key}>
               <dt>{field.key}</dt>
               <dd>{field.value}</dd>
             </div>
           ))}
-          <div className="merge-preview-row notes">
+          <div className="entry-preview-row notes">
             <dt>Notes</dt>
             <dd>{entry.notes || "—"}</dd>
           </div>

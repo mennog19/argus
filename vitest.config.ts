@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Lets the KeePass-written fixture vaults be imported with `?inline`.
+  assetsInclude: ["**/*.kdbx", "**/*.keyx"],
   test: {
     environment: "jsdom",
     // Needed so @testing-library/react's auto-cleanup (which detects the

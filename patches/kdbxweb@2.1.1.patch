@@ -1,0 +1,34 @@
+diff --git a/dist/kdbxweb.js b/dist/kdbxweb.js
+index 7d330745e3ebc4c99c09a573824ae3bb08583565..022ba196be4dbbb7d6795d49386404b946efa805 100644
+--- a/dist/kdbxweb.js
++++ b/dist/kdbxweb.js
+@@ -1759,7 +1759,7 @@ class KdbxCustomData {
+                 XmlUtils.setText(XmlUtils.addChildNode(itemNode, XmlNames.Elem.Key), key);
+                 XmlUtils.setText(XmlUtils.addChildNode(itemNode, XmlNames.Elem.Value), item.value);
+                 if (item.lastModified && ctx.kdbx.versionIsAtLeast(4, 1)) {
+-                    XmlUtils.setDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), item.lastModified);
++                    ctx.setXmlDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), item.lastModified);
+                 }
+             }
+         }
+@@ -2141,6 +2141,11 @@ class KdbxEntry {
+             }
+         }
+         this.autoType = JSON.parse(JSON.stringify(entry.autoType));
++        this.customData = entry.customData
++            ? new Map(Array.from(entry.customData, ([key, item]) => [key, { ...item }]))
++            : undefined;
++        this.qualityCheck = entry.qualityCheck;
++        this.previousParentGroup = entry.previousParentGroup;
+     }
+     merge(objectMap) {
+         const remoteEntry = objectMap.remoteEntries.get(this.uuid.id);
+@@ -3856,7 +3861,7 @@ class KdbxMeta {
+                         XmlUtils.setText(XmlUtils.addChildNode(itemNode, XmlNames.Elem.CustomIconItemName), name);
+                     }
+                     if (lastModified) {
+-                        XmlUtils.setDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), lastModified);
++                        ctx.setXmlDate(XmlUtils.addChildNode(itemNode, XmlNames.Elem.LastModTime), lastModified);
+                     }
+                 }
+             }

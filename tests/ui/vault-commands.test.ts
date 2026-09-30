@@ -137,6 +137,20 @@ describe("vaultCommands", () => {
       expect(saved(save).isInRecycleBin(work.id)).toBe(false);
     });
 
+    it("restores or deletes one of an entry's history revisions", async () => {
+      const { vault, entry, save } = setup();
+      const revision = entry.update({ username: "old-alice" });
+      const withHistory = entry.update({ history: [revision] });
+      const current = vault.updateEntry(withHistory);
+
+      await vaultCommands(current, save).restoreEntryRevision(withHistory, 0);
+      expect(saved(save).findEntry(entry.id)?.username).toBe("old-alice");
+
+      save.mockClear();
+      await vaultCommands(current, save).deleteEntryRevision(withHistory, 0);
+      expect(saved(save).findEntry(entry.id)?.history).toEqual([]);
+    });
+
     it("deletes entries and groups for good, or empties the whole bin", async () => {
       const { vault, entry, work, home, save } = setup();
       await vaultCommands(vault, save).deleteEntryForever(entry.id);

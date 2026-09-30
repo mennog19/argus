@@ -2,3 +2,11 @@ overrides:
   # kdbxweb 2.1.1 pins ^0.7.4, and no 0.7.x release has the fixes for the
   # GHSA advisories reported by `pnpm audit`.
   "@xmldom/xmldom": ^0.8.15
+patchedDependencies:
+  # kdbxweb 2.1.1 writes the KDBX 4.1 LastModificationTime of custom data
+  # items and custom icons as ISO text instead of KDBX4's base64 seconds, and
+  # KeePass 2 then refuses to open the file. The patch writes them the way
+  # every other KDBX4 date is written. It also makes `KdbxEntry.copyFrom`
+  # copy custom data, QualityCheck and PreviousParentGroup, which it dropped,
+  # so the history revision an edit pushes kept none of them.
+  kdbxweb@2.1.1: patches/kdbxweb@2.1.1.patch

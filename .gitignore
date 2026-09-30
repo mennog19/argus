@@ -25,7 +25,6 @@ dist-ssr
 
 # Test/coverage output
 coverage
-playwright-report
 test-results
 
 # Local app settings written by the app itself at runtime, never committed
@@ -33,3 +32,11 @@ test-results
 *.kdbx.bak*
 
 claude.md
+# ...except the KeePass-written fixtures the fidelity tests round-trip.
+!tests/fixtures/keepass/*.kdbx
+
+# TypeScript build output: incremental build info, and what the composite
+# tsconfig.node.json emits for vite.config.ts.
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts

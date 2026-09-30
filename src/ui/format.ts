@@ -41,6 +41,13 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 }
 
+const DATE_TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+/** A date and time in the user's locale, e.g. "12 Mar 2026, 14:05"; "Unknown date" when missing. */
+export function formatDateTime(date: Date | undefined): string {
+  return date ? DATE_TIME.format(date) : "Unknown date";
+}
+
 /** Groups a TOTP code into 3-digit clusters for readability, e.g. "123 456". */
 export function formatTotpCode(code: string): string {
   return code.match(/.{1,3}/g)!.join(" ");

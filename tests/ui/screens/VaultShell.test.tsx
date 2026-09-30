@@ -32,6 +32,7 @@ import { UrlOpener } from "../../../src/application/url-opener";
 import { VaultMergeSource } from "../../../src/application/vault-merge-source";
 import { GROUP_DRAG_TYPE } from "../../../src/ui/group-drag";
 import { VaultShell } from "../../../src/ui/screens/VaultShell";
+import { formatDateTime } from "../../../src/ui/format";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = { lockOnMinimize: false, lockOnSleep: false };
 const DEFAULT_AUTO_TYPE: AutoTypeSettings = {
@@ -1906,5 +1907,199 @@ describe("VaultShell entry sorting", () => {
     expect(onSave).not.toHaveBeenCalled();
     const nextVault = onVaultChange.mock.calls[0][0] as Vault;
     expect(nextVault.findEntry(entry.id)?.times.accessedAt).toBeInstanceOf(Date);
+  });
+
+  describe("entry history", () => {
+    const january = new Date("2026-01-10T09:00:00Z");
+    const february = new Date("2026-02-10T09:00:00Z");
+
+    function vaultWithHistory() {
+      const oldest = Entry.create({
+        title: "GitHub",
+        username: "old-user",
+        password: new Password("first-pass"),
+        url: "https://github.com",
+        times: { modifiedAt: january },
+      });
+      const middle = oldest.update({
+        password: new Password("second-pass"),
+        notes: "old notes",
+        tags: new Tags([new Tag("dev")]),
+        customFields: new CustomFields([new CustomField("PIN", "1234", true)]),
+        times: { modifiedAt: february },
+      });
+      const current = middle.update({
+        password: new Password("third-pass"),
+        url: "https://github.com/login",
+        times: { modifiedAt: new Date("2026-03-10T09:00:00Z") },
+        history: [oldest, middle],
+      });
+      const vault = Vault.create("Mine");
+      return { vault: vault.addEntry(vault.rootGroup.id, current), current };
+    }
+
+    type User = ReturnType<typeof userEvent.setup>;
+
+    async function openRevision(user: User, date: Date) {
+      await user.click(screen.getByText("GitHub"));
+      await user.click(screen.getByRole("button", { name: "History (2)" }));
+      await user.click(screen.getByRole("button", { name: new RegExp(formatDateTime(date)) }));
+      return screen.getByRole("dialog", {
+        name: `Version of GitHub from ${formatDateTime(date)}`,
+      });
+    }
+
+    it("shows no history section for an entry without revisions", async () => {
+      const user = userEvent.setup();
+      const vault = Vault.create("Mine");
+      renderShell(vault.addEntry(vault.rootGroup.id, Entry.create({ title: "GitHub" })));
+
+      await user.click(screen.getByText("GitHub"));
+
+      expect(screen.queryByRole("button", { name: /History/ })).not.toBeInTheDocument();
+    });
+
+    it("lists revisions newest first, each with what the next edit changed", async () => {
+      const user = userEvent.setup();
+      renderShell(vaultWithHistory().vault);
+
+      await user.click(screen.getByText("GitHub"));
+      const toggle = screen.getByRole("button", { name: "History (2)" });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByText("Password and URL changed")).not.toBeInTheDocument();
+
+      await user.click(toggle);
+
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      const rows = within(screen.getByRole("list")).getAllByRole("button");
+      expect(rows.map((row) => row.textContent)).toEqual([
+        `${formatDateTime(february)}Password and URL changed`,
+        `${formatDateTime(january)}Password, notes, tags and custom fields changed`,
+      ]);
+
+      await user.click(toggle);
+      expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    });
+
+    it("shows a revision read-only, masked until revealed", async () => {
+      const user = userEvent.setup();
+      renderShell(vaultWithHistory().vault);
+
+      const view = within(await openRevision(user, february));
+
+      expect(view.getByText(`Version from ${formatDateTime(february)}`)).toBeInTheDocument();
+      expect(view.getByText("old-user")).toBeInTheDocument();
+      expect(view.getByText("https://github.com")).toBeInTheDocument();
+      expect(view.getByText("dev")).toBeInTheDocument();
+      expect(view.getByText("old notes")).toBeInTheDocument();
+      expect(view.queryByText("second-pass")).not.toBeInTheDocument();
+      expect(view.queryByText("1234")).not.toBeInTheDocument();
+
+      await user.click(view.getByRole("button", { name: "Show password" }));
+
+      expect(view.getByText("second-pass")).toBeInTheDocument();
+      expect(view.getByText("1234")).toBeInTheDocument();
+      await user.click(view.getByRole("button", { name: "Hide password" }));
+      expect(view.queryByText("second-pass")).not.toBeInTheDocument();
+    });
+
+    it("shows dashes for a revision's empty fields and offers no username to copy", async () => {
+      const user = userEvent.setup();
+      const blank = Entry.create({ times: { modifiedAt: january } });
+      const vault = Vault.create("Mine");
+      renderShell(
+        vault.addEntry(vault.rootGroup.id, blank.update({ title: "GitHub", history: [blank] })),
+      );
+
+      await user.click(screen.getByText("GitHub"));
+      await user.click(screen.getByRole("button", { name: "History (1)" }));
+      await user.click(screen.getByRole("button", { name: /Title changed/ }));
+
+      const dialog = screen.getByRole("dialog", {
+        name: `Version of (untitled) from ${formatDateTime(january)}`,
+      });
+      expect(within(dialog).getAllByText("—")).toHaveLength(4);
+      expect(within(dialog).queryByRole("button", { name: "Copy username" })).toBeNull();
+    });
+
+    it("copies a revision's username and password", async () => {
+      const user = userEvent.setup();
+      const clipboardWriter = fakeClipboardWriter();
+      renderShell(vaultWithHistory().vault, { clipboardWriter });
+      const view = within(await openRevision(user, january));
+
+      await user.click(view.getByRole("button", { name: "Copy password" }));
+      expect(clipboardWriter.writeText).toHaveBeenLastCalledWith("first-pass");
+      expect(view.getByText("Copied")).toBeInTheDocument();
+
+      await user.click(view.getByRole("button", { name: "Copy username" }));
+      expect(clipboardWriter.writeText).toHaveBeenLastCalledWith("old-user");
+    });
+
+    it("closes from the close button or the backdrop, but not from a click inside", async () => {
+      const user = userEvent.setup();
+      renderShell(vaultWithHistory().vault);
+
+      const dialog = await openRevision(user, january);
+      await user.click(within(dialog).getByText("old-user"));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      await user.click(within(dialog).getByRole("button", { name: "Close" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: new RegExp(formatDateTime(january)) }));
+      await user.click(screen.getByRole("dialog").parentElement!);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("restores a revision and closes the dialog", async () => {
+      const user = userEvent.setup();
+      const { vault, current } = vaultWithHistory();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderShell(vault, { onSave });
+
+      const dialog = await openRevision(user, january);
+      await user.click(within(dialog).getByRole("button", { name: "Restore this version" }));
+
+      const restored = (onSave.mock.calls[0][0] as Vault).findEntry(current.id)!;
+      expect(restored.password.reveal()).toBe("first-pass");
+      expect(restored.username).toBe("old-user");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("deletes a revision once confirmed, and can back out", async () => {
+      const user = userEvent.setup();
+      const { vault, current } = vaultWithHistory();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderShell(vault, { onSave });
+
+      const view = within(await openRevision(user, january));
+      await user.click(view.getByRole("button", { name: "Delete version" }));
+      expect(view.getByText("Delete this version for good?")).toBeInTheDocument();
+      await user.click(view.getByRole("button", { name: "Cancel" }));
+      expect(view.queryByText("Delete this version for good?")).not.toBeInTheDocument();
+      expect(onSave).not.toHaveBeenCalled();
+
+      await user.click(view.getByRole("button", { name: "Delete version" }));
+      await user.click(view.getByRole("button", { name: "Delete" }));
+
+      const saved = (onSave.mock.calls[0][0] as Vault).findEntry(current.id)!;
+      expect(saved.history.map((revision) => revision.password.reveal())).toEqual(["second-pass"]);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("keeps the dialog open and says why when the save fails", async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockRejectedValue(new Error("Disk full"));
+      renderShell(vaultWithHistory().vault, { onSave });
+
+      const dialog = await openRevision(user, january);
+      await user.click(within(dialog).getByRole("button", { name: "Restore this version" }));
+      expect(await within(dialog).findByText("Disk full")).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole("button", { name: "Delete version" }));
+      await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+      expect(await within(dialog).findByText("Disk full")).toBeInTheDocument();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
   });
 });

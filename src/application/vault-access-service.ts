@@ -216,8 +216,11 @@ export class VaultAccessService {
    * previous contents (`<path>.bak1` most recent, `.bak3` oldest) and then
    * writes. `FileStorage.writeFile` is expected to be atomic, so the file is
    * never left half-written.
+   *
+   * Resolves to the vault as saved, which is what callers should carry on
+   * from: the save can add to it, e.g. the history revision an edit pushes.
    */
-  async saveVault(vault: Vault, filePath: string, options: SaveVaultOptions = {}): Promise<void> {
+  async saveVault(vault: Vault, filePath: string, options: SaveVaultOptions = {}): Promise<Vault> {
     const fileExists = await this.fileStorage.exists(filePath);
 
     if (!options.force) {
@@ -226,7 +229,8 @@ export class VaultAccessService {
 
     // Serialize before touching any backup: a failure here must not have already
     // rotated the older backups out in favour of copies of the current file.
-    const fileBytes = await this.openSession().save(vault);
+    const session = this.openSession();
+    const fileBytes = await session.save(vault);
 
     if (fileExists) {
       await this.rotateBackups(filePath);
@@ -234,6 +238,9 @@ export class VaultAccessService {
 
     await this.fileStorage.writeFile(filePath, fileBytes);
     await this.rememberMtime(filePath);
+    // The session read at the start: locking mid-save drops `this.session`,
+    // but the file has still been written.
+    return session.vault;
   }
 
   /**

@@ -1857,6 +1857,107 @@ input[type="radio"]:checked::after {
   white-space: pre-wrap;
 }
 
+/* Entry history ---------------------------------------------------------- */
+
+.entry-history-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dimmer);
+  font: inherit;
+  cursor: pointer;
+}
+
+.entry-history-toggle .field-label {
+  margin: 0;
+}
+
+.entry-history-chevron {
+  display: flex;
+  transition: transform 120ms ease;
+}
+
+.entry-history-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.entry-history-list {
+  display: flex;
+  flex-direction: column;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  width: 100%;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  box-sizing: content-box;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entry-history-row:hover {
+  background: color-mix(in oklab, var(--color-text) 6%, transparent);
+}
+
+.entry-history-date {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.entry-history-summary {
+  min-width: 0;
+  color: var(--color-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A revision's value, with its copy and reveal buttons on the same line. */
+.entry-preview-row dd.revision-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.revision-value > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.revision-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.revision-actions .group-inline-confirm {
+  margin: 0;
+}
+
+.revision-error {
+  padding: 0 20px 16px;
+}
+
 /* Recycle bin */
 
 .recycle-bin-panel {
@@ -3084,7 +3185,7 @@ input[type="radio"]:checked::after {
 
 /* Entry preview dialog --------------------------------------------------- */
 
-.merge-preview {
+.entry-preview {
   width: 100%;
   max-width: 520px;
   max-height: 80vh;
@@ -3093,7 +3194,7 @@ input[type="radio"]:checked::after {
   overflow: hidden;
 }
 
-.merge-preview-header {
+.entry-preview-header {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -3101,12 +3202,12 @@ input[type="radio"]:checked::after {
   border-bottom: 1px solid var(--color-border);
 }
 
-.merge-preview-heading {
+.entry-preview-heading {
   flex: 1;
   min-width: 0;
 }
 
-.merge-preview-heading h2 {
+.entry-preview-heading h2 {
   margin: 0;
   font-size: 15.5px;
   font-weight: 700;
@@ -3115,7 +3216,7 @@ input[type="radio"]:checked::after {
   white-space: nowrap;
 }
 
-.merge-preview-heading p {
+.entry-preview-heading p {
   margin: 2px 0 0;
   font-size: 12.5px;
   color: var(--color-text-dim);
@@ -3124,7 +3225,7 @@ input[type="radio"]:checked::after {
   white-space: nowrap;
 }
 
-.merge-preview-close {
+.entry-preview-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3141,12 +3242,12 @@ input[type="radio"]:checked::after {
     color 120ms ease;
 }
 
-.merge-preview-close:hover {
+.entry-preview-close:hover {
   background: color-mix(in oklab, var(--color-text) 8%, transparent);
   color: var(--color-text);
 }
 
-.merge-preview-body {
+.entry-preview-body {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -3155,7 +3256,7 @@ input[type="radio"]:checked::after {
   overflow-y: auto;
 }
 
-.merge-preview-row {
+.entry-preview-row {
   display: grid;
   grid-template-columns: 116px minmax(0, 1fr);
   gap: 16px;
@@ -3163,11 +3264,11 @@ input[type="radio"]:checked::after {
   border-bottom: 1px solid var(--color-border);
 }
 
-.merge-preview-row:last-child {
+.entry-preview-row:last-child {
   border-bottom: none;
 }
 
-.merge-preview-row dt {
+.entry-preview-row dt {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-dim);
@@ -3175,7 +3276,7 @@ input[type="radio"]:checked::after {
   text-overflow: ellipsis;
 }
 
-.merge-preview-row dd {
+.entry-preview-row dd {
   margin: 0;
   font-size: 13px;
   color: var(--color-text);
@@ -3183,7 +3284,7 @@ input[type="radio"]:checked::after {
 }
 
 /* Notes keep their own line breaks; everything else is a single value. */
-.merge-preview-row.notes dd {
+.entry-preview-row.notes dd {
   white-space: pre-wrap;
   line-height: 1.5;
 }

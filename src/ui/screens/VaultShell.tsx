@@ -288,6 +288,8 @@ export function VaultShell({
         onToggleReveal={() => setRevealed((value) => !value)}
         onEdit={() => setFormMode("edit")}
         onDelete={() => handleDeleteEntry(selected.entry.id)}
+        onRestoreRevision={(index) => commands.restoreEntryRevision(selected.entry, index)}
+        onDeleteRevision={(index) => commands.deleteEntryRevision(selected.entry, index)}
       />
     );
   }

@@ -32,6 +32,8 @@ function fakeRepository(
     changeMasterPassword?: RekeyFake;
     rekeyFile?: RekeyFileFake;
     generateKeyFile?: () => Promise<ArrayBuffer>;
+    /** What `session.vault` becomes once the session has saved, as the real one re-reads it. */
+    vaultAfterSave?: Vault;
   } = {},
 ) {
   const saveVault = vi.fn<SaveFake>(overrides.saveVault ?? (() => Promise.resolve(emptyBytes())));
@@ -40,11 +42,20 @@ function fakeRepository(
   );
   const openVault = vi.fn<OpenFake>(overrides.openVault);
   const createVault = vi.fn<CreateFake>(overrides.createVault);
-  const sessionFor = (vault: Vault): VaultSession => ({
-    vault,
-    save: saveVault,
-    changeMasterPassword,
-  });
+  const sessionFor = (vault: Vault): VaultSession => {
+    let current = vault;
+    return {
+      get vault() {
+        return current;
+      },
+      save: async (next: Vault) => {
+        const fileBytes = await saveVault(next);
+        current = overrides.vaultAfterSave ?? current;
+        return fileBytes;
+      },
+      changeMasterPassword,
+    };
+  };
   const repository = {
     openVault: vi.fn(async (fileBytes: ArrayBuffer, key: VaultKey) =>
       sessionFor(await openVault(fileBytes, key)),
@@ -451,6 +462,33 @@ describe("VaultAccessService", () => {
   });
 
   describe("saveVault", () => {
+    it("resolves to the vault as the session holds it after saving", async () => {
+      const saved = Vault.create("As Saved");
+      const repository = fakeRepository({ vaultAfterSave: saved });
+      const service = await serviceWithOpenVault(repository, fakeFileStorage());
+
+      await expect(service.saveVault(Vault.create("Edited"), "C:/vaults/mine.kdbx")).resolves.toBe(
+        saved,
+      );
+    });
+
+    it("still resolves to the saved vault when the vault is locked mid-save", async () => {
+      const saved = Vault.create("As Saved");
+      let service!: VaultAccessService;
+      const repository = fakeRepository({
+        vaultAfterSave: saved,
+        saveVault: async () => {
+          service.closeVault();
+          return emptyBytes();
+        },
+      });
+      service = await serviceWithOpenVault(repository, fakeFileStorage());
+
+      await expect(service.saveVault(Vault.create("Edited"), "C:/vaults/mine.kdbx")).resolves.toBe(
+        saved,
+      );
+    });
+
     it("serializes the vault through the repository and writes it to the given path", async () => {
       const vault = Vault.create("My Vault");
       const fileBytes = new ArrayBuffer(4);

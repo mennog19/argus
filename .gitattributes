@@ -1,0 +1,2 @@
+# pnpm hashes patch files byte for byte, so a CRLF checkout breaks --frozen-lockfile.
+*.patch text eol=lf
