@@ -36,8 +36,8 @@ export interface VaultFormat {
  * cannot call `save` without already holding the result of an open.
  *
  * The session keeps the parsed document alive between `open` and `save`,
- * which is what lets fields the domain model doesn't expose (attachments,
- * custom icons, entry history, ...) round-trip untouched instead of being
+ * which is what lets fields the domain model doesn't expose (auto-type
+ * settings, colours, custom data, ...) round-trip untouched instead of being
  * dropped when the file is rebuilt from the intentionally lossy domain model.
  */
 export interface VaultSession {

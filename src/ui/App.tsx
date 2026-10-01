@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Vault } from "../domain";
+import { AttachmentExportService } from "../application/attachment-export-service";
 import { ClipboardWriter } from "../application/clipboard";
 import {
   MasterPasswordChangeResult,
@@ -42,6 +43,7 @@ interface AppProps {
   vaultAccessService: VaultAccessService;
   settingsStore: SettingsStore;
   settingsTransferService: SettingsTransferService;
+  attachmentExportService: AttachmentExportService;
   urlOpener: UrlOpener;
   clipboardWriter: ClipboardWriter;
   windowEvents: WindowEvents;
@@ -68,6 +70,7 @@ function App({
   vaultAccessService,
   settingsStore,
   settingsTransferService,
+  attachmentExportService,
   urlOpener,
   clipboardWriter,
   windowEvents,
@@ -303,6 +306,7 @@ function App({
           onUpgradeFormat={() => upgradeVaultFormat(vault, filePath)}
           onExportSettings={appSettings.exportSettings}
           onImportSettings={appSettings.importSettings}
+          onExportAttachment={(attachment) => attachmentExportService.exportAttachment(attachment)}
         />
         {autoType.request && (
           <CustomIconsContext value={{ icons: vault.customIcons }}>

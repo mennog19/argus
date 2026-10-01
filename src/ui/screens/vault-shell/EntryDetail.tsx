@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  Attachment,
   FieldReferences,
   openableUrl,
   TOTP_FIELD_KEYS,
@@ -12,6 +13,7 @@ import { useAsyncAction } from "../../use-async-action";
 import { ClipboardCopy } from "../../use-clipboard-copy";
 import { EntryWithGroup } from "../../vault-browsing";
 import { CopyableFieldRow } from "./CopyableFieldRow";
+import { EntryAttachments } from "./EntryAttachments";
 import { EntryHistory } from "./EntryHistory";
 import { EntryMetaCards } from "./EntryMetaCards";
 import { TotpCard } from "./TotpCard";
@@ -33,6 +35,10 @@ interface EntryDetailProps {
   onDelete: () => Promise<void>;
   onRestoreRevision: (index: number) => Promise<void>;
   onDeleteRevision: (index: number) => Promise<void>;
+  onAddAttachments: (added: readonly Attachment[]) => Promise<void>;
+  onRenameAttachment: (name: string, newName: string) => Promise<void>;
+  onRemoveAttachment: (name: string) => Promise<void>;
+  onExportAttachment: (attachment: Attachment) => Promise<string | undefined>;
 }
 
 export function EntryDetail({
@@ -47,6 +53,10 @@ export function EntryDetail({
   onDelete,
   onRestoreRevision,
   onDeleteRevision,
+  onAddAttachments,
+  onRenameAttachment,
+  onRemoveAttachment,
+  onExportAttachment,
 }: EntryDetailProps) {
   const { entry: storedEntry, group } = entryWithGroup;
   const entry = useMemo(() => references.resolveEntry(storedEntry), [references, storedEntry]);
@@ -165,6 +175,16 @@ export function EntryDetail({
         )}
 
         <EntryMetaCards entry={entry} group={group} customFields={otherCustomFields} />
+
+        <EntryAttachments
+          // A fresh card per entry, so a half-typed rename doesn't follow the selection.
+          key={storedEntry.id.toString()}
+          attachments={storedEntry.attachments}
+          onAdd={onAddAttachments}
+          onRename={onRenameAttachment}
+          onRemove={onRemoveAttachment}
+          onExport={onExportAttachment}
+        />
 
         {storedEntry.history.length > 0 && (
           <EntryHistory

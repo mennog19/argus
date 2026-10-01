@@ -34,6 +34,7 @@ and compare the output against the matching `.sha256` value published with that 
 - **KDBX4 upgrade** — a KDBX3 vault can be upgraded to KDBX4 from Settings, which switches its key derivation from AES-KDF to Argon2id. A copy of the KDBX3 file is kept next to the vault as `<vault>.kdbx3-backup.kdbx`, which later saves never rotate away.
 - **Entries** — title, username, password, URL, notes, tags, and arbitrary custom fields (including protected/hidden ones), matching KeePass conventions. URLs can be typed without a scheme (`github.com/login`); they open as https.
 - **Field references** — KeePass `{REF:…}` placeholders (such as the ones KeePassXC writes when you clone an entry with "reference username and password") are resolved when shown, copied, or auto-typed. The stored entry keeps the reference, so KeePass and KeePassXC still see it as a link.
+- **Attachments** — files stored inside an entry are listed with their size and can be added, renamed, deleted, or saved back out to disk. Each change is saved straight away and counts as an edit, so the entry's history keeps the version before it.
 - **Entry history** — every edit keeps the previous version, as in KeePass. Each entry lists its earlier versions with what changed, and any of them can be viewed, restored, or deleted, e.g. to purge an old password from the file.
 - **TOTP** — reads and generates time-based one-time codes stored using KeePassXC's TOTP conventions.
 - **Search** — full-text search across title, username, URL, notes, tags, and custom fields. Press **Ctrl+F** anywhere in an unlocked vault to jump to the search box.
@@ -48,7 +49,7 @@ and compare the output against the matching `.sha256` value published with that 
 
 ## KeePass / KeePassXC compatibility
 
-Argus targets full KDBX3/KDBX4 fidelity. It edits the original KDBX document in place rather than rebuilding it, so fields Argus doesn't show — attachments, entry history, custom data — are written back untouched. Custom icons set in KeePass or KeePassXC are shown, and you can upload your own; they're stored in the vault as 128-pixel PNGs, so KeePass and KeePassXC show them too. TOTP secrets use KeePassXC's conventions, and `{REF:…}` field references are kept as references.
+Argus targets full KDBX3/KDBX4 fidelity. It edits the original KDBX document in place rather than rebuilding it, so fields Argus doesn't show — auto-type settings, colours, custom data — are written back untouched. Attachments added in KeePass or KeePassXC keep their bytes and their memory-protection flag; ones added in Argus are stored the standard way, so both apps open them. Custom icons set in KeePass or KeePassXC are shown, and you can upload your own; they're stored in the vault as 128-pixel PNGs, so KeePass and KeePassXC show them too. TOTP secrets use KeePassXC's conventions, and `{REF:…}` field references are kept as references.
 
 Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lanes.
 
@@ -59,6 +60,7 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 - **Master password and key files.** Vaults are unlocked with a master password, a KeePass/KeePassXC key file, or both. A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they already have. Argus remembers the _path_ of the key file each recent vault was last unlocked with (never its contents). New vaults can optionally get a key file too, either generated in KeePassXC's format or an existing file of your choosing. There is no biometric unlock in v1.
 - **Memory protection.** The app window uses OS-level content protection, and KDBX-protected fields (passwords, protected custom fields) follow `kdbxweb`'s in-memory protection conventions rather than being held as plain strings.
 - **Clipboard handling.** Copying a password to the clipboard starts an auto-clear timer so the secret doesn't linger there indefinitely. The clear only happens if the clipboard still holds what Argus copied, so anything you copied since is left alone. A copied secret is also cleared when the vault closes or Argus quits, and on the next launch after a crash. On Windows, copies are kept out of clipboard history (Win+V) and cloud clipboard sync.
+- **Saved attachments.** Saving a copy of an attachment writes it to the place you pick, unencrypted. Argus doesn't track or clean up that copy, and never writes attachments to a temporary folder by itself.
 - **Crafted files.** A vault's key-derivation settings are stored unencrypted in its header, so a malicious `.kdbx` could ask for enough Argon2 work to freeze or crash the app. Argus refuses to open a file that asks for more than 1 GiB of memory, 1000 iterations, or 64 lanes.
 - **Saving.** Saves are atomic: the vault is written to a new, randomly named temporary file next to it (`.<vault>.<random>.tmp`), flushed to disk, then renamed over the original. The temporary file is created fresh and never follows a symlink, and it's removed if the save fails. If Argus is killed mid-save, one stray temporary file can be left behind; it is safe to delete.
 - **Auto-type caveats.** Auto-type simulates keystrokes into whatever window has focus, using Windows UI Automation to find the username and password fields. If it can't find them it types nothing. It is off by default, opt-in, and always shows a picker confirming the target window before typing anything.
@@ -73,7 +75,8 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 - **Windows only.** Auto-type and the clipboard protections use Win32 APIs.
 - **Updates need the check turned on.** With it off (the default), new versions have to be downloaded from the Releases page by hand. The check only runs at startup; there is no "check now" button.
 - **Field references are read-only links.** Argus resolves `{REF:…}` placeholders but has no UI for creating them.
-- **No attachments, by design.** Files stored inside a vault are easy to lose track of, so Argus doesn't show or add them. Attachments added in KeePass or KeePassXC are kept untouched when Argus saves.
+- **Attachments are for small files.** Argus refuses to attach a file over 10 MB, because the whole vault is rewritten on every save and each rolling backup holds a copy. Larger attachments added in KeePass or KeePassXC still load and are kept. Attachments can't be previewed or opened in place, only saved to disk.
+- **Deleting an attachment doesn't purge it straight away.** The entry's history keeps the versions that held the file. Its bytes leave the vault once those versions are deleted too.
 - **AES-KDF isn't capped.** The key-derivation limits above cover Argon2 (KDBX4). A KDBX3 file using AES-KDF with a huge round count can still make unlocking very slow.
 - **No biometric unlock, no browser extension, no breach checking.**
 

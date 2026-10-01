@@ -8,13 +8,14 @@ const FIELD_NAMES: Record<EntryFieldName, string> = {
   notes: "notes",
   tags: "tags",
   customFields: "custom fields",
+  attachments: "attachments",
   icon: "icon",
   expiry: "expiry date",
 };
 
 /**
  * What an edit changed, e.g. "Password and URL changed". An edit can change
- * only what Argus doesn't show, such as an attachment added in KeePass, so
+ * only what Argus doesn't show, such as an auto-type setting in KeePass, so
  * "no visible changes" is a real case, not an error.
  */
 export function describeChanges(fields: readonly EntryFieldName[]): string {

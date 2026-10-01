@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  Attachment,
+  Attachments,
   CustomField,
   CustomFields,
   CustomIcon,
@@ -100,6 +102,7 @@ function renderShell(
     onExportSettings?: () => Promise<string | undefined>;
     onImportSettings?: () => Promise<SettingsImportResult | undefined>;
     onVaultChange?: (vault: Vault) => void;
+    onExportAttachment?: (attachment: Attachment) => Promise<string | undefined>;
     mergeSource?: VaultMergeSource;
   } = {},
 ) {
@@ -113,6 +116,7 @@ function renderShell(
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
   const onImportSettings = overrides.onImportSettings ?? vi.fn().mockResolvedValue(undefined);
   const onVaultChange = overrides.onVaultChange ?? vi.fn();
+  const onExportAttachment = overrides.onExportAttachment ?? vi.fn().mockResolvedValue(undefined);
   const mergeSource = overrides.mergeSource ?? fakeMergeSource();
   // Flat overrides are this helper's own convenience; the shell itself takes
   // one resolved settings object.
@@ -147,6 +151,7 @@ function renderShell(
       onUpgradeFormat={vi.fn()}
       onExportSettings={onExportSettings}
       onImportSettings={onImportSettings}
+      onExportAttachment={onExportAttachment}
       onVaultChange={onVaultChange}
     />,
   );
@@ -159,6 +164,7 @@ function renderShell(
     onExportSettings,
     onImportSettings,
     onVaultChange,
+    onExportAttachment,
     mergeSource,
   };
 }
@@ -442,6 +448,7 @@ describe("VaultShell", () => {
         mergeSource={fakeMergeSource()}
         onExportSettings={vi.fn().mockResolvedValue(undefined)}
         onImportSettings={vi.fn().mockResolvedValue(undefined)}
+        onExportAttachment={vi.fn().mockResolvedValue(undefined)}
         onVaultChange={vi.fn()}
       />,
     );
@@ -1184,6 +1191,7 @@ describe("VaultShell", () => {
           mergeSource={fakeMergeSource()}
           onExportSettings={vi.fn().mockResolvedValue(undefined)}
           onImportSettings={vi.fn().mockResolvedValue(undefined)}
+          onExportAttachment={vi.fn().mockResolvedValue(undefined)}
           onVaultChange={vi.fn()}
         />,
       );
@@ -1211,6 +1219,7 @@ describe("VaultShell", () => {
           mergeSource={fakeMergeSource()}
           onExportSettings={vi.fn().mockResolvedValue(undefined)}
           onImportSettings={vi.fn().mockResolvedValue(undefined)}
+          onExportAttachment={vi.fn().mockResolvedValue(undefined)}
           onVaultChange={vi.fn()}
         />,
       );
@@ -2183,5 +2192,126 @@ describe("VaultShell entry sorting", () => {
       expect(saved.customIcons.size).toBe(0);
       expect(saved.findEntry(entry.id)?.icon).toBe(Icon.AUTO);
     });
+  });
+});
+
+describe("VaultShell attachments", () => {
+  const notes = new Attachment("notes.txt", new Uint8Array([1, 2, 3]));
+
+  function vaultWithAttachment() {
+    const entry = Entry.create({ title: "GitHub", attachments: new Attachments([notes]) });
+    const vault = Vault.create("Mine");
+    return { vault: vault.addEntry(vault.rootGroup.id, entry), entry };
+  }
+
+  /** The vault handed to `onSave`, which carries the "entry was opened" stamp too. */
+  function savedAttachments(onSave: (vault: Vault) => Promise<void>, entry: Entry) {
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const [saved] = vi.mocked(onSave).mock.calls[0];
+    return saved.findEntry(entry.id)!.attachments;
+  }
+
+  it("lists the selected entry's attachments", async () => {
+    const user = userEvent.setup();
+    renderShell(vaultWithAttachment().vault);
+
+    await user.click(screen.getByText("GitHub"));
+
+    expect(screen.getByText("Attachments (1)")).toBeInTheDocument();
+    expect(screen.getByText("notes.txt")).toBeInTheDocument();
+  });
+
+  it("attaches a picked file to the entry and saves", async () => {
+    const user = userEvent.setup();
+    const { vault, entry } = vaultWithAttachment();
+    const { onSave } = renderShell(vault);
+
+    await user.click(screen.getByText("GitHub"));
+    await user.upload(screen.getByLabelText("Add attachment"), new File(["hi"], "notes.txt"));
+
+    const attachments = savedAttachments(onSave, entry);
+    expect(attachments.values.map((attachment) => attachment.name)).toEqual([
+      "notes.txt",
+      "notes (2).txt",
+    ]);
+    expect(new TextDecoder().decode(attachments.get("notes (2).txt")?.data)).toBe("hi");
+  });
+
+  it("renames an attachment and saves", async () => {
+    const user = userEvent.setup();
+    const { vault, entry } = vaultWithAttachment();
+    const { onSave } = renderShell(vault);
+
+    await user.click(screen.getByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Rename notes.txt" }));
+    await user.clear(screen.getByLabelText("New name for notes.txt"));
+    await user.type(screen.getByLabelText("New name for notes.txt"), "todo.txt{Enter}");
+
+    expect(savedAttachments(onSave, entry).get("todo.txt")?.data).toBe(notes.data);
+  });
+
+  it("deletes an attachment and saves", async () => {
+    const user = userEvent.setup();
+    const { vault, entry } = vaultWithAttachment();
+    const { onSave } = renderShell(vault);
+
+    await user.click(screen.getByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Delete notes.txt" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(savedAttachments(onSave, entry).size).toBe(0);
+  });
+
+  it("saves a copy of an attachment without touching the vault", async () => {
+    const user = userEvent.setup();
+    const onExportAttachment = vi.fn().mockResolvedValue("C:/out/notes.txt");
+    const { onSave } = renderShell(vaultWithAttachment().vault, { onExportAttachment });
+
+    await user.click(screen.getByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Save a copy of notes.txt" }));
+
+    expect(onExportAttachment).toHaveBeenCalledWith(notes);
+    expect(await screen.findByText(/Saved a copy to C:\/out\/notes.txt/)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("drops a half-typed rename when another entry is selected", async () => {
+    const user = userEvent.setup();
+    const { vault } = vaultWithAttachment();
+    const other = Entry.create({ title: "GitLab", attachments: new Attachments([notes]) });
+    renderShell(vault.addEntry(vault.rootGroup.id, other));
+
+    await user.click(screen.getByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Rename notes.txt" }));
+    await user.click(screen.getByText("GitLab"));
+
+    expect(screen.queryByLabelText("New name for notes.txt")).not.toBeInTheDocument();
+  });
+
+  it("names the attachments a history revision held", async () => {
+    const user = userEvent.setup();
+    const modifiedAt = new Date("2026-01-15T14:05:00Z");
+    const revision = Entry.create({
+      title: "GitHub",
+      attachments: new Attachments([notes, new Attachment("old.pdf", new Uint8Array([9]))]),
+      times: { modifiedAt },
+    });
+    const vault = Vault.create("Mine");
+    renderShell(
+      vault.addEntry(
+        vault.rootGroup.id,
+        revision.update({ attachments: new Attachments([notes]), history: [revision] }),
+      ),
+    );
+
+    await user.click(screen.getByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "History (1)" }));
+    const row = screen.getByRole("button", { name: new RegExp(formatDateTime(modifiedAt)) });
+    expect(row).toHaveTextContent("Attachments changed");
+    await user.click(row);
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("Attachments")).toBeInTheDocument();
+    expect(dialog.getByText("notes.txt, old.pdf")).toBeInTheDocument();
   });
 });

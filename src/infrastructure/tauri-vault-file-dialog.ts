@@ -1,5 +1,6 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { VaultFileDialog } from "../application/vault-file-dialog";
+import { safeFileName } from "./file-name";
 
 const KDBX_FILTERS = [{ name: "KeePass Vault", extensions: ["kdbx"] }];
 // KeePassXC writes `.keyx` and KeePass `.key`, but any file at all can serve as
@@ -12,13 +13,7 @@ const NEW_KEY_FILE_FILTERS = [{ name: "Key File", extensions: ["keyx"] }];
 
 /** `<name>.<extension>`, with characters Windows forbids in file names replaced. */
 function suggestedFileName(vaultName: string, extension: string): string {
-  // eslint-disable-next-line no-control-regex
-  let safe = vaultName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim();
-  // Windows silently strips trailing dots and spaces from file names.
-  while (safe.endsWith(".") || safe.endsWith(" ")) {
-    safe = safe.slice(0, -1);
-  }
-  return `${safe || "Vault"}.${extension}`;
+  return `${safeFileName(vaultName, "Vault")}.${extension}`;
 }
 
 /** `VaultFileDialog` backed by Tauri's native file-picker plugin. */

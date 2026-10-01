@@ -1,4 +1,14 @@
-import { CustomIcon, Entry, EntryId, Group, GroupId, Icon, Vault } from "../domain";
+import {
+  Attachment,
+  Attachments,
+  CustomIcon,
+  Entry,
+  EntryId,
+  Group,
+  GroupId,
+  Icon,
+  Vault,
+} from "../domain";
 import { GroupDeleteMode } from "../application/settings";
 
 /** Every edit the vault screen can make, each applied to `vault` and then saved. */
@@ -30,6 +40,11 @@ export interface VaultCommands {
   restoreEntryRevision(entry: Entry, index: number): Promise<void>;
   /** Removes `entry`'s history revision `index` from the file. */
   deleteEntryRevision(entry: Entry, index: number): Promise<void>;
+  /** Attaches files to `entry`; one whose name is already taken goes in under the next free name. */
+  addAttachments(entry: Entry, added: readonly Attachment[]): Promise<void>;
+  renameAttachment(entry: Entry, name: string, newName: string): Promise<void>;
+  /** Takes a file off `entry`. Its history revisions keep their copy. */
+  removeAttachment(entry: Entry, name: string): Promise<void>;
   deleteEntryForever(entryId: EntryId): Promise<void>;
   restoreGroup(groupId: GroupId): Promise<void>;
   deleteGroupForever(groupId: GroupId): Promise<void>;
@@ -50,6 +65,9 @@ export function vaultCommands(vault: Vault, save: (next: Vault) => Promise<void>
   // An upload is saved together with the edit that uses it — never on its
   // own — so an abandoned choice leaves no unused image behind in the file.
   const withIcon = (added: CustomIcon | undefined) => (added ? vault.addCustomIcon(added) : vault);
+
+  const saveAttachments = (entry: Entry, attachments: Attachments) =>
+    save(vault.updateEntry(entry.update({ attachments })));
 
   return {
     createGroup: (parentId, name) => save(vault.addGroup(parentId, Group.create(name))),
@@ -79,6 +97,17 @@ export function vaultCommands(vault: Vault, save: (next: Vault) => Promise<void>
     restoreEntry: (entryId) => save(vault.restoreEntry(entryId, vault.rootGroup.id)),
     restoreEntryRevision: (entry, index) => save(vault.updateEntry(entry.restoreRevision(index))),
     deleteEntryRevision: (entry, index) => save(vault.updateEntry(entry.deleteRevision(index))),
+    addAttachments: (entry, added) =>
+      saveAttachments(
+        entry,
+        added.reduce(
+          (attachments, attachment) => attachments.attach(attachment),
+          entry.attachments,
+        ),
+      ),
+    renameAttachment: (entry, name, newName) =>
+      saveAttachments(entry, entry.attachments.rename(name, newName)),
+    removeAttachment: (entry, name) => saveAttachments(entry, entry.attachments.remove(name)),
     deleteEntryForever: (entryId) => save(vault.removeEntry(entryId)),
     restoreGroup: (groupId) => save(vault.restoreGroup(groupId, vault.rootGroup.id)),
     deleteGroupForever: (groupId) => save(vault.removeGroup(groupId)),

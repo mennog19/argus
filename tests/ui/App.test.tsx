@@ -1,7 +1,8 @@
 ﻿import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Entry, Vault } from "../../src/domain";
+import { Attachment, Attachments, Entry, Vault } from "../../src/domain";
+import { AttachmentExportService } from "../../src/application/attachment-export-service";
 import { ClipboardWriter } from "../../src/application/clipboard";
 import {
   OpenedVault,
@@ -52,6 +53,15 @@ function fakeSettingsTransferService(
     importSettings: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as SettingsTransferService;
+}
+
+function fakeAttachmentExportService(
+  overrides: Partial<AttachmentExportService> = {},
+): AttachmentExportService {
+  return {
+    exportAttachment: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  } as unknown as AttachmentExportService;
 }
 
 function fakeUrlOpener(): UrlOpener {
@@ -136,6 +146,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -160,6 +171,7 @@ describe("App", () => {
           load: vi.fn().mockRejectedValue(new Error("no backend")),
         })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -189,6 +201,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -221,6 +234,7 @@ describe("App", () => {
         vaultAccessService={vaultAccessService}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -270,6 +284,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -310,6 +325,7 @@ describe("App", () => {
         vaultAccessService={vaultAccessService}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -355,6 +371,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -394,6 +411,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -427,6 +445,7 @@ describe("App", () => {
         vaultAccessService={fakeVaultAccessService()}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -466,6 +485,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -504,6 +524,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -551,6 +572,7 @@ describe("App", () => {
           load: vi.fn().mockResolvedValue({ recentVaults: [], expiredEntryAction: "recycle" }),
         })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -597,6 +619,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -653,6 +676,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore()}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -699,6 +723,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore()}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -745,6 +770,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore()}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -788,6 +814,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore()}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -830,6 +857,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore()}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -903,6 +931,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -945,6 +974,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -989,6 +1019,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1030,6 +1061,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1075,6 +1107,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1122,6 +1155,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1171,6 +1205,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1217,6 +1252,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1259,6 +1295,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1303,6 +1340,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1349,6 +1387,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1392,6 +1431,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1435,6 +1475,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1481,6 +1522,7 @@ describe("App", () => {
         vaultAccessService={vaultAccessService}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1525,6 +1567,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1568,6 +1611,7 @@ describe("App", () => {
         })}
         settingsStore={settingsStore}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={fakeWindowEvents()}
@@ -1619,6 +1663,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1674,6 +1719,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1728,6 +1774,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1783,6 +1830,7 @@ describe("App", () => {
           })}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -1839,6 +1887,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
@@ -1889,6 +1938,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore()}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
@@ -1937,6 +1987,7 @@ describe("App", () => {
         })}
         settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
         settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={fakeAttachmentExportService()}
         urlOpener={fakeUrlOpener()}
         clipboardWriter={fakeClipboardWriter()}
         windowEvents={windowEvents}
@@ -1966,6 +2017,53 @@ describe("App", () => {
 
     expect(await screen.findByLabelText("Master password")).toBeInTheDocument();
   });
+  it("saves a copy of an attachment through the export service", async () => {
+    const user = userEvent.setup();
+    const notes = new Attachment("notes.txt", new Uint8Array([1, 2, 3]));
+    const personal = Vault.create("Personal");
+    const opened: OpenedVault = {
+      vault: personal.addEntry(
+        personal.rootGroup.id,
+        Entry.create({ title: "GitHub", attachments: new Attachments([notes]) }),
+      ),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+    const attachmentExportService = fakeAttachmentExportService({
+      exportAttachment: vi.fn().mockResolvedValue("C:/out/notes.txt"),
+    });
+    render(
+      <App
+        vaultAccessService={fakeVaultAccessService({
+          createNewVault: vi.fn().mockResolvedValue(opened),
+        })}
+        settingsStore={fakeSettingsStore()}
+        settingsTransferService={fakeSettingsTransferService()}
+        attachmentExportService={attachmentExportService}
+        urlOpener={fakeUrlOpener()}
+        clipboardWriter={fakeClipboardWriter()}
+        windowEvents={fakeWindowEvents()}
+        vaultOpenRequests={fakeVaultOpenRequests()}
+        windowProtection={fakeWindowProtection()}
+        windowCloseBehavior={fakeWindowCloseBehavior()}
+        mergeSource={fakeMergeSource()}
+        autoTypeService={fakeAutoTypeService()}
+        globalHotkey={fakeGlobalHotkey()}
+        updater={fakeUpdater()}
+      />,
+    );
+    await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+    await user.type(screen.getByLabelText("Vault name"), "Personal");
+    await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+    await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+    await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+
+    await user.click(await screen.findByText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Save a copy of notes.txt" }));
+
+    expect(attachmentExportService.exportAttachment).toHaveBeenCalledWith(notes);
+    expect(await screen.findByText(/Saved a copy to C:\/out\/notes.txt/)).toBeInTheDocument();
+  });
+
   describe("settings import/export", () => {
     async function openSettings(user: ReturnType<typeof userEvent.setup>) {
       await user.click(await screen.findByRole("button", { name: /create new vault/i }));
@@ -1991,6 +2089,7 @@ describe("App", () => {
           })}
           settingsStore={settingsStore}
           settingsTransferService={settingsTransferService}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -2143,6 +2242,7 @@ describe("App", () => {
           })}
           settingsStore={settingsStore}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -2312,6 +2412,7 @@ describe("App", () => {
           vaultAccessService={fakeVaultAccessService()}
           settingsStore={settingsStore}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -2352,6 +2453,7 @@ describe("App", () => {
           vaultAccessService={vaultAccessService}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -2392,6 +2494,7 @@ describe("App", () => {
           vaultAccessService={vaultAccessService}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -2424,6 +2527,7 @@ describe("App", () => {
           vaultAccessService={fakeVaultAccessService()}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockResolvedValue(settings) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}
@@ -2456,6 +2560,7 @@ describe("App", () => {
           vaultAccessService={fakeVaultAccessService()}
           settingsStore={fakeSettingsStore({ load: vi.fn().mockRejectedValue(new Error("gone")) })}
           settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
           urlOpener={fakeUrlOpener()}
           clipboardWriter={fakeClipboardWriter()}
           windowEvents={fakeWindowEvents()}

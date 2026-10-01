@@ -1,7 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { ByteUtils, Consts, Int64, Kdbx } from "kdbxweb";
-import { CustomField, Entry, Password, totpConfigFromCustomFields } from "../../src/domain";
+import {
+  Attachment,
+  CustomField,
+  Entry,
+  Password,
+  totpConfigFromCustomFields,
+} from "../../src/domain";
 import { VaultSession } from "../../src/application/vault-repository";
 import { DEFAULT_KDF, KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 import {
@@ -122,6 +128,134 @@ describe.each<{ file: KeePassFixture; version: [number, number]; name: string }>
     expect(Object.keys(afterEntry.binaries)).toEqual(["notes.txt"]);
   });
 
+  it("maps KeePass's attachments, protected or not, on entries and their revisions", async () => {
+    const { session } = await open();
+    const everything = session.vault.rootGroup.entries.find((e) => e.title === "Everything Entry")!;
+
+    const { attachments } = everything;
+    expect(attachments.values.map((attachment) => attachment.name)).toEqual([
+      "photo.bin",
+      "secret.txt",
+    ]);
+    expect(attachments.get("photo.bin")?.data).toEqual(
+      Uint8Array.from({ length: 256 }, (_, i) => i),
+    );
+    expect(new TextDecoder().decode(attachments.get("secret.txt")?.data)).toBe(
+      "a protected attachment",
+    );
+    expect(
+      everything.history.map((revision) => revision.attachments.values.map(({ name }) => name)),
+    ).toEqual([["photo.bin", "secret.txt"], ["secret.txt"]]);
+  });
+
+  describe("attachments edited in Argus", () => {
+    const binaryNames = (revision: ReturnType<typeof snapshotRevision>) =>
+      Object.keys(revision.binaries);
+
+    async function openEdited() {
+      const opened = await open();
+      const entry = opened.session.vault.rootGroup.entries.find(
+        (e) => e.title === "Edited In Argus",
+      )!;
+      const id = findEntry(opened.original, "Edited In Argus").uuid.id;
+      return { ...opened, entry, id };
+    }
+
+    async function saveAttachments(session: VaultSession, entry: Entry) {
+      const bytes = await session.save(session.vault.updateEntry(entry));
+      return { bytes, saved: await loadRaw(bytes) };
+    }
+
+    it("adds a file next to KeePass's own, leaving every other entry as KeePass wrote it", async () => {
+      const { original, session, entry, id } = await openEdited();
+      const added = new Attachment("added.bin", new Uint8Array([10, 20, 30]));
+
+      const { saved } = await saveAttachments(
+        session,
+        entry.update({ attachments: entry.attachments.attach(added) }),
+      );
+
+      const before = snapshotVault(original);
+      const after = snapshotVault(saved);
+      expect(after.entries[id].binaries).toEqual({
+        ...before.entries[id].binaries,
+        "added.bin": "0a141e",
+      });
+      // The version without the file became the newest revision.
+      expect(after.entries[id].history.map(binaryNames)).toEqual([["notes.txt"], ["notes.txt"]]);
+      const others = (entries: typeof after.entries) =>
+        Object.entries(entries).filter(([entryId]) => entryId !== id);
+      expect(others(after.entries)).toEqual(others(before.entries));
+      expect({ ...after, entries: undefined }).toEqual({ ...before, entries: undefined });
+    });
+
+    it("reads an added file back when the saved vault is opened again", async () => {
+      const { session, entry } = await openEdited();
+      const added = new Attachment("added.bin", new Uint8Array([10, 20, 30]));
+
+      const { bytes } = await saveAttachments(
+        session,
+        entry.update({ attachments: entry.attachments.attach(added) }),
+      );
+
+      const reopened = await new KdbxVaultRepository().openVault(bytes, {
+        password: KEEPASS_FIXTURE_PASSWORD,
+      });
+      const { attachments } = reopened.vault.findEntry(entry.id)!;
+      expect(attachments.get("added.bin")?.data).toEqual(new Uint8Array([10, 20, 30]));
+      expect(new TextDecoder().decode(attachments.get("notes.txt")?.data)).toBe(
+        "attachment on the edited entry",
+      );
+      // And the session that saved it carries on from the same contents.
+      expect(session.vault.findEntry(entry.id)!.attachments.equals(attachments)).toBe(true);
+    });
+
+    it("renames a file without touching its bytes", async () => {
+      const { original, session, entry, id } = await openEdited();
+
+      const { saved } = await saveAttachments(
+        session,
+        entry.update({ attachments: entry.attachments.rename("notes.txt", "renamed.txt") }),
+      );
+
+      expect(snapshotVault(saved).entries[id].binaries).toEqual({
+        "renamed.txt": snapshotVault(original).entries[id].binaries["notes.txt"],
+      });
+    });
+
+    it("removes a file from the entry, which its history still holds", async () => {
+      const { session, entry, id } = await openEdited();
+
+      const { saved } = await saveAttachments(
+        session,
+        entry.update({ attachments: entry.attachments.remove("notes.txt") }),
+      );
+
+      const after = snapshotVault(saved).entries[id];
+      expect(after.binaries).toEqual({});
+      expect(after.history.map(binaryNames)).toEqual([["notes.txt"], ["notes.txt"]]);
+      expect(saved.binaries.getAll()).toHaveLength(3);
+    });
+
+    it("drops a file's bytes from the vault once no revision holds it either", async () => {
+      const { session, entry, id } = await openEdited();
+      await saveAttachments(
+        session,
+        entry.update({ attachments: entry.attachments.remove("notes.txt") }),
+      );
+      let current = session.vault.findEntry(entry.id)!;
+      while (current.history.length > 0) {
+        current = current.deleteRevision(0);
+      }
+
+      const { saved } = await saveAttachments(session, current);
+
+      expect(snapshotVault(saved).entries[id].history).toEqual([]);
+      // Only the Everything Entry's two files are left in the pool.
+      expect(saved.binaries.getAll()).toHaveLength(2);
+    });
+  });
+
   describe("entry history", () => {
     async function openEverything() {
       const opened = await open();
@@ -179,8 +313,10 @@ describe.each<{ file: KeePassFixture; version: [number, number]; name: string }>
         ...before.history,
         snapshotRevision(findEntry(original, "Everything Entry")),
       ]);
-      // Attachments belong to the entry, not to what the domain restores.
-      expect(after.binaries).toEqual(before.binaries);
+      // The revision's attachments come back with it, as in KeePass: this
+      // one predates `photo.bin` being added again.
+      expect(after.binaries).toEqual(before.history[1].binaries);
+      expect(Object.keys(after.binaries)).toEqual(["secret.txt"]);
     });
 
     it("leaves the file's history alone when the vault's doesn't match it", async () => {

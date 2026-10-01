@@ -13,6 +13,7 @@ import {
   Password,
   Vault,
 } from "../domain";
+import { KdbxAttachmentStore } from "./kdbx-attachments";
 import { trimHistory } from "./kdbx-history";
 import { iconFromKdbx, writeIconToKdbx } from "./kdbx-icon";
 import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
@@ -26,7 +27,7 @@ function fieldToString(value: string | ProtectedValue | undefined): string {
   return typeof value === "string" ? value : value.getText();
 }
 
-function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
+function entryFromKdbx(kdbxEntry: KdbxEntry, attachments: KdbxAttachmentStore): Entry {
   const customFields = Array.from(kdbxEntry.fields.entries())
     .filter(([key]) => !STANDARD_FIELD_KEYS.has(key))
     .map(
@@ -48,19 +49,20 @@ function entryFromKdbx(kdbxEntry: KdbxEntry): Entry {
     notes: fieldToString(kdbxEntry.fields.get("Notes")),
     tags: new Tags(tags),
     customFields: new CustomFields(customFields),
+    attachments: attachments.attachmentsOf(kdbxEntry),
     icon: iconFromKdbx(kdbxEntry),
     // KDBX keeps a date in ExpiryTime even when Expires is off; it only counts when on.
     expiresAt: kdbxEntry.times.expires ? kdbxEntry.times.expiryTime : undefined,
-    history: kdbxEntry.history.map(entryFromKdbx),
+    history: kdbxEntry.history.map((revision) => entryFromKdbx(revision, attachments)),
   });
 }
 
-function groupFromKdbx(kdbxGroup: KdbxGroup): Group {
+function groupFromKdbx(kdbxGroup: KdbxGroup, attachments: KdbxAttachmentStore): Group {
   return new Group(
     GroupId.fromString(kdbxUuidToDomainId(kdbxGroup.uuid)),
     kdbxGroup.name ?? "",
-    kdbxGroup.groups.map(groupFromKdbx),
-    kdbxGroup.entries.map(entryFromKdbx),
+    kdbxGroup.groups.map((child) => groupFromKdbx(child, attachments)),
+    kdbxGroup.entries.map((entry) => entryFromKdbx(entry, attachments)),
     iconFromKdbx(kdbxGroup),
   );
 }
@@ -90,10 +92,15 @@ function customIconsFromKdbx(db: Kdbx): CustomIcons {
   );
 }
 
-export function vaultFromKdbx(db: Kdbx): Vault {
+/**
+ * `attachments` is the open document's store; passing the same one to every
+ * mapping and to `applyVaultToKdbx` is what lets unchanged files be recognised
+ * without comparing their bytes.
+ */
+export function vaultFromKdbx(db: Kdbx, attachments = new KdbxAttachmentStore()): Vault {
   return new Vault(
     db.meta.name ?? "",
-    groupFromKdbx(db.getDefaultGroup()),
+    groupFromKdbx(db.getDefaultGroup(), attachments),
     recycleBinIdFromKdbx(db),
     [],
     customIconsFromKdbx(db),
@@ -101,8 +108,8 @@ export function vaultFromKdbx(db: Kdbx): Vault {
 }
 
 /**
- * Canonical, order-independent snapshot of the value an `Entry` carries, used
- * to detect real changes. `times` is deliberately absent: timestamps are
+ * Canonical, order-independent snapshot of the value an `Entry` carries, bar
+ * its attachments, used to detect real changes. `times` is deliberately absent: timestamps are
  * metadata about the entry, not part of it, so recording that an entry was
  * opened must not look like an edit and must not push a history revision.
  */
@@ -122,11 +129,18 @@ function snapshotEntry(entry: Entry): string {
   });
 }
 
+/** Whether two versions of an entry hold the same contents, attachments included. */
+function sameContent(a: Entry, b: Entry): boolean {
+  return snapshotEntry(a) === snapshotEntry(b) && a.attachments.equals(b.attachments);
+}
+
 function writeEntryFields(
   kdbxEntry: KdbxEntry,
   entry: Entry,
-  protection: Kdbx["meta"]["memoryProtection"],
+  db: Kdbx,
+  attachments: KdbxAttachmentStore,
 ): void {
+  const protection = db.meta.memoryProtection;
   kdbxEntry.fields.set(
     "Title",
     protection.title ? ProtectedValue.fromString(entry.title) : entry.title,
@@ -155,6 +169,8 @@ function writeEntryFields(
       field.isProtected ? ProtectedValue.fromString(field.value) : field.value,
     );
   }
+
+  attachments.write(db, kdbxEntry, entry.attachments);
 
   // Only touched when the choice actually changed, so an icon Argus can't
   // represent (a custom image, an unmapped KeePass icon) survives other edits.
@@ -193,10 +209,14 @@ function writeAccessTime(kdbxEntry: KdbxEntry, entry: Entry): void {
  * modification time and same contents. Revisions are otherwise anonymous in
  * KDBX, and KeePass itself tells them apart by modification time.
  */
-function isSameRevision(kdbxRevision: KdbxEntry, revision: Entry): boolean {
+function isSameRevision(
+  kdbxRevision: KdbxEntry,
+  revision: Entry,
+  attachments: KdbxAttachmentStore,
+): boolean {
   return (
     kdbxRevision.times.lastModTime?.getTime() === revision.times.modifiedAt?.getTime() &&
-    snapshotEntry(entryFromKdbx(kdbxRevision)) === snapshotEntry(revision)
+    sameContent(entryFromKdbx(kdbxRevision, attachments), revision)
   );
 }
 
@@ -206,11 +226,18 @@ function isSameRevision(kdbxRevision: KdbxEntry, revision: Entry): boolean {
  * some revisions left out, in the same order; if it holds a revision the file
  * doesn't, it wasn't mapped from this document and nothing is removed.
  */
-function removeDeletedRevisions(kdbxEntry: KdbxEntry, entry: Entry): void {
+function removeDeletedRevisions(
+  kdbxEntry: KdbxEntry,
+  entry: Entry,
+  attachments: KdbxAttachmentStore,
+): void {
   const removed: number[] = [];
   let kept = 0;
   kdbxEntry.history.forEach((kdbxRevision, index) => {
-    if (kept < entry.history.length && isSameRevision(kdbxRevision, entry.history[kept])) {
+    if (
+      kept < entry.history.length &&
+      isSameRevision(kdbxRevision, entry.history[kept], attachments)
+    ) {
       kept++;
     } else {
       removed.push(index);
@@ -231,6 +258,7 @@ function syncEntry(
   db: Kdbx,
   existingEntries: Map<string, KdbxEntry>,
   visitedEntries: Set<string>,
+  attachments: KdbxAttachmentStore,
 ): void {
   const id = entry.id.toString();
   visitedEntries.add(id);
@@ -239,7 +267,7 @@ function syncEntry(
   if (!existing) {
     const kdbxEntry = db.createEntry(parentKdbxGroup);
     kdbxEntry.uuid = domainIdToKdbxUuid(id);
-    writeEntryFields(kdbxEntry, entry, db.meta.memoryProtection);
+    writeEntryFields(kdbxEntry, entry, db, attachments);
     writeAccessTime(kdbxEntry, entry);
     return;
   }
@@ -247,10 +275,10 @@ function syncEntry(
   if (existing.parentGroup !== parentKdbxGroup) {
     db.move(existing, parentKdbxGroup);
   }
-  removeDeletedRevisions(existing, entry);
-  if (snapshotEntry(entry) !== snapshotEntry(entryFromKdbx(existing))) {
+  removeDeletedRevisions(existing, entry, attachments);
+  if (!sameContent(entry, entryFromKdbx(existing, attachments))) {
     existing.pushHistory();
-    writeEntryFields(existing, entry, db.meta.memoryProtection);
+    writeEntryFields(existing, entry, db, attachments);
     trimHistory(existing, db.meta);
   }
   writeAccessTime(existing, entry);
@@ -264,6 +292,7 @@ function syncGroup(
   existingEntries: Map<string, KdbxEntry>,
   visitedGroups: Set<string>,
   visitedEntries: Set<string>,
+  attachments: KdbxAttachmentStore,
 ): void {
   visitedGroups.add(group.id.toString());
   let changed = false;
@@ -280,7 +309,7 @@ function syncGroup(
   }
 
   for (const entry of group.entries) {
-    syncEntry(entry, kdbxGroup, db, existingEntries, visitedEntries);
+    syncEntry(entry, kdbxGroup, db, existingEntries, visitedEntries, attachments);
   }
 
   const childKdbxGroupsById = new Map<string, KdbxGroup>();
@@ -306,6 +335,7 @@ function syncGroup(
       existingEntries,
       visitedGroups,
       visitedEntries,
+      attachments,
     );
   }
   // The array order is what kdbxweb serializes and what KeePass/KeePassXC
@@ -373,12 +403,18 @@ function syncCustomIcons(db: Kdbx, icons: CustomIcons): void {
  * Applies a domain `Vault`'s tree onto the live `Kdbx` document it was
  * loaded from, mutating existing groups/entries in place (matched by id) and
  * only touching entries whose mapped value actually changed. This is what
- * keeps attachments, custom icons, entry history, and any other field the
- * domain model doesn't expose byte-for-byte intact for everything the user
- * didn't edit, instead of rebuilding the document from the (lossy) domain
- * model alone.
+ * keeps custom icons, entry history, and any other field the domain model
+ * doesn't expose byte-for-byte intact for everything the user didn't edit,
+ * instead of rebuilding the document from the (lossy) domain model alone.
+ *
+ * Files the vault gained since it was mapped have to be handed to
+ * `attachments.prepare` first.
  */
-export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
+export function applyVaultToKdbx(
+  db: Kdbx,
+  vault: Vault,
+  attachments = new KdbxAttachmentStore(),
+): void {
   db.meta.name = vault.name;
 
   const rootKdbxGroup = db.getDefaultGroup();
@@ -403,6 +439,7 @@ export function applyVaultToKdbx(db: Kdbx, vault: Vault): void {
     existingEntries,
     visitedGroups,
     visitedEntries,
+    attachments,
   );
 
   syncCustomIcons(db, vault.customIcons);

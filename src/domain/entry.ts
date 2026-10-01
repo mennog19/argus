@@ -1,3 +1,4 @@
+import { Attachments } from "./attachment";
 import { CustomFields } from "./custom-fields";
 import { Icon } from "./icon";
 import { EntryId } from "./entry-id";
@@ -27,6 +28,7 @@ export interface EntryFields {
   notes?: string;
   tags?: Tags;
   customFields?: CustomFields;
+  attachments?: Attachments;
   icon?: Icon;
   /**
    * When the entry stops being valid, as KeePass's "Expires" option. Unlike
@@ -51,6 +53,7 @@ export class Entry {
   readonly notes: string;
   readonly tags: Tags;
   readonly customFields: CustomFields;
+  readonly attachments: Attachments;
   readonly icon: Icon;
   readonly expiresAt: Date | undefined;
   readonly times: EntryTimes;
@@ -70,6 +73,7 @@ export class Entry {
     this.notes = fields.notes ?? "";
     this.tags = fields.tags ?? new Tags();
     this.customFields = fields.customFields ?? new CustomFields();
+    this.attachments = fields.attachments ?? Attachments.EMPTY;
     this.icon = fields.icon ?? Icon.AUTO;
     this.expiresAt = fields.expiresAt;
     this.times = fields.times ?? {};
@@ -93,6 +97,7 @@ export class Entry {
       notes: fields.notes ?? this.notes,
       tags: fields.tags ?? this.tags,
       customFields: fields.customFields ?? this.customFields,
+      attachments: fields.attachments ?? this.attachments,
       icon: fields.icon ?? this.icon,
       expiresAt: "expiresAt" in fields ? fields.expiresAt : this.expiresAt,
       times: fields.times ?? this.times,
@@ -125,6 +130,7 @@ export class Entry {
       notes: revision.notes,
       tags: revision.tags,
       customFields: revision.customFields,
+      attachments: revision.attachments,
       icon: revision.icon,
       expiresAt: revision.expiresAt,
     });

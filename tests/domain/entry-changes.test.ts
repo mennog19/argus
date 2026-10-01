@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Attachment, Attachments } from "../../src/domain/attachment";
 import { CustomField } from "../../src/domain/custom-field";
 import { CustomFields } from "../../src/domain/custom-fields";
 import { Entry } from "../../src/domain/entry";
@@ -39,6 +40,7 @@ describe("changedEntryFields", () => {
       title: "Other",
       tags: new Tags([new Tag("a")]),
       customFields: new CustomFields([new CustomField("PIN", "1234", false)]),
+      attachments: new Attachments([new Attachment("notes.txt", new Uint8Array([1]))]),
       expiresAt: new Date("2027-01-01T00:00:00Z"),
     });
 
@@ -50,6 +52,7 @@ describe("changedEntryFields", () => {
       "notes",
       "tags",
       "customFields",
+      "attachments",
       "icon",
       "expiry",
     ]);

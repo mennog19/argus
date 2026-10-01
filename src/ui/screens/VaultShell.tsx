@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CustomIcon, Entry, EntryId, Group, GroupId, Vault } from "../../domain";
+import { Attachment, CustomIcon, Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
 import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
@@ -56,6 +56,8 @@ interface VaultShellProps {
   onUpgradeFormat: () => Promise<void>;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<SettingsImportResult | undefined>;
+  /** Saves a copy of an attachment where the user picks; `undefined` if they cancelled. */
+  onExportAttachment: (attachment: Attachment) => Promise<string | undefined>;
   /** Replaces the in-memory vault without writing the file — used for the
    * "entry was opened" stamp, which must not cost a full re-encrypt per click. */
   onVaultChange: (vault: Vault) => void;
@@ -80,6 +82,7 @@ export function VaultShell({
   onUpgradeFormat,
   onExportSettings,
   onImportSettings,
+  onExportAttachment,
   onVaultChange,
 }: VaultShellProps) {
   const {
@@ -307,6 +310,12 @@ export function VaultShell({
         onDelete={() => handleDeleteEntry(selected.entry.id)}
         onRestoreRevision={(index) => commands.restoreEntryRevision(selected.entry, index)}
         onDeleteRevision={(index) => commands.deleteEntryRevision(selected.entry, index)}
+        onAddAttachments={(added) => commands.addAttachments(selected.entry, added)}
+        onRenameAttachment={(name, newName) =>
+          commands.renameAttachment(selected.entry, name, newName)
+        }
+        onRemoveAttachment={(name) => commands.removeAttachment(selected.entry, name)}
+        onExportAttachment={onExportAttachment}
       />
     );
   }

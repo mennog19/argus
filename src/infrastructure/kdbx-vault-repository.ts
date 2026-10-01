@@ -15,6 +15,7 @@ import {
   VaultSession,
 } from "../application/vault-repository";
 import { Vault } from "../domain";
+import { KdbxAttachmentStore } from "./kdbx-attachments";
 import { configureKdbxCrypto } from "./kdbx-crypto";
 import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
 
@@ -82,10 +83,11 @@ async function loadKdbx(fileBytes: ArrayBuffer, key: VaultKey): Promise<Kdbx> {
 
 /** A `kdbxweb` document, held open so that unmapped fields survive a save. */
 class KdbxVaultSession implements VaultSession {
+  private readonly attachments = new KdbxAttachmentStore();
   private current: Vault;
 
   constructor(private readonly db: Kdbx) {
-    this.current = vaultFromKdbx(db);
+    this.current = vaultFromKdbx(db, this.attachments);
   }
 
   get vault(): Vault {
@@ -97,11 +99,16 @@ class KdbxVaultSession implements VaultSession {
   }
 
   async save(vault: Vault): Promise<ArrayBuffer> {
-    applyVaultToKdbx(this.db, vault);
+    await this.attachments.prepare(this.db, vault);
+    applyVaultToKdbx(this.db, vault, this.attachments);
+    // kdbxweb writes every pooled binary, used or not. Without this a deleted
+    // attachment, or those of a purged entry or history revision, would stay
+    // in the file for good.
+    this.db.cleanup({ binaries: true });
     const fileBytes = await this.db.save();
     // Re-read rather than keep `vault`: the save may have added a history
     // revision, trimmed old ones, or stamped times the domain never set.
-    this.current = vaultFromKdbx(this.db);
+    this.current = vaultFromKdbx(this.db, this.attachments);
     return fileBytes;
   }
 

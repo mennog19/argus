@@ -32,8 +32,9 @@ function ensureMergeGroup(vault: Vault): { vault: Vault; groupId: GroupId } {
  * location); "keep both" conflicts, accepted new entries, and any
  * identical pairs the user chose to import anyway are all added into a
  * single lazily-created group so the target vault's existing groups are
- * left untouched. Custom icons the brought-over entries use are copied from
- * `sourceIcons`. Returns an ordinary in-memory `Vault` — callers persist it
+ * left untouched. "Use theirs" never costs the target entry a file: it keeps
+ * its attachments and gains the source's. Custom icons the brought-over
+ * entries use are copied from `sourceIcons`. Returns an ordinary in-memory `Vault` — callers persist it
  * the same way as any other edit.
  */
 export function applyVaultMerge(
@@ -58,6 +59,7 @@ function mergeEntries(target: Vault, selections: VaultMergeSelections): Vault {
           notes: pair.sourceEntry.notes,
           tags: pair.sourceEntry.tags,
           customFields: pair.sourceEntry.customFields,
+          attachments: pair.targetEntry.attachments.merge(pair.sourceEntry.attachments),
           icon: pair.sourceEntry.icon,
         }),
       );

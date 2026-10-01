@@ -1101,6 +1101,7 @@ input[type="radio"]:checked::after {
 .group-composer-delete,
 .btn-ghost-sm,
 .btn-ghost-sm-danger,
+.btn-accent-sm,
 .btn-danger-sm {
   padding: 5px 11px;
   border-radius: 6px;
@@ -1136,13 +1137,15 @@ input[type="radio"]:checked::after {
   color: var(--color-danger-strong);
 }
 
-.group-composer-save {
+.group-composer-save,
+.btn-accent-sm {
   border: none;
   background: var(--color-accent);
   color: var(--color-accent-on);
 }
 
-.group-composer-save:hover {
+.group-composer-save:hover,
+.btn-accent-sm:hover {
   background: var(--color-accent-hover);
 }
 
@@ -1165,6 +1168,7 @@ input[type="radio"]:checked::after {
 .group-composer button:disabled,
 .btn-ghost-sm:disabled,
 .btn-ghost-sm-danger:disabled,
+.btn-accent-sm:disabled,
 .btn-danger-sm:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1884,6 +1888,76 @@ input[type="radio"]:checked::after {
   line-height: 1.5;
   color: color-mix(in oklab, var(--color-text) 80%, transparent);
   white-space: pre-wrap;
+}
+
+/* Entry attachments ------------------------------------------------------ */
+
+.entry-attachments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.entry-attachments-header .field-label {
+  margin: 0;
+}
+
+.entry-attachments-header .icon-picker-upload.btn-secondary {
+  padding: 5px 11px;
+  font-size: 12px;
+}
+
+.entry-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry-attachment-row,
+.entry-attachment-rename {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  font-size: 12.5px;
+}
+
+.entry-attachment-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-attachment-size {
+  flex: none;
+  color: var(--color-text-dimmer);
+  font-variant-numeric: tabular-nums;
+}
+
+.entry-attachment-row .detail-field-actions {
+  gap: 2px;
+}
+
+.entry-attachment-rename .field-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  font-size: 12.5px;
+}
+
+.entry-attachment-list .group-inline-confirm {
+  padding: 4px 0;
+}
+
+/* The warning about history copies is too long to cut off at one line. */
+.entry-attachment-list .group-inline-confirm span {
+  white-space: normal;
 }
 
 /* Entry history ---------------------------------------------------------- */

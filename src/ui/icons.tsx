@@ -56,6 +56,21 @@ export function TrashIcon({ size = 16, color = "currentColor", strokeWidth = 2 }
   );
 }
 
+export function DownloadIcon({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function XIcon({ size = 14, color = "currentColor" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">

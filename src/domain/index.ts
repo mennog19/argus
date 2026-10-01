@@ -16,6 +16,7 @@ export {
   type AutoTypeMatch,
   type AutoTypeTarget,
 } from "./auto-type-match";
+export { Attachment, Attachments, MAX_ATTACHMENT_BYTES } from "./attachment";
 export { CustomField } from "./custom-field";
 export { CustomFields } from "./custom-fields";
 export { CustomIcon, CustomIcons } from "./custom-icon";

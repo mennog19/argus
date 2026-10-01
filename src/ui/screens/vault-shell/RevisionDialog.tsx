@@ -28,6 +28,7 @@ export function RevisionDialog({
   const title = revision.title || "(untitled)";
   const date = formatDateTime(revision.times.modifiedAt);
   const tags = revision.tags.values.map((tag) => tag.toString());
+  const attachments = revision.attachments.values.map((attachment) => attachment.name);
   const revealLabel = revealed ? "Hide password" : "Show password";
 
   async function act(action: () => Promise<void>, fallbackMessage: string) {
@@ -112,6 +113,11 @@ export function RevisionDialog({
               <span>{field.isProtected && !revealed ? "••••••••" : field.value}</span>
             </Row>
           ))}
+          {attachments.length > 0 && (
+            <Row label="Attachments">
+              <span>{attachments.join(", ")}</span>
+            </Row>
+          )}
           <Row label="Notes" notes>
             <span>{revision.notes || "—"}</span>
           </Row>

@@ -4,7 +4,16 @@ import { Tags } from "./tags";
 
 /** The parts of an entry a user edits, in the order the entry shows them. */
 export type EntryFieldName =
-  "title" | "username" | "password" | "url" | "notes" | "tags" | "customFields" | "icon" | "expiry";
+  | "title"
+  | "username"
+  | "password"
+  | "url"
+  | "notes"
+  | "tags"
+  | "customFields"
+  | "attachments"
+  | "icon"
+  | "expiry";
 
 function tagsKey(tags: Tags): string {
   return JSON.stringify(tags.values.map((tag) => tag.toString()).sort());
@@ -26,6 +35,7 @@ const COMPARISONS: readonly [EntryFieldName, (a: Entry, b: Entry) => boolean][] 
   ["notes", (a, b) => a.notes === b.notes],
   ["tags", (a, b) => tagsKey(a.tags) === tagsKey(b.tags)],
   ["customFields", (a, b) => customFieldsKey(a.customFields) === customFieldsKey(b.customFields)],
+  ["attachments", (a, b) => a.attachments.equals(b.attachments)],
   ["icon", (a, b) => a.icon.equals(b.icon)],
   ["expiry", (a, b) => a.expiresAt?.getTime() === b.expiresAt?.getTime()],
 ];

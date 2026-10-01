@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  Attachment,
+  Attachments,
   CustomIcon,
   CustomIcons,
   Entry,
@@ -87,6 +89,21 @@ describe("applyVaultMerge", () => {
       const updated = next.findEntry(targetEntry.id);
       expect(updated?.notes).toBe("theirs");
       expect(next.rootGroup.entries).toHaveLength(1);
+    });
+
+    it("keeps the target entry's attachments for use-theirs, and gains the source's", () => {
+      const mine = new Attachment("mine.txt", new Uint8Array([1]));
+      const theirs = new Attachment("theirs.txt", new Uint8Array([2]));
+      const targetEntry = Entry.create({ title: "Bank", attachments: new Attachments([mine]) });
+      const vault = new Vault("Mine", Group.create("Mine").addEntry(targetEntry));
+      const sourceEntry = Entry.create({ title: "Bank", attachments: new Attachments([theirs]) });
+
+      const next = applyVaultMerge(vault, {
+        ...emptySelections(),
+        resolvedConflicts: [{ pair: pairFor(targetEntry, sourceEntry), resolution: "use-theirs" }],
+      });
+
+      expect(next.findEntry(targetEntry.id)?.attachments.values).toEqual([mine, theirs]);
     });
 
     it("adds the source entry into the merge group for keep-both, leaving the target entry alone", () => {

@@ -1,9 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./ui/App";
+import { AttachmentExportService } from "./application/attachment-export-service";
 import { VaultAccessService } from "./application/vault-access-service";
 import { KdbxVaultMergeSource } from "./infrastructure/kdbx-vault-merge-source";
 import { KdbxVaultRepository } from "./infrastructure/kdbx-vault-repository";
+import { TauriAttachmentFileDialog } from "./infrastructure/tauri-attachment-file-dialog";
 import { TauriFileStorage } from "./infrastructure/tauri-file-storage";
 import { TauriVaultFileDialog } from "./infrastructure/tauri-vault-file-dialog";
 import { TauriSettingsFileDialog } from "./infrastructure/tauri-settings-file-dialog";
@@ -33,6 +35,10 @@ const settingsTransferService = new SettingsTransferService(
   new TauriSettingsFileDialog(),
   fileStorage,
 );
+const attachmentExportService = new AttachmentExportService(
+  new TauriAttachmentFileDialog(),
+  fileStorage,
+);
 const urlOpener = new TauriUrlOpener();
 const clipboardWriter = new TauriClipboard();
 const windowEvents = new TauriWindowEvents();
@@ -49,6 +55,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       vaultAccessService={vaultAccessService}
       settingsStore={settingsStore}
       settingsTransferService={settingsTransferService}
+      attachmentExportService={attachmentExportService}
       urlOpener={urlOpener}
       clipboardWriter={clipboardWriter}
       windowEvents={windowEvents}

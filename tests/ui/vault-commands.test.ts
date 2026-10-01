@@ -1,5 +1,5 @@
 import { describe, expect, it, Mock, vi } from "vitest";
-import { CustomIcon, Entry, Group, Icon, Vault } from "../../src/domain";
+import { Attachment, Attachments, CustomIcon, Entry, Group, Icon, Vault } from "../../src/domain";
 import { vaultCommands } from "../../src/ui/vault-commands";
 
 function setup() {
@@ -164,6 +164,59 @@ describe("vaultCommands", () => {
       const binned = vault.deleteGroup(work.id);
       await vaultCommands(binned, save).emptyRecycleBin();
       expect(saved(save).recycleBin?.groups).toEqual([]);
+    });
+  });
+
+  describe("attachments", () => {
+    const notes = new Attachment("notes.txt", new Uint8Array([1]));
+
+    function setupWithAttachment() {
+      const base = setup();
+      const entry = base.entry.update({ attachments: new Attachments([notes]) });
+      const vault = base.vault.updateEntry(entry);
+      return { entry, save: base.save, commands: vaultCommands(vault, base.save) };
+    }
+
+    it("attaches files to an entry, renaming one whose name is taken", async () => {
+      const { entry, save, commands } = setupWithAttachment();
+
+      await commands.addAttachments(entry, [
+        new Attachment("photo.png", new Uint8Array([2])),
+        new Attachment("notes.txt", new Uint8Array([3])),
+      ]);
+
+      const attachments = saved(save).findEntry(entry.id)!.attachments;
+      expect(attachments.values.map((attachment) => attachment.name)).toEqual([
+        "notes.txt",
+        "photo.png",
+        "notes (2).txt",
+      ]);
+      expect(attachments.get("notes.txt")).toBe(notes);
+    });
+
+    it("renames an attachment", async () => {
+      const { entry, save, commands } = setupWithAttachment();
+
+      await commands.renameAttachment(entry, "notes.txt", "todo.txt");
+
+      expect(saved(save).findEntry(entry.id)!.attachments.get("todo.txt")?.data).toBe(notes.data);
+    });
+
+    it("saves nothing when the new name is refused", () => {
+      const { entry, save, commands } = setupWithAttachment();
+
+      expect(() => commands.renameAttachment(entry, "notes.txt", " ")).toThrow(
+        "An attachment needs a name.",
+      );
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it("removes an attachment", async () => {
+      const { entry, save, commands } = setupWithAttachment();
+
+      await commands.removeAttachment(entry, "notes.txt");
+
+      expect(saved(save).findEntry(entry.id)!.attachments.size).toBe(0);
     });
   });
 

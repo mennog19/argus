@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Attachment, Attachments } from "../../src/domain/attachment";
 import { CustomField } from "../../src/domain/custom-field";
 import { CustomFields } from "../../src/domain/custom-fields";
 import { Entry } from "../../src/domain/entry";
@@ -131,6 +132,7 @@ describe("Entry history", () => {
       notes: "current notes",
       tags: new Tags([new Tag("finance")]),
       customFields: new CustomFields([new CustomField("PIN", "1234", true)]),
+      attachments: new Attachments([new Attachment("statement.pdf", new Uint8Array([1]))]),
       icon: Icon.brand("github"),
       history: [oldest, middle],
     });
@@ -139,6 +141,13 @@ describe("Entry history", () => {
 
   it("has no history by default", () => {
     expect(Entry.create().history).toEqual([]);
+  });
+
+  it("has no attachments by default, and keeps them across edits", () => {
+    const { current } = entryWithHistory();
+
+    expect(Entry.create().attachments.size).toBe(0);
+    expect(current.update({ title: "Renamed" }).attachments).toBe(current.attachments);
   });
 
   it("keeps its history across edits", () => {
@@ -159,6 +168,7 @@ describe("Entry history", () => {
     expect(restored.notes).toBe("");
     expect(restored.tags.values).toEqual([]);
     expect(restored.customFields.values).toEqual([]);
+    expect(restored.attachments.values).toEqual([]);
     expect(restored.icon).toBe(oldest.icon);
     expect(restored.times).toBe(current.times);
     expect(restored.history).toBe(current.history);
