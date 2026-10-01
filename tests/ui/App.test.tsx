@@ -21,6 +21,7 @@ import { AutoTyper, GlobalHotkey } from "../../src/application/auto-type";
 import { AutoTypeService } from "../../src/application/auto-type-service";
 import { Updater } from "../../src/application/updater";
 import App from "../../src/ui/App";
+import { fakeFileInfo, NEW_VAULT_SETTINGS } from "./vault-file-fakes";
 
 function fakeVaultAccessService(overrides: Partial<VaultAccessService> = {}): VaultAccessService {
   return {
@@ -913,6 +914,161 @@ describe("App", () => {
         await screen.findByRole("heading", { name: /vault changed on disk/i }),
       ).toBeInTheDocument();
       expect(screen.queryByText("Upgraded to KDBX 4.")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("changing the vault file itself", () => {
+    const opened: OpenedVault = {
+      vault: Vault.create("Personal"),
+      filePath: "C:/vaults/personal.kdbx",
+    };
+
+    function renderApp(overrides: Partial<VaultAccessService>) {
+      const settingsStore = fakeSettingsStore();
+      render(
+        <App
+          vaultAccessService={fakeVaultAccessService({
+            createNewVault: vi.fn().mockResolvedValue(opened),
+            getFileInfo: vi.fn().mockResolvedValue(fakeFileInfo()),
+            ...overrides,
+          })}
+          settingsStore={settingsStore}
+          settingsTransferService={fakeSettingsTransferService()}
+          attachmentExportService={fakeAttachmentExportService()}
+          urlOpener={fakeUrlOpener()}
+          clipboardWriter={fakeClipboardWriter()}
+          windowEvents={fakeWindowEvents()}
+          vaultOpenRequests={fakeVaultOpenRequests()}
+          windowProtection={fakeWindowProtection()}
+          windowCloseBehavior={fakeWindowCloseBehavior()}
+          mergeSource={fakeMergeSource()}
+          autoTypeService={fakeAutoTypeService()}
+          globalHotkey={fakeGlobalHotkey()}
+          updater={fakeUpdater()}
+        />,
+      );
+      return { settingsStore };
+    }
+
+    async function createVaultAndOpenSettings(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: /create new vault/i }));
+      await user.type(screen.getByLabelText("Vault name"), "Personal");
+      await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+      await user.type(screen.getByLabelText("Confirm password"), "Hunter2-long");
+      await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+      await user.click(await screen.findByRole("button", { name: "Settings" }));
+    }
+
+    it("adds a key file through the vault access service and remembers it for unlocking", async () => {
+      const user = userEvent.setup({ delay: null });
+      const changeKeyFile = vi.fn().mockResolvedValue({
+        removedBackups: [],
+        unprotectedBackups: [],
+        keyFilePath: "D:/keys/personal.keyx",
+      });
+      const pickPathForNewKeyFile = vi.fn().mockResolvedValue("D:/keys/personal.keyx");
+      const { settingsStore } = renderApp({ changeKeyFile, pickPathForNewKeyFile });
+
+      await createVaultAndOpenSettings(user);
+      await user.click(await screen.findByRole("button", { name: "Add key file" }));
+      await user.type(screen.getByLabelText("Confirm with your master password"), "Hunter2-long");
+      await user.click(screen.getByRole("button", { name: "Choose where to save it…" }));
+      await user.click(screen.getByRole("button", { name: "Add key file" }));
+
+      expect(pickPathForNewKeyFile).toHaveBeenCalledWith("Personal");
+      expect(changeKeyFile).toHaveBeenCalledWith(
+        opened.vault,
+        "C:/vaults/personal.kdbx",
+        "Hunter2-long",
+        { kind: "generate", path: "D:/keys/personal.keyx" },
+      );
+      expect(await screen.findByText("Key file changed.")).toBeInTheDocument();
+      expect(settingsStore.save).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          recentVaults: [
+            expect.objectContaining({
+              path: "C:/vaults/personal.kdbx",
+              keyFilePath: "D:/keys/personal.keyx",
+            }),
+          ],
+        }),
+      );
+    });
+
+    it("picks an existing key file through the vault access service", async () => {
+      const user = userEvent.setup({ delay: null });
+      const pickKeyFile = vi.fn().mockResolvedValue("D:/keys/photo.jpg");
+      renderApp({ pickKeyFile });
+
+      await createVaultAndOpenSettings(user);
+      await user.click(await screen.findByRole("button", { name: "Add key file" }));
+      await user.click(screen.getByRole("radio", { name: "Use existing file" }));
+      await user.click(screen.getByRole("button", { name: "Choose a file…" }));
+
+      expect(pickKeyFile).toHaveBeenCalledOnce();
+      expect(await screen.findByText("Key file: photo.jpg")).toBeInTheDocument();
+    });
+
+    it("shows the conflict overlay, not a success, when the key file change conflicted", async () => {
+      const user = userEvent.setup({ delay: null });
+      const { settingsStore } = renderApp({
+        changeKeyFile: vi.fn().mockRejectedValue(new VaultSaveConflictError(opened.filePath)),
+        pickPathForNewKeyFile: vi.fn().mockResolvedValue("D:/keys/personal.keyx"),
+      });
+
+      await createVaultAndOpenSettings(user);
+      await user.click(await screen.findByRole("button", { name: "Add key file" }));
+      await user.click(screen.getByRole("button", { name: "Choose where to save it…" }));
+      vi.mocked(settingsStore.save).mockClear();
+      await user.click(screen.getByRole("button", { name: "Add key file" }));
+
+      expect(
+        await screen.findByRole("heading", { name: /vault changed on disk/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Key file changed.")).not.toBeInTheDocument();
+      // Nothing changed, so the key file isn't remembered either.
+      expect(settingsStore.save).not.toHaveBeenCalled();
+    });
+
+    it("renames the vault and saves its settings through the vault access service", async () => {
+      const user = userEvent.setup({ delay: null });
+      const changeVaultSettings = vi.fn(async (vault: Vault) => vault);
+      renderApp({ changeVaultSettings });
+
+      await createVaultAndOpenSettings(user);
+      await user.click(await screen.findByRole("button", { name: "Edit vault settings" }));
+      await user.clear(screen.getByLabelText("Vault name"));
+      await user.type(screen.getByLabelText("Vault name"), "Work");
+      await user.clear(screen.getByLabelText(/^Earlier versions kept/));
+      await user.type(screen.getByLabelText(/^Earlier versions kept/), "3");
+      await user.click(screen.getByRole("button", { name: "Save vault settings" }));
+
+      expect(await screen.findByText("Vault settings saved.")).toBeInTheDocument();
+      expect(changeVaultSettings).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ name: "Work" }),
+        "C:/vaults/personal.kdbx",
+        { ...NEW_VAULT_SETTINGS, historyMaxItems: 3 },
+      );
+      // The renamed vault is what's open from here on.
+      await user.click(screen.getByRole("button", { name: "Close" }));
+      await user.click(screen.getByRole("button", { name: "Edit vault settings" }));
+      expect(screen.getByLabelText("Vault name")).toHaveValue("Work");
+    });
+
+    it("shows the conflict overlay, not a success, when saving vault settings conflicted", async () => {
+      const user = userEvent.setup({ delay: null });
+      renderApp({
+        changeVaultSettings: vi.fn().mockRejectedValue(new VaultSaveConflictError(opened.filePath)),
+      });
+
+      await createVaultAndOpenSettings(user);
+      await user.click(await screen.findByRole("button", { name: "Edit vault settings" }));
+      await user.click(screen.getByRole("button", { name: "Save vault settings" }));
+
+      expect(
+        await screen.findByRole("heading", { name: /vault changed on disk/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Vault settings saved.")).not.toBeInTheDocument();
     });
   });
 

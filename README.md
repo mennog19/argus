@@ -41,6 +41,7 @@ and compare the output against the matching `.sha256` value published with that 
 - **Password generator** — random-character passwords with a configurable length and character sets, shared settings, and a quick-generate action.
 - **Entry expiry** — the KDBX expiry date is shown and editable, and expired entries are flagged in the list and the health check. A setting decides what happens once an entry expires: keep it marked as expired (as KeePass does), move it to the recycle bin, or delete it permanently.
 - **Password health check** — local-only detection of expired entries and of reused, weak, and fair-strength passwords across the vault. No online breach checking, and nothing ever leaves your device to compute it.
+- **Vault settings** — the vault's name, how many earlier versions each entry keeps and how much space they may take, and its key-derivation settings (Argon2 memory, iterations and parallelism, or AES-KDF rounds) can be changed from Settings. KeePass and KeePassXC read the same settings.
 - **Auto-type** — an opt-in, off-by-default global hotkey that types a matching entry's credentials into whichever window is focused. In a browser, entries are matched on the real address in the address bar rather than the page title. Windows-only, and always confirmed through a picker that names the target window before anything is typed.
 - **Clipboard auto-clear** — copied passwords are cleared from the clipboard automatically after a timeout of up to 10 minutes.
 - **Vault merge** — reconcile a vault that was edited from two places (e.g. after using it on two machines) with a guided merge wizard.
@@ -57,11 +58,11 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 
 - **Local-only, always.** Argus has no accounts, no sync service, and sends no telemetry. The only network request it makes of its own is the update check, which is off unless you turn it on. Opening an entry's URL hands it to your default browser.
 - **Updates.** With the update check on, Argus fetches `latest.json` from the newest published GitHub Release once per launch. The request carries nothing about you or your vaults. Every installer is signed with Argus's updater key, and Argus refuses one whose signature doesn't match the public key built into it, so a tampered download never runs. Releases are only built from commits on `main`. Before the installer starts, Argus wipes any password it put on the clipboard. Installing closes Argus, so the vault is locked and needs its master password again afterwards. An imported settings file can't turn the update check on.
-- **Master password and key files.** Vaults are unlocked with a master password, a KeePass/KeePassXC key file, or both. A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they already have. Argus remembers the _path_ of the key file each recent vault was last unlocked with (never its contents). New vaults can optionally get a key file too, either generated in KeePassXC's format or an existing file of your choosing. There is no biometric unlock in v1.
+- **Master password and key files.** Vaults are unlocked with a master password, a KeePass/KeePassXC key file, or both. A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they already have. Argus remembers the _path_ of the key file each recent vault was last unlocked with (never its contents). New vaults can optionally get a key file too, either generated in KeePassXC's format or an existing file of your choosing, and an existing vault can have a key file added, swapped for another, or removed from Settings. Changing the password or the key file re-encrypts the vault's `.bak` backups to match. There is no biometric unlock in v1.
 - **Memory protection.** The app window uses OS-level content protection, and KDBX-protected fields (passwords, protected custom fields) follow `kdbxweb`'s in-memory protection conventions rather than being held as plain strings.
 - **Clipboard handling.** Copying a password to the clipboard starts an auto-clear timer so the secret doesn't linger there indefinitely. The clear only happens if the clipboard still holds what Argus copied, so anything you copied since is left alone. A copied secret is also cleared when the vault closes or Argus quits, and on the next launch after a crash. On Windows, copies are kept out of clipboard history (Win+V) and cloud clipboard sync.
 - **Saved attachments.** Saving a copy of an attachment writes it to the place you pick, unencrypted. Argus doesn't track or clean up that copy, and never writes attachments to a temporary folder by itself.
-- **Crafted files.** A vault's key-derivation settings are stored unencrypted in its header, so a malicious `.kdbx` could ask for enough Argon2 work to freeze or crash the app. Argus refuses to open a file that asks for more than 1 GiB of memory, 1000 iterations, or 64 lanes.
+- **Crafted files.** A vault's key-derivation settings are stored unencrypted in its header, so a malicious `.kdbx` could ask for enough Argon2 work to freeze or crash the app. Argus refuses to open a file that asks for more than 1 GiB of memory, 1000 iterations, or 64 lanes of Argon2, or more than a billion rounds of AES-KDF. The vault settings screen accepts nothing above the same limits, so Argus never writes a file it would then refuse.
 - **Saving.** Saves are atomic: the vault is written to a new, randomly named temporary file next to it (`.<vault>.<random>.tmp`), flushed to disk, then renamed over the original. The temporary file is created fresh and never follows a symlink, and it's removed if the save fails. If Argus is killed mid-save, one stray temporary file can be left behind; it is safe to delete.
 - **Auto-type caveats.** Auto-type simulates keystrokes into whatever window has focus, using Windows UI Automation to find the username and password fields. If it can't find them it types nothing. It is off by default, opt-in, and always shows a picker confirming the target window before typing anything.
   - A web page chooses its own title, so a phishing page can call itself "github.com – Sign in". For Chrome, Edge, Brave, Vivaldi, Opera, Firefox and Firefox forks, Argus reads the address bar instead: an entry with a URL is only offered when its host matches the page's address (or the page is on a subdomain of it). The picker warns when a page's title names entries its address rules out, and the address is checked again right before typing.
@@ -77,7 +78,6 @@ Vaults Argus creates use Argon2id with 64 MiB of memory, 4 iterations, and 2 lan
 - **Field references are read-only links.** Argus resolves `{REF:…}` placeholders but has no UI for creating them.
 - **Attachments are for small files.** Argus refuses to attach a file over 10 MB, because the whole vault is rewritten on every save and each rolling backup holds a copy. Larger attachments added in KeePass or KeePassXC still load and are kept. Attachments can't be previewed or opened in place, only saved to disk.
 - **Deleting an attachment doesn't purge it straight away.** The entry's history keeps the versions that held the file. Its bytes leave the vault once those versions are deleted too.
-- **AES-KDF isn't capped.** The key-derivation limits above cover Argon2 (KDBX4). A KDBX3 file using AES-KDF with a huge round count can still make unlocking very slow.
 - **No biometric unlock, no browser extension, no breach checking.**
 
 ## Building from source
@@ -144,6 +144,7 @@ These match what CI runs:
 pnpm lint
 pnpm test            # or pnpm test:coverage
 pnpm audit --audit-level moderate
+pnpm test:e2e        # drives the built app; see below
 
 # Rust (run from src-tauri/)
 cargo fmt --check
@@ -151,6 +152,10 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 cargo audit          # install once with: cargo install cargo-audit --locked
 ```
+
+`pnpm test:e2e` launches the real app and drives it through WebDriver: it opens a copy of a fixture vault, adds an entry, and checks the entry is in the file and still there after locking. It needs a release build (`pnpm tauri build --no-bundle`) and `tauri-driver` (`cargo install tauri-driver --locked`); the Edge WebDriver matching your WebView2 runtime is downloaded into `e2e/.drivers` on first use. Close Argus before running it. Your own app settings are set aside for the run and put back afterwards.
+
+`cargo test` includes tests that copy to the real clipboard, so it replaces whatever your clipboard held.
 
 The KDBX round-trip tests use vaults written by KeePass 2 itself, in `tests/fixtures/keepass/`. To regenerate them (needs KeePass 2.x installed):
 

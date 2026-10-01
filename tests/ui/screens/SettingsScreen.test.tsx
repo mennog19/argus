@@ -13,11 +13,10 @@ import {
   GroupDeleteMode,
   Theme,
 } from "../../../src/application/settings";
-import {
-  MasterPasswordChangeResult,
-  VaultFileInfo,
-} from "../../../src/application/vault-access-service";
+import { VaultFileInfo } from "../../../src/application/vault-access-service";
 import { SettingsScreen } from "../../../src/ui/screens/SettingsScreen";
+import { VaultFileActions } from "../../../src/ui/screens/settings/DangerZoneSection";
+import { fakeFileInfo, fakeVaultFileActions } from "../vault-file-fakes";
 import tauriConfig from "../../../src-tauri/tauri.conf.json";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = {
@@ -47,21 +46,15 @@ function renderSettings(
     closeToTray?: boolean;
     checkForUpdates?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
-    onChangeMasterPassword?: (
-      currentPassword: string,
-      newPassword: string,
-    ) => Promise<MasterPasswordChangeResult>;
-    onUpgradeFormat?: () => Promise<void>;
+    vaultName?: string;
+    vaultFileActions?: Partial<VaultFileActions>;
     onOpenMergeWizard?: () => void;
     mergeError?: string;
     onExportSettings?: () => Promise<string | undefined>;
     onImportSettings?: () => Promise<SettingsImportResult | undefined>;
   } = {},
 ) {
-  const onChangeMasterPassword =
-    overrides.onChangeMasterPassword ??
-    vi.fn().mockResolvedValue({ removedBackups: [], unprotectedBackups: [] });
-  const onUpgradeFormat = overrides.onUpgradeFormat ?? vi.fn().mockResolvedValue(undefined);
+  const vaultFileActions = fakeVaultFileActions(overrides.vaultFileActions);
   const onOpenMergeWizard = overrides.onOpenMergeWizard ?? vi.fn();
   const onSettingChange = vi.fn();
   const onExportSettings = overrides.onExportSettings ?? vi.fn().mockResolvedValue(undefined);
@@ -90,8 +83,8 @@ function renderSettings(
       entryCount={overrides.entryCount ?? 0}
       settings={settings}
       onSettingChange={onSettingChange}
-      onChangeMasterPassword={onChangeMasterPassword}
-      onUpgradeFormat={onUpgradeFormat}
+      vaultName={overrides.vaultName ?? "Personal"}
+      vaultFileActions={vaultFileActions}
       mergeError={overrides.mergeError}
       onOpenMergeWizard={onOpenMergeWizard}
       onExportSettings={onExportSettings}
@@ -101,8 +94,7 @@ function renderSettings(
   return {
     container,
     unmount,
-    onChangeMasterPassword,
-    onUpgradeFormat,
+    ...vaultFileActions,
     onOpenMergeWizard,
     onSettingChange,
     onExportSettings,
@@ -126,11 +118,7 @@ describe("SettingsScreen", () => {
   });
 
   it("shows the vault's size, format and last-saved time once file info loads", () => {
-    const fileInfo: VaultFileInfo = {
-      sizeBytes: 49152,
-      lastModifiedMs: Date.now(),
-      format: { major: 4, minor: 1 },
-    };
+    const fileInfo = fakeFileInfo({ sizeBytes: 49152, format: { major: 4, minor: 1 } });
     renderSettings({ fileInfo });
 
     expect(screen.getByText("48 KB")).toBeInTheDocument();
@@ -528,7 +516,7 @@ describe("SettingsScreen", () => {
     it("offers a KDBX 3 vault an upgrade, and passes it to onUpgradeFormat", async () => {
       const user = userEvent.setup();
       const { onUpgradeFormat } = renderSettings({
-        fileInfo: { sizeBytes: 1024, lastModifiedMs: Date.now(), format: { major: 3, minor: 1 } },
+        fileInfo: fakeFileInfo({ format: { major: 3, minor: 1 } }),
       });
 
       await user.click(screen.getByRole("button", { name: "Upgrade to KDBX 4" }));
@@ -539,7 +527,7 @@ describe("SettingsScreen", () => {
 
     it("offers no upgrade to a vault that is already KDBX 4", () => {
       renderSettings({
-        fileInfo: { sizeBytes: 1024, lastModifiedMs: Date.now(), format: { major: 4, minor: 0 } },
+        fileInfo: fakeFileInfo({ format: { major: 4, minor: 0 } }),
       });
 
       expect(screen.queryByRole("button", { name: /upgrade/i })).not.toBeInTheDocument();

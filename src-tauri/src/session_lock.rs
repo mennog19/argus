@@ -58,6 +58,13 @@ mod platform {
         }
     }
 
+    /// Whether a window message says the session was just locked. The same
+    /// message reports unlocks, logons and remote connects too, told apart
+    /// by `wparam`.
+    fn is_session_lock(message: u32, wparam: usize) -> bool {
+        message == WM_WTSSESSION_CHANGE && wparam == WTS_SESSION_LOCK
+    }
+
     unsafe extern "system" fn session_proc(
         hwnd: HWND,
         message: u32,
@@ -66,19 +73,42 @@ mod platform {
         _subclass_id: usize,
         _ref_data: usize,
     ) -> LRESULT {
-        match message {
-            WM_WTSSESSION_CHANGE if wparam.0 == WTS_SESSION_LOCK => {
-                if let Some(app) = APP.get() {
-                    let _ = app.emit(super::SESSION_LOCKED_EVENT, ());
-                }
+        if is_session_lock(message, wparam.0) {
+            if let Some(app) = APP.get() {
+                let _ = app.emit(super::SESSION_LOCKED_EVENT, ());
             }
-            WM_NCDESTROY => {
-                let _ = WTSUnRegisterSessionNotification(hwnd);
-                let _ = RemoveWindowSubclass(hwnd, Some(session_proc), SUBCLASS_ID);
-            }
-            _ => {}
+        } else if message == WM_NCDESTROY {
+            let _ = WTSUnRegisterSessionNotification(hwnd);
+            let _ = RemoveWindowSubclass(hwnd, Some(session_proc), SUBCLASS_ID);
         }
         DefSubclassProc(hwnd, message, wparam, lparam)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        /// `WTS_SESSION_UNLOCK`, sent with the same message as a lock.
+        const WTS_SESSION_UNLOCK: usize = 0x8;
+        /// `WTS_SESSION_LOGON`.
+        const WTS_SESSION_LOGON: usize = 0x5;
+
+        #[test]
+        fn recognises_the_session_being_locked() {
+            assert!(is_session_lock(WM_WTSSESSION_CHANGE, WTS_SESSION_LOCK));
+        }
+
+        #[test]
+        fn ignores_the_other_session_changes() {
+            assert!(!is_session_lock(WM_WTSSESSION_CHANGE, WTS_SESSION_UNLOCK));
+            assert!(!is_session_lock(WM_WTSSESSION_CHANGE, WTS_SESSION_LOGON));
+        }
+
+        #[test]
+        fn ignores_other_messages_that_happen_to_carry_the_same_wparam() {
+            assert!(!is_session_lock(WM_NCDESTROY, WTS_SESSION_LOCK));
+            assert!(!is_session_lock(0, WTS_SESSION_LOCK));
+        }
     }
 }
 

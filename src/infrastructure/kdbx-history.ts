@@ -24,7 +24,7 @@ function revisionSize(revision: KdbxEntry): number {
 }
 
 /** A file that omits a limit gets KeePass's default; a negative one means unlimited. */
-function resolveLimit(value: number | undefined, fallback: number): number {
+export function resolveLimit(value: number | undefined, fallback: number): number {
   const limit = value ?? fallback;
   return limit < 0 ? Infinity : limit;
 }

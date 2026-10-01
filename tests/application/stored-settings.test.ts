@@ -215,8 +215,8 @@ describe("parseStoredSettings", () => {
       expect(parse({ generatorPolicy: { length: 32 } }).generatorPolicy).toEqual({ length: 32 });
     });
 
-    it("ignores the passphrase keys an older build saved, keeping the rest of the policy", () => {
-      const generatorPolicy = { mode: "passphrase", wordCount: 6, separator: ".", length: 20 };
+    it("ignores keys it doesn't know, keeping the rest of the policy", () => {
+      const generatorPolicy = { unknownOption: true, length: 20 };
 
       expect(parse({ generatorPolicy }).generatorPolicy).toEqual({ length: 20 });
     });

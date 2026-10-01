@@ -26,6 +26,8 @@ dist-ssr
 # Test/coverage output
 coverage
 test-results
+# The Edge WebDriver the end-to-end tests download to match WebView2
+e2e/.drivers
 
 # Local app settings written by the app itself at runtime, never committed
 *.kdbx

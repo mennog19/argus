@@ -2,6 +2,7 @@ import { Vault } from "../domain";
 import { FileStorage } from "./file-storage";
 import { VaultFileDialog } from "./vault-file-dialog";
 import { VaultFormat, VaultKey, VaultRepository, VaultSession } from "./vault-repository";
+import { VaultSettings } from "./vault-settings";
 
 export interface OpenedVault {
   vault: Vault;
@@ -18,11 +19,21 @@ export type NewVaultKeyFile =
   | { readonly kind: "generate"; readonly path: string }
   | { readonly kind: "existing"; readonly path: string };
 
+/**
+ * What to do with an open vault's key file: lock it with a newly generated
+ * one saved to `path`, with the existing file at `path`, or with none.
+ */
+export type KeyFileChange = NewVaultKeyFile | { readonly kind: "remove" };
+
 export interface VaultFileInfo {
   sizeBytes: number;
   lastModifiedMs: number;
   /** The open vault's format, which is what its last open or save left on disk. */
   format: VaultFormat;
+  /** Whether the open vault's key includes a key file. */
+  hasKeyFile: boolean;
+  /** The open vault's own settings, as its last open or save left them on disk. */
+  settings: VaultSettings;
 }
 
 export interface SaveVaultOptions {
@@ -30,12 +41,17 @@ export interface SaveVaultOptions {
   force?: boolean;
 }
 
-/** What happened to a vault's rolling backups during a master password change. */
+/** What happened to a vault's rolling backups when its master password or key file changed. */
 export interface MasterPasswordChangeResult {
   /** Backups that couldn't be re-keyed (e.g. the old password didn't open them), deleted instead. */
   removedBackups: string[];
   /** Backups that could be neither re-keyed nor deleted: may still open with the old password. */
   unprotectedBackups: string[];
+}
+
+export interface KeyFileChangeResult extends MasterPasswordChangeResult {
+  /** The key file the vault now needs, to remember for unlocking it; none once removed. */
+  keyFilePath: string | undefined;
 }
 
 /**
@@ -276,7 +292,90 @@ export class VaultAccessService {
     await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
     await this.openSession().changeMasterPassword(currentMasterPassword, newMasterPassword);
     await this.saveVault(vault, filePath);
-    return this.rekeyBackups(filePath, currentMasterPassword, newMasterPassword);
+    const keyFile = this.keyFile;
+    return this.rekeyBackups(
+      filePath,
+      { password: currentMasterPassword, keyFile },
+      { password: newMasterPassword, keyFile },
+    );
+  }
+
+  /**
+   * Adds, replaces or removes the open vault's key file and immediately
+   * persists it via `saveVault`, then re-keys the rolling backups to match,
+   * for the same reasons as `changeMasterPassword`. The master password stays
+   * as it is; `currentMasterPassword` is only checked.
+   *
+   * A generated key file is written before the vault that depends on it, as
+   * in `createNewVault`. If the key file or the vault then can't be written,
+   * the open document goes back to its previous key file, so that a later
+   * save doesn't lock the vault with one that was never saved.
+   */
+  async changeKeyFile(
+    vault: Vault,
+    filePath: string,
+    currentMasterPassword: string,
+    change: KeyFileChange,
+  ): Promise<KeyFileChangeResult> {
+    const session = this.openSession();
+    await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
+
+    const previous = this.keyFile;
+    const next = await this.keyFileBytesFor(change);
+    await session.changeKeyFile(currentMasterPassword, next);
+    try {
+      if (change.kind === "generate") {
+        await this.fileStorage.writeFile(change.path, next!);
+      }
+      await this.saveVault(vault, filePath);
+    } catch (cause) {
+      await session.changeKeyFile(currentMasterPassword, previous);
+      throw cause;
+    }
+    this.keyFile = next;
+
+    const backups = await this.rekeyBackups(
+      filePath,
+      { password: currentMasterPassword, keyFile: previous },
+      { password: currentMasterPassword, keyFile: next },
+    );
+    return { ...backups, keyFilePath: change.kind === "remove" ? undefined : change.path };
+  }
+
+  private async keyFileBytesFor(change: KeyFileChange): Promise<ArrayBuffer | undefined> {
+    switch (change.kind) {
+      case "remove":
+        return undefined;
+      case "existing":
+        return this.readKeyFile(change.path);
+      case "generate":
+        return this.repository.generateKeyFile();
+    }
+  }
+
+  /**
+   * Applies `settings` to the open vault and immediately persists it via
+   * `saveVault`. The conflict check runs first for the same reason as in
+   * `changeMasterPassword`. If the save fails, the open document goes back to
+   * the settings it had, so that a later save doesn't quietly apply them.
+   *
+   * Resolves to the vault as saved, like `saveVault`.
+   */
+  async changeVaultSettings(
+    vault: Vault,
+    filePath: string,
+    settings: VaultSettings,
+  ): Promise<Vault> {
+    const session = this.openSession();
+    await this.assertNoConflict(filePath, await this.fileStorage.exists(filePath));
+    const previous = session.settings;
+    session.applySettings(settings);
+    try {
+      return await this.saveVault(vault, filePath);
+    } catch (cause) {
+      session.applySettings(previous);
+      throw cause;
+    }
   }
 
   /**
@@ -306,24 +405,23 @@ export class VaultAccessService {
   }
 
   /**
-   * Re-encrypts each existing backup of `filePath` under the new password.
-   * Runs only after the vault itself has been saved, and never throws: the
-   * password change has already happened by then, and reporting it as failed
-   * would leave the user not knowing which password opens their vault.
+   * Re-encrypts each existing backup of `filePath` under the new key. Runs
+   * only after the vault itself has been saved, and never throws: the key
+   * change has already happened by then, and reporting it as failed would
+   * leave the user not knowing what opens their vault.
    *
-   * A backup that can't be re-keyed -- most likely one the old password
-   * doesn't open, written by another app or left over from an earlier
-   * password -- is removed rather than left in an unknown state. One that
+   * A backup that can't be re-keyed -- most likely one the old key doesn't
+   * open, written by another app or left over from an earlier password -- is
+   * removed rather than left in an unknown state. One that
    * can be neither re-keyed nor removed is reported back so the user can deal
    * with it by hand.
    */
   private async rekeyBackups(
     filePath: string,
-    currentMasterPassword: string,
-    newMasterPassword: string,
+    currentKey: VaultKey,
+    newKey: VaultKey,
   ): Promise<MasterPasswordChangeResult> {
     const result: MasterPasswordChangeResult = { removedBackups: [], unprotectedBackups: [] };
-    const currentKey: VaultKey = { password: currentMasterPassword, keyFile: this.keyFile };
     for (const suffix of BACKUP_SUFFIXES) {
       const backupPath = filePath + suffix;
       try {
@@ -338,7 +436,7 @@ export class VaultAccessService {
 
       try {
         const oldBytes = await this.fileStorage.readFile(backupPath);
-        const newBytes = await this.repository.rekeyFile(oldBytes, currentKey, newMasterPassword);
+        const newBytes = await this.repository.rekeyFile(oldBytes, currentKey, newKey);
         await this.fileStorage.writeFile(backupPath, newBytes);
       } catch {
         try {
@@ -369,15 +467,16 @@ export class VaultAccessService {
 
   /**
    * Current on-disk size and last-modified time of the open vault, saved at
-   * `filePath`, and the format it's in.
+   * `filePath`, along with what the open document says about itself.
    */
   async getFileInfo(filePath: string): Promise<VaultFileInfo> {
-    const { format } = this.openSession();
+    const { format, settings } = this.openSession();
+    const hasKeyFile = this.keyFile !== undefined;
     const [sizeBytes, lastModifiedMs] = await Promise.all([
       this.fileStorage.size(filePath),
       this.fileStorage.lastModified(filePath),
     ]);
-    return { sizeBytes, lastModifiedMs, format };
+    return { sizeBytes, lastModifiedMs, format, hasKeyFile, settings };
   }
 
   private async rotateBackups(filePath: string): Promise<void> {

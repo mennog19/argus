@@ -16,6 +16,21 @@ describe("Vault", () => {
     expect(vault.rootGroup.entries).toEqual([]);
   });
 
+  describe("rename", () => {
+    it("changes the vault's name and leaves the root group's alone", () => {
+      const vault = Vault.create("My Vault");
+
+      const renamed = vault.rename("  Work  ");
+
+      expect(renamed.name).toBe("Work");
+      expect(renamed.rootGroup).toBe(vault.rootGroup);
+    });
+
+    it("refuses a blank name", () => {
+      expect(() => Vault.create("My Vault").rename("   ")).toThrow("A vault needs a name");
+    });
+  });
+
   describe("findGroup", () => {
     it("finds the root group by id", () => {
       const vault = Vault.create("Root");

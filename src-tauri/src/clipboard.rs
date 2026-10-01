@@ -147,13 +147,22 @@ mod platform {
         Ok(())
     }
 
-    pub fn write_secret(app: &tauri::AppHandle, text: &str) -> Result<u32, String> {
-        let owner = main_window(app)?;
-        let mut utf16: Vec<u8> = text
-            .encode_utf16()
+    /// `text` as the bytes `CF_UNICODETEXT` holds: UTF-16 with a closing NUL.
+    fn utf16_with_nul(text: &str) -> Vec<u8> {
+        text.encode_utf16()
             .chain(std::iter::once(0))
             .flat_map(u16::to_ne_bytes)
-            .collect();
+            .collect()
+    }
+
+    pub fn write_secret(app: &tauri::AppHandle, text: &str) -> Result<u32, String> {
+        write_secret_as(main_window(app)?, text)
+    }
+
+    /// The copy itself, with the window that will own the clipboard passed in
+    /// rather than looked up, so it can run without a Tauri app.
+    fn write_secret_as(owner: HWND, text: &str) -> Result<u32, String> {
+        let mut utf16 = utf16_with_nul(text);
         let no = 0u32.to_ne_bytes();
 
         let written = {
@@ -181,6 +190,10 @@ mod platform {
     }
 
     pub fn clear_if_unchanged(_app: &tauri::AppHandle, copy: u32) -> Result<(), String> {
+        clear_copy_if_unchanged(copy)
+    }
+
+    fn clear_copy_if_unchanged(copy: u32) -> Result<(), String> {
         let _clipboard = OpenClipboardGuard::open(None)?;
         // Checked while the clipboard is held open, so nobody can slip a copy
         // in between the check and the wipe.
@@ -207,6 +220,196 @@ mod platform {
             if IsClipboardFormatAvailable(marker).is_ok() {
                 let _ = EmptyClipboard();
             }
+        }
+    }
+
+    /// These run against the real clipboard: the behaviour that matters here
+    /// is what Windows makes of the formats, which no stand-in would show. A
+    /// run therefore replaces whatever the clipboard held.
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::sync::{Mutex, MutexGuard};
+        use windows::Win32::System::DataExchange::GetClipboardData;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            CreateWindowExW, DestroyWindow, HWND_MESSAGE, WINDOW_EX_STYLE, WINDOW_STYLE,
+        };
+
+        /// There is one clipboard per session, so the tests take turns at it.
+        static CLIPBOARD: Mutex<()> = Mutex::new(());
+
+        fn exclusive_clipboard() -> MutexGuard<'static, ()> {
+            // A failed test poisons the lock without leaving anything behind
+            // that the next one would trip over.
+            CLIPBOARD
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+        }
+
+        /// A message-only window to own the clipboard, standing in for the
+        /// main window.
+        struct Owner(HWND);
+
+        impl Owner {
+            fn new() -> Self {
+                // SAFETY: creates a window of the built-in `STATIC` class that
+                // is never shown and has no window procedure of ours.
+                let window = unsafe {
+                    CreateWindowExW(
+                        WINDOW_EX_STYLE(0),
+                        w!("STATIC"),
+                        PCWSTR::null(),
+                        WINDOW_STYLE(0),
+                        0,
+                        0,
+                        0,
+                        0,
+                        Some(HWND_MESSAGE),
+                        None,
+                        None,
+                        None,
+                    )
+                };
+                Self(window.expect("a message-only window can be created"))
+            }
+        }
+
+        impl Drop for Owner {
+            fn drop(&mut self) {
+                // SAFETY: the window was created in `new` on this thread.
+                let _ = unsafe { DestroyWindow(self.0) };
+            }
+        }
+
+        /// The text on the clipboard, or `None` when it holds no text.
+        fn clipboard_text() -> Option<String> {
+            let _clipboard = OpenClipboardGuard::open(None).expect("the clipboard opens");
+            // SAFETY: the clipboard is open, and the block is only read while
+            // locked, up to the NUL that ends `CF_UNICODETEXT`.
+            unsafe {
+                let handle = GetClipboardData(CF_UNICODETEXT).ok()?;
+                let block = HGLOBAL(handle.0);
+                let start = GlobalLock(block) as *const u16;
+                if start.is_null() {
+                    return None;
+                }
+                let length = (0..).take_while(|&i| *start.add(i) != 0).count();
+                let text = String::from_utf16_lossy(std::slice::from_raw_parts(start, length));
+                let _ = GlobalUnlock(block);
+                Some(text)
+            }
+        }
+
+        fn clipboard_has(format: PCWSTR) -> bool {
+            // SAFETY: a plain query for a registered format.
+            unsafe { IsClipboardFormatAvailable(register(format)).is_ok() }
+        }
+
+        /// Text on the clipboard the way any other program would put it
+        /// there: with none of Argus's formats alongside.
+        fn copy_as_another_program(owner: &Owner, text: &str) {
+            let _clipboard = OpenClipboardGuard::open(Some(owner.0)).expect("the clipboard opens");
+            // SAFETY: the clipboard is open for `owner` and emptied first.
+            unsafe {
+                EmptyClipboard().expect("the clipboard empties");
+                set_data(CF_UNICODETEXT, &utf16_with_nul(text)).expect("the text is set");
+            }
+        }
+
+        #[test]
+        fn encodes_text_as_nul_terminated_utf16() {
+            let expected: Vec<u8> = [0x61u16, 0xE9, 0xD83D, 0xDD11, 0]
+                .into_iter()
+                .flat_map(u16::to_ne_bytes)
+                .collect();
+
+            assert_eq!(utf16_with_nul("a\u{e9}\u{1f511}"), expected);
+            assert_eq!(utf16_with_nul(""), 0u16.to_ne_bytes());
+        }
+
+        #[test]
+        fn a_copied_secret_is_readable_as_text() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+
+            write_secret_as(owner.0, "p\u{e4}ssw\u{f6}rd \u{1f511}").expect("the copy succeeds");
+
+            assert_eq!(
+                clipboard_text().as_deref(),
+                Some("p\u{e4}ssw\u{f6}rd \u{1f511}")
+            );
+        }
+
+        #[test]
+        fn a_copied_secret_is_marked_and_kept_out_of_history_and_cloud_sync() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+
+            write_secret_as(owner.0, "hunter2").expect("the copy succeeds");
+
+            assert!(clipboard_has(SECRET_MARKER));
+            for format in EXCLUSION_FORMATS {
+                assert!(clipboard_has(format));
+            }
+        }
+
+        #[test]
+        fn clearing_the_copy_that_is_still_there_empties_the_clipboard() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+            let copy = write_secret_as(owner.0, "hunter2").expect("the copy succeeds");
+
+            clear_copy_if_unchanged(copy).expect("the clear succeeds");
+
+            assert_eq!(clipboard_text(), None);
+            assert!(!clipboard_has(SECRET_MARKER));
+        }
+
+        #[test]
+        fn clearing_an_earlier_copy_leaves_a_later_one_alone() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+            let first = write_secret_as(owner.0, "first").expect("the copy succeeds");
+            let second = write_secret_as(owner.0, "second").expect("the copy succeeds");
+
+            clear_copy_if_unchanged(first).expect("the clear succeeds");
+
+            assert_ne!(first, second);
+            assert_eq!(clipboard_text().as_deref(), Some("second"));
+        }
+
+        #[test]
+        fn clearing_a_copy_leaves_what_the_user_copied_since_alone() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+            let copy = write_secret_as(owner.0, "hunter2").expect("the copy succeeds");
+            copy_as_another_program(&owner, "shopping list");
+
+            clear_copy_if_unchanged(copy).expect("the clear succeeds");
+
+            assert_eq!(clipboard_text().as_deref(), Some("shopping list"));
+        }
+
+        #[test]
+        fn wiping_any_secret_removes_one_argus_left_behind() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+            write_secret_as(owner.0, "hunter2").expect("the copy succeeds");
+
+            clear_any_secret_without_app();
+
+            assert_eq!(clipboard_text(), None);
+        }
+
+        #[test]
+        fn wiping_any_secret_leaves_what_another_program_copied() {
+            let _turn = exclusive_clipboard();
+            let owner = Owner::new();
+            copy_as_another_program(&owner, "shopping list");
+
+            clear_any_secret_without_app();
+
+            assert_eq!(clipboard_text().as_deref(), Some("shopping list"));
         }
     }
 }

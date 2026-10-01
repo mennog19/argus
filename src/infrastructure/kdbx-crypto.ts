@@ -1,19 +1,17 @@
 import { CryptoEngine } from "kdbxweb";
 import { argon2d, argon2id } from "hash-wasm";
+import { KDF_LIMITS } from "../application/vault-settings";
 
 const SUPPORTED_ARGON2_VERSION = 0x13;
 
 /**
- * The most Argon2 work Argus will do to unlock a file. The KDF settings come
- * from the file's unencrypted header, so a crafted or corrupted `.kdbx` can
- * ask for gigabytes of memory — enough to crash the webview — or effectively
- * endless iterations. Each limit is far above anything KeePass, KeePassXC, or
- * Argus's own defaults (64 MiB, 4 iterations, 2 lanes) would write.
+ * The most Argon2 work Argus will do to unlock a file, in the units kdbxweb
+ * hands the settings over in. See `KDF_LIMITS` for why there is a limit.
  */
 export const ARGON2_LIMITS = {
-  memoryKiB: 1024 * 1024,
-  iterations: 1000,
-  parallelism: 64,
+  memoryKiB: KDF_LIMITS.argon2MaxMemoryBytes / 1024,
+  iterations: KDF_LIMITS.argon2MaxIterations,
+  parallelism: KDF_LIMITS.argon2MaxParallelism,
 } as const;
 
 function checkArgon2Limits(memoryKiB: number, iterations: number, parallelism: number): void {

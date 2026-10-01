@@ -33,8 +33,7 @@ export function UpgradeFormatCard({ format, onUpgradeFormat }: UpgradeFormatCard
           <span className="danger-zone-row-title">File format</span>
           <span className="field-success">Upgraded to KDBX 4.</span>
           <span className="danger-zone-row-hint">
-            A copy of the KDBX 3 file is kept next to it, with .kdbx3-backup.kdbx added to its
-            name.
+            A copy of the KDBX 3 file is kept next to it, with .kdbx3-backup.kdbx added to its name.
           </span>
         </div>
       </div>

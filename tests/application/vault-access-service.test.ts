@@ -12,6 +12,7 @@ import {
   VaultRepository,
   VaultSession,
 } from "../../src/application/vault-repository";
+import { VaultSettings } from "../../src/application/vault-settings";
 
 /**
  * A repository whose sessions delegate to one shared pair of mocks, so tests
@@ -26,8 +27,18 @@ type RekeyFake = (currentMasterPassword: string, newMasterPassword: string) => P
 type RekeyFileFake = (
   fileBytes: ArrayBuffer,
   currentKey: VaultKey,
-  newMasterPassword: string,
+  newKey: VaultKey,
 ) => Promise<ArrayBuffer>;
+type KeyFileFake = (
+  currentMasterPassword: string,
+  keyFile: ArrayBuffer | undefined,
+) => Promise<void>;
+
+const SETTINGS: VaultSettings = {
+  historyMaxItems: 10,
+  historyMaxSizeBytes: 6 * 1024 * 1024,
+  kdf: { kind: "argon2id", memoryBytes: 64 * 1024 * 1024, iterations: 4, parallelism: 2 },
+};
 
 function fakeRepository(
   overrides: {
@@ -35,6 +46,8 @@ function fakeRepository(
     createVault?: CreateFake;
     saveVault?: SaveFake;
     changeMasterPassword?: RekeyFake;
+    changeKeyFile?: KeyFileFake;
+    applySettings?: (settings: VaultSettings) => void;
     rekeyFile?: RekeyFileFake;
     generateKeyFile?: () => Promise<ArrayBuffer>;
     format?: VaultFormat;
@@ -46,6 +59,8 @@ function fakeRepository(
   const changeMasterPassword = vi.fn<RekeyFake>(
     overrides.changeMasterPassword ?? (() => Promise.resolve()),
   );
+  const changeKeyFile = vi.fn<KeyFileFake>(overrides.changeKeyFile ?? (() => Promise.resolve()));
+  const applySettings = vi.fn<(settings: VaultSettings) => void>(overrides.applySettings);
   const upgradeFormat = vi.fn<() => void>();
   const openVault = vi.fn<OpenFake>(overrides.openVault);
   const createVault = vi.fn<CreateFake>(overrides.createVault);
@@ -61,6 +76,9 @@ function fakeRepository(
         return fileBytes;
       },
       changeMasterPassword,
+      changeKeyFile,
+      settings: SETTINGS,
+      applySettings,
       format: overrides.format ?? { major: 4, minor: 0 },
       upgradeFormat,
     };
@@ -77,7 +95,13 @@ function fakeRepository(
   } satisfies VaultRepository;
   // Only the session's mocks are merged in: overwriting `openVault` here with
   // the raw override would bypass the wrapper that builds the session.
-  return Object.assign(repository, { saveVault, changeMasterPassword, upgradeFormat });
+  return Object.assign(repository, {
+    saveVault,
+    changeMasterPassword,
+    changeKeyFile,
+    applySettings,
+    upgradeFormat,
+  });
 }
 
 function emptyBytes(): ArrayBuffer {
@@ -319,7 +343,7 @@ describe("VaultAccessService", () => {
       expect(repository.rekeyFile).toHaveBeenCalledWith(
         expect.any(ArrayBuffer),
         { password: "old pw", keyFile: keyFileBytes },
-        "new pw",
+        { password: "new pw", keyFile: keyFileBytes },
       );
     });
   });
@@ -453,7 +477,7 @@ describe("VaultAccessService", () => {
   });
 
   describe("getFileInfo", () => {
-    it("reports the file's size and last-modified time, and the open vault's format", async () => {
+    it("reports the file's size and last-modified time, and what the open vault says of itself", async () => {
       const repository = fakeRepository({ format: { major: 3, minor: 1 } });
       const fileStorage = fakeFileStorage({
         size: vi.fn().mockResolvedValue(49152),
@@ -469,7 +493,17 @@ describe("VaultAccessService", () => {
         sizeBytes: 49152,
         lastModifiedMs: 1_700_000_000_000,
         format: { major: 3, minor: 1 },
+        hasKeyFile: false,
+        settings: SETTINGS,
       });
+    });
+
+    it("says so when the open vault was unlocked with a key file", async () => {
+      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(emptyBytes()) });
+      const service = new VaultAccessService(fakeRepository(), fakeDialog(), fileStorage);
+      await service.openVaultAtPath("C:/vaults/mine.kdbx", "pw", "C:/keys/mine.keyx");
+
+      expect((await service.getFileInfo("C:/vaults/mine.kdbx")).hasKeyFile).toBe(true);
     });
 
     it("rejects when no vault is open", async () => {
@@ -938,8 +972,8 @@ describe("VaultAccessService", () => {
       expect(repository.rekeyFile).toHaveBeenCalledTimes(2);
       expect(repository.rekeyFile).toHaveBeenCalledWith(
         backupBytes,
-        { password: "old pw" },
-        "new pw",
+        { password: "old pw", keyFile: undefined },
+        { password: "new pw", keyFile: undefined },
       );
       expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak1", rekeyedBytes);
       expect(fileStorage.writeFile).toHaveBeenCalledWith("C:/vaults/mine.kdbx.bak2", rekeyedBytes);
@@ -978,7 +1012,7 @@ describe("VaultAccessService", () => {
       expect(repository.rekeyFile).toHaveBeenCalledWith(
         expect.any(ArrayBuffer),
         { password: "old pw", keyFile: keyFileBytes },
-        "new pw",
+        { password: "new pw", keyFile: keyFileBytes },
       );
     });
 
@@ -1008,7 +1042,7 @@ describe("VaultAccessService", () => {
       expect(repository.rekeyFile).toHaveBeenLastCalledWith(
         expect.any(ArrayBuffer),
         { password: "old pw", keyFile: undefined },
-        "new pw",
+        { password: "new pw", keyFile: undefined },
       );
     });
 
@@ -1100,6 +1134,264 @@ describe("VaultAccessService", () => {
         removedBackups: [],
         unprotectedBackups: ["C:/vaults/mine.kdbx.bak1"],
       });
+    });
+  });
+
+  describe("changeKeyFile", () => {
+    const PATH = "C:/vaults/mine.kdbx";
+
+    it("locks the vault with a generated key file, written before the vault is", async () => {
+      const vault = Vault.create("My Vault");
+      const keyFileBytes = new ArrayBuffer(32);
+      const repository = fakeRepository({
+        generateKeyFile: vi.fn().mockResolvedValue(keyFileBytes),
+      });
+      const fileStorage = fakeFileStorage();
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeKeyFile(vault, PATH, "pw", {
+        kind: "generate",
+        path: "D:/keys/new.keyx",
+      });
+
+      expect(repository.changeKeyFile).toHaveBeenCalledWith("pw", keyFileBytes);
+      const writes = vi.mocked(fileStorage.writeFile).mock.calls.map(([path]) => path);
+      expect(writes).toEqual(["D:/keys/new.keyx", PATH]);
+      expect(fileStorage.writeFile).toHaveBeenCalledWith("D:/keys/new.keyx", keyFileBytes);
+      expect(repository.saveVault).toHaveBeenCalledWith(vault);
+      expect(result).toEqual({
+        removedBackups: [],
+        unprotectedBackups: [],
+        keyFilePath: "D:/keys/new.keyx",
+      });
+      expect((await service.getFileInfo(PATH)).hasKeyFile).toBe(true);
+    });
+
+    it("locks the vault with an existing file's bytes, leaving that file untouched", async () => {
+      const keyFileBytes = new ArrayBuffer(64);
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn((path: string) =>
+          Promise.resolve(path === "D:/keys/photo.jpg" ? keyFileBytes : emptyBytes()),
+        ),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", {
+        kind: "existing",
+        path: "D:/keys/photo.jpg",
+      });
+
+      expect(repository.changeKeyFile).toHaveBeenCalledWith("pw", keyFileBytes);
+      expect(repository.generateKeyFile).not.toHaveBeenCalled();
+      expect(fileStorage.writeFile).not.toHaveBeenCalledWith(
+        "D:/keys/photo.jpg",
+        expect.anything(),
+      );
+      expect(result.keyFilePath).toBe("D:/keys/photo.jpg");
+    });
+
+    it("removes the key file, so the vault opens with its password alone", async () => {
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(emptyBytes()) });
+      const service = new VaultAccessService(repository, fakeDialog(), fileStorage);
+      await service.openVaultAtPath(PATH, "pw", "C:/keys/mine.keyx");
+
+      const result = await service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", {
+        kind: "remove",
+      });
+
+      expect(repository.changeKeyFile).toHaveBeenCalledWith("pw", undefined);
+      expect(result.keyFilePath).toBeUndefined();
+      expect((await service.getFileInfo(PATH)).hasKeyFile).toBe(false);
+    });
+
+    it("re-keys the backups from the old key file to the new one", async () => {
+      const oldKeyFile = new ArrayBuffer(32);
+      const newKeyFile = new ArrayBuffer(48);
+      const backupBytes = new ArrayBuffer(8);
+      const rekeyedBytes = new ArrayBuffer(16);
+      const repository = fakeRepository({
+        rekeyFile: vi.fn().mockResolvedValue(rekeyedBytes),
+        generateKeyFile: vi.fn().mockResolvedValue(newKeyFile),
+      });
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn((path: string) =>
+          Promise.resolve(path.endsWith(".keyx") ? oldKeyFile : backupBytes),
+        ),
+        exists: vi.fn((path: string) => Promise.resolve(path.endsWith(".bak1"))),
+      });
+      const service = new VaultAccessService(repository, fakeDialog(), fileStorage);
+      await service.openVaultAtPath(PATH, "pw", "C:/keys/mine.keyx");
+
+      await service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", {
+        kind: "generate",
+        path: "D:/keys/new.keyx",
+      });
+
+      expect(repository.rekeyFile).toHaveBeenCalledTimes(1);
+      expect(repository.rekeyFile).toHaveBeenCalledWith(
+        backupBytes,
+        { password: "pw", keyFile: oldKeyFile },
+        { password: "pw", keyFile: newKeyFile },
+      );
+      expect(fileStorage.writeFile).toHaveBeenCalledWith(`${PATH}.bak1`, rekeyedBytes);
+    });
+
+    it("propagates a wrong password without writing anything", async () => {
+      const repository = fakeRepository({
+        changeKeyFile: vi.fn().mockRejectedValue(new Error("Current password is incorrect.")),
+      });
+      const fileStorage = fakeFileStorage();
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.changeKeyFile(Vault.create("My Vault"), PATH, "wrong", {
+          kind: "generate",
+          path: "D:/keys/new.keyx",
+        }),
+      ).rejects.toThrow("Current password is incorrect.");
+
+      expect(fileStorage.writeFile).not.toHaveBeenCalled();
+      expect(repository.saveVault).not.toHaveBeenCalled();
+    });
+
+    it("goes back to the previous key file when the new one can't be written", async () => {
+      const oldKeyFile = new ArrayBuffer(32);
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({
+        readFile: vi.fn().mockResolvedValue(oldKeyFile),
+        writeFile: vi.fn().mockRejectedValue(new Error("Disk full")),
+      });
+      const service = new VaultAccessService(repository, fakeDialog(), fileStorage);
+      await service.openVaultAtPath(PATH, "pw", "C:/keys/mine.keyx");
+
+      await expect(
+        service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", {
+          kind: "generate",
+          path: "D:/keys/new.keyx",
+        }),
+      ).rejects.toThrow("Disk full");
+
+      expect(repository.changeKeyFile).toHaveBeenLastCalledWith("pw", oldKeyFile);
+      expect(repository.saveVault).not.toHaveBeenCalled();
+      expect(repository.rekeyFile).not.toHaveBeenCalled();
+      expect((await service.getFileInfo(PATH)).hasKeyFile).toBe(true);
+    });
+
+    it("goes back to having no key file when the vault can't be saved", async () => {
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockRejectedValue(new Error("serialize failed")),
+      });
+      const fileStorage = fakeFileStorage({ readFile: vi.fn().mockResolvedValue(emptyBytes()) });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", {
+          kind: "existing",
+          path: "D:/keys/photo.jpg",
+        }),
+      ).rejects.toThrow("serialize failed");
+
+      expect(repository.changeKeyFile).toHaveBeenLastCalledWith("pw", undefined);
+      expect((await service.getFileInfo(PATH)).hasKeyFile).toBe(false);
+    });
+
+    it("refuses to change the key file at all when the file changed on disk", async () => {
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({
+        exists: vi.fn().mockResolvedValue(true),
+        lastModified: vi.fn().mockResolvedValueOnce(1000).mockResolvedValue(2000),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", { kind: "remove" }),
+      ).rejects.toBeInstanceOf(VaultSaveConflictError);
+
+      expect(repository.changeKeyFile).not.toHaveBeenCalled();
+    });
+
+    it("refuses when no vault is open", async () => {
+      const service = new VaultAccessService(fakeRepository(), fakeDialog(), fakeFileStorage());
+
+      await expect(
+        service.changeKeyFile(Vault.create("My Vault"), PATH, "pw", { kind: "remove" }),
+      ).rejects.toThrow("No vault is open");
+    });
+  });
+
+  describe("changeVaultSettings", () => {
+    const PATH = "C:/vaults/mine.kdbx";
+    const NEXT: VaultSettings = { ...SETTINGS, historyMaxItems: undefined };
+
+    it("applies the settings to the open vault, then saves it", async () => {
+      const vault = Vault.create("My Vault");
+      const saved = Vault.create("Renamed");
+      const repository = fakeRepository({ vaultAfterSave: saved });
+      const fileStorage = fakeFileStorage();
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      const result = await service.changeVaultSettings(vault, PATH, NEXT);
+
+      expect(repository.applySettings).toHaveBeenCalledWith(NEXT);
+      expect(repository.saveVault).toHaveBeenCalledWith(vault);
+      expect(repository.applySettings.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.saveVault.mock.invocationCallOrder[0],
+      );
+      expect(fileStorage.writeFile).toHaveBeenCalledWith(PATH, expect.any(ArrayBuffer));
+      expect(result).toBe(saved);
+    });
+
+    it("propagates settings the vault refuses, without saving", async () => {
+      const repository = fakeRepository({
+        applySettings: () => {
+          throw new Error("Iterations must be between 1 and 1000.");
+        },
+      });
+      const service = await serviceWithOpenVault(repository, fakeFileStorage());
+
+      await expect(
+        service.changeVaultSettings(Vault.create("My Vault"), PATH, NEXT),
+      ).rejects.toThrow("Iterations must be between 1 and 1000.");
+
+      expect(repository.saveVault).not.toHaveBeenCalled();
+    });
+
+    it("puts the previous settings back when the save fails", async () => {
+      const repository = fakeRepository({
+        saveVault: vi.fn().mockRejectedValue(new Error("serialize failed")),
+      });
+      const service = await serviceWithOpenVault(repository, fakeFileStorage());
+
+      await expect(
+        service.changeVaultSettings(Vault.create("My Vault"), PATH, NEXT),
+      ).rejects.toThrow("serialize failed");
+
+      expect(repository.applySettings).toHaveBeenLastCalledWith(SETTINGS);
+    });
+
+    it("refuses to change anything when the file changed on disk", async () => {
+      const repository = fakeRepository();
+      const fileStorage = fakeFileStorage({
+        exists: vi.fn().mockResolvedValue(true),
+        lastModified: vi.fn().mockResolvedValueOnce(1000).mockResolvedValue(2000),
+      });
+      const service = await serviceWithOpenVault(repository, fileStorage);
+
+      await expect(
+        service.changeVaultSettings(Vault.create("My Vault"), PATH, NEXT),
+      ).rejects.toBeInstanceOf(VaultSaveConflictError);
+
+      expect(repository.applySettings).not.toHaveBeenCalled();
+    });
+
+    it("refuses when no vault is open", async () => {
+      const service = new VaultAccessService(fakeRepository(), fakeDialog(), fakeFileStorage());
+
+      await expect(
+        service.changeVaultSettings(Vault.create("My Vault"), PATH, NEXT),
+      ).rejects.toThrow("No vault is open");
     });
   });
 });

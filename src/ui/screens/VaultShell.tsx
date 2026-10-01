@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Attachment, CustomIcon, Entry, EntryId, Group, GroupId, Vault } from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
-import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
+import { VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
 import { SettingsImportResult } from "../../application/settings-transfer-service";
 import { ClipboardWriter } from "../../application/clipboard";
@@ -26,6 +26,7 @@ import { MergeUnlockDialog } from "./MergeUnlockDialog";
 import { MergeWizardScreen } from "./MergeWizardScreen";
 import { RecycleBinPanel } from "./RecycleBinPanel";
 import { SettingsScreen } from "./SettingsScreen";
+import { VaultFileActions } from "./settings/DangerZoneSection";
 import { SettingChangeHandler } from "../setting-change";
 import { EntryDetail } from "./vault-shell/EntryDetail";
 import { EntryListPanel } from "./vault-shell/EntryListPanel";
@@ -49,11 +50,8 @@ interface VaultShellProps {
   onSettingChange: SettingChangeHandler;
   onLock: () => void;
   onSave: (vault: Vault) => Promise<void>;
-  onChangeMasterPassword: (
-    currentPassword: string,
-    newPassword: string,
-  ) => Promise<MasterPasswordChangeResult>;
-  onUpgradeFormat: () => Promise<void>;
+  /** Changes to the vault file itself, passed straight on to the settings screen. */
+  vaultFileActions: VaultFileActions;
   onExportSettings: () => Promise<string | undefined>;
   onImportSettings: () => Promise<SettingsImportResult | undefined>;
   /** Saves a copy of an attachment where the user picks; `undefined` if they cancelled. */
@@ -78,8 +76,7 @@ export function VaultShell({
   onSettingChange,
   onLock,
   onSave,
-  onChangeMasterPassword,
-  onUpgradeFormat,
+  vaultFileActions,
   onExportSettings,
   onImportSettings,
   onExportAttachment,
@@ -404,12 +401,12 @@ export function VaultShell({
         return (
           <SettingsScreen
             filePath={filePath}
+            vaultName={vault.name}
             fileInfo={fileInfo}
             entryCount={allEntries.length}
             settings={settings}
             onSettingChange={onSettingChange}
-            onChangeMasterPassword={onChangeMasterPassword}
-            onUpgradeFormat={onUpgradeFormat}
+            vaultFileActions={vaultFileActions}
             mergeError={merge.error}
             onOpenMergeWizard={() => void merge.start()}
             onExportSettings={onExportSettings}

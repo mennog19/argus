@@ -3,6 +3,8 @@ import { Vault } from "../domain";
 import { AttachmentExportService } from "../application/attachment-export-service";
 import { ClipboardWriter } from "../application/clipboard";
 import {
+  KeyFileChange,
+  KeyFileChangeResult,
   MasterPasswordChangeResult,
   OpenedVault,
   VaultAccessService,
@@ -15,6 +17,7 @@ import { WindowEvents } from "../application/window-events";
 import { WindowProtection } from "../application/window-protection";
 import { WindowCloseBehavior } from "../application/window-close-behavior";
 import { resolveSettings, SettingsStore } from "../application/settings";
+import { VaultSettings } from "../application/vault-settings";
 import { SettingsTransferService } from "../application/settings-transfer-service";
 import { Updater } from "../application/updater";
 import { UrlOpener } from "../application/url-opener";
@@ -226,6 +229,41 @@ function App({
     return result!;
   }
 
+  async function changeKeyFile(
+    vault: Vault,
+    filePath: string,
+    currentPassword: string,
+    change: KeyFileChange,
+  ): Promise<KeyFileChangeResult> {
+    let result: KeyFileChangeResult | undefined;
+    await writeReportingConflicts({ nextVault: vault, filePath }, async () => {
+      result = await vaultAccessService.changeKeyFile(vault, filePath, currentPassword, change);
+    });
+    // `writeReportingConflicts` only resolves once the write above has.
+    const { keyFilePath } = result!;
+    // So that unlocking offers the key file the vault now needs, or none.
+    await appSettings.recordVaultOpened({ path: filePath, keyFilePath });
+    void refreshFileInfo(filePath);
+    return result!;
+  }
+
+  async function changeVaultSettings(
+    vault: Vault,
+    filePath: string,
+    name: string,
+    vaultSettings: VaultSettings,
+  ) {
+    const renamed = vault.rename(name);
+    let saved: Vault | undefined;
+    await writeReportingConflicts({ nextVault: renamed, filePath }, async () => {
+      saved = await vaultAccessService.changeVaultSettings(renamed, filePath, vaultSettings);
+    });
+    // `writeReportingConflicts` only resolves once the write above has.
+    setScreen({ kind: "unlocked", vault: saved!, filePath });
+    // Also what shows the settings screen the values as saved.
+    void refreshFileInfo(filePath);
+  }
+
   async function upgradeVaultFormat(vault: Vault, filePath: string) {
     let saved: Vault | undefined;
     await writeReportingConflicts({ nextVault: vault, filePath }, async () => {
@@ -300,10 +338,17 @@ function App({
           // today only the "entry was opened" stamp, which rides along with the
           // next real save instead of re-encrypting the whole vault per click.
           onVaultChange={(nextVault) => setScreen({ kind: "unlocked", vault: nextVault, filePath })}
-          onChangeMasterPassword={(currentPassword, newPassword) =>
-            changeMasterPassword(vault, filePath, currentPassword, newPassword)
-          }
-          onUpgradeFormat={() => upgradeVaultFormat(vault, filePath)}
+          vaultFileActions={{
+            onChangeMasterPassword: (currentPassword, newPassword) =>
+              changeMasterPassword(vault, filePath, currentPassword, newPassword),
+            onChangeKeyFile: (currentPassword, change) =>
+              changeKeyFile(vault, filePath, currentPassword, change),
+            onPickKeyFile: () => vaultAccessService.pickKeyFile(),
+            onPickNewKeyFilePath: () => vaultAccessService.pickPathForNewKeyFile(vault.name),
+            onChangeVaultSettings: (name, vaultSettings) =>
+              changeVaultSettings(vault, filePath, name, vaultSettings),
+            onUpgradeFormat: () => upgradeVaultFormat(vault, filePath),
+          }}
           onExportSettings={appSettings.exportSettings}
           onImportSettings={appSettings.importSettings}
           onExportAttachment={(attachment) => attachmentExportService.exportAttachment(attachment)}

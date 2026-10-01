@@ -36,6 +36,7 @@ import { UrlOpener } from "../../../src/application/url-opener";
 import { VaultMergeSource } from "../../../src/application/vault-merge-source";
 import { GROUP_DRAG_TYPE } from "../../../src/ui/group-drag";
 import { VaultShell } from "../../../src/ui/screens/VaultShell";
+import { fakeVaultFileActions } from "../vault-file-fakes";
 import { formatDateTime } from "../../../src/ui/format";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = {
@@ -107,9 +108,12 @@ function renderShell(
   } = {},
 ) {
   const onSave = overrides.onSave ?? vi.fn().mockResolvedValue(undefined);
-  const onChangeMasterPassword =
-    overrides.onChangeMasterPassword ??
-    vi.fn().mockResolvedValue({ removedBackups: [], unprotectedBackups: [] });
+  const vaultFileActions = fakeVaultFileActions(
+    overrides.onChangeMasterPassword && {
+      onChangeMasterPassword: overrides.onChangeMasterPassword,
+    },
+  );
+  const { onChangeMasterPassword } = vaultFileActions;
   const onLock = overrides.onLock ?? vi.fn();
   const onSettingChange = overrides.onSettingChange ?? vi.fn();
   const clipboardWriter = overrides.clipboardWriter ?? fakeClipboardWriter();
@@ -147,8 +151,7 @@ function renderShell(
       onSettingChange={onSettingChange}
       onLock={onLock}
       onSave={onSave}
-      onChangeMasterPassword={onChangeMasterPassword}
-      onUpgradeFormat={vi.fn()}
+      vaultFileActions={vaultFileActions}
       onExportSettings={onExportSettings}
       onImportSettings={onImportSettings}
       onExportAttachment={onExportAttachment}
@@ -440,8 +443,7 @@ describe("VaultShell", () => {
         urlOpener={urlOpener}
         onLock={vi.fn()}
         onSave={vi.fn()}
-        onChangeMasterPassword={vi.fn()}
-        onUpgradeFormat={vi.fn()}
+        vaultFileActions={fakeVaultFileActions()}
         settings={TEST_SETTINGS}
         onSettingChange={vi.fn()}
         clipboardWriter={fakeClipboardWriter()}
@@ -1183,8 +1185,7 @@ describe("VaultShell", () => {
           urlOpener={fakeUrlOpener()}
           onLock={vi.fn()}
           onSave={vi.fn()}
-          onChangeMasterPassword={vi.fn()}
-          onUpgradeFormat={vi.fn()}
+          vaultFileActions={fakeVaultFileActions()}
           settings={TEST_SETTINGS}
           onSettingChange={vi.fn()}
           clipboardWriter={fakeClipboardWriter()}
@@ -1211,8 +1212,7 @@ describe("VaultShell", () => {
           urlOpener={fakeUrlOpener()}
           onLock={vi.fn()}
           onSave={vi.fn()}
-          onChangeMasterPassword={vi.fn()}
-          onUpgradeFormat={vi.fn()}
+          vaultFileActions={fakeVaultFileActions()}
           settings={TEST_SETTINGS}
           onSettingChange={vi.fn()}
           clipboardWriter={fakeClipboardWriter()}

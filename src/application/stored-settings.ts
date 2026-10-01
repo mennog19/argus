@@ -131,9 +131,6 @@ function parseGeneratorPolicy(value: unknown): PasswordPolicyOptions {
   }
   const field = <T>(key: string, parse: (value: unknown) => T): T | undefined =>
     value[key] === undefined ? undefined : parse(value[key]);
-  // Keys this build doesn't know are dropped rather than rejected: settings
-  // from a build that still had the passphrase mode keep their character
-  // settings instead of losing the whole policy.
   const options: PasswordPolicyOptions = {
     length: field("length", (length) => positiveInteger(length, "length")),
     useUppercase: field("useUppercase", (flag) => parseBoolean(flag, "useUppercase")),

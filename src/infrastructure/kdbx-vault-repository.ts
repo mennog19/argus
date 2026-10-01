@@ -1,4 +1,5 @@
 import {
+  ByteUtils,
   Consts,
   Credentials,
   Int64,
@@ -14,10 +15,21 @@ import {
   VaultRepository,
   VaultSession,
 } from "../application/vault-repository";
+import {
+  DEFAULT_KDF,
+  VaultKdf,
+  VaultSettings,
+  vaultSettingsError,
+} from "../application/vault-settings";
 import { Vault } from "../domain";
+import { checkAesKdfLimit } from "./kdbx-aes-kdf";
 import { KdbxAttachmentStore } from "./kdbx-attachments";
 import { configureKdbxCrypto } from "./kdbx-crypto";
+import { resolveLimit } from "./kdbx-history";
 import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
+
+// Re-exported for the callers that knew it from here before it moved.
+export { DEFAULT_KDF };
 
 // Both inputs are always 32-byte SHA-256 digests here, so a length check
 // would be dead code — a mismatched byte still fails the comparison.
@@ -25,26 +37,70 @@ function buffersEqual(a: Uint8Array, b: Uint8Array): boolean {
   return a.every((byte, index) => byte === b[index]);
 }
 
-/**
- * Argon2id settings for vaults Argus creates.
- * kdbxweb's own defaults are Argon2d with 1 MiB / 2 iterations, far too cheap
- * to slow down an offline guessing attack. These cost ~0.5s in hash-wasm's
- * single-threaded WASM Argon2 — paid on every unlock and every save.
- */
-export const DEFAULT_KDF = {
-  memoryBytes: 64 * 1024 * 1024,
-  iterations: 4,
-  parallelism: 2,
+const KDF_IDS = {
+  argon2id: Consts.KdfId.Argon2id,
+  argon2d: Consts.KdfId.Argon2d,
+  aes: Consts.KdfId.Aes,
 } as const;
 
-function applyDefaultKdf(db: Kdbx): void {
-  db.setKdf(Consts.KdfId.Argon2id);
-  // `setKdf` with an Argon2 id always populates the parameter dictionary.
-  const params = db.header.kdfParameters!;
-  params.set("M", VarDictionary.ValueType.UInt64, new Int64(DEFAULT_KDF.memoryBytes));
-  params.set("I", VarDictionary.ValueType.UInt64, new Int64(DEFAULT_KDF.iterations));
-  params.set("P", VarDictionary.ValueType.UInt32, DEFAULT_KDF.parallelism);
+/** The KDF settings a document will be saved with. */
+function kdfFromKdbx(db: Kdbx): VaultKdf {
+  const params = db.header.kdfParameters;
+  if (!params) {
+    // KDBX 3, which has only AES-KDF. A header without its round count
+    // doesn't load.
+    return { kind: "aes", rounds: db.header.keyEncryptionRounds! };
+  }
+  const id = ByteUtils.bytesToBase64(params.get("$UUID") as ArrayBuffer);
+  if (id === KDF_IDS.aes) {
+    return { kind: "aes", rounds: (params.get("R") as Int64).value };
+  }
+  return {
+    kind: id === KDF_IDS.argon2id ? "argon2id" : "argon2d",
+    memoryBytes: (params.get("M") as Int64).value,
+    iterations: (params.get("I") as Int64).value,
+    parallelism: params.get("P") as number,
+  };
 }
+
+function applyKdf(db: Kdbx, kdf: VaultKdf): void {
+  if (db.versionMajor < 4) {
+    if (kdf.kind !== "aes") {
+      throw new Error("A KDBX 3 vault can only use AES-KDF. Upgrade it to KDBX 4 to use Argon2.");
+    }
+    db.header.keyEncryptionRounds = kdf.rounds;
+    return;
+  }
+  if (kdf.kind !== kdfFromKdbx(db).kind) {
+    // Starts the new KDF's parameter dictionary off with kdbxweb's defaults.
+    db.setKdf(KDF_IDS[kdf.kind]);
+  }
+  // `setKdf`, like loading a KDBX 4 file, always leaves the dictionary set.
+  const params = db.header.kdfParameters!;
+  if (kdf.kind === "aes") {
+    params.set("R", VarDictionary.ValueType.UInt64, new Int64(kdf.rounds));
+    return;
+  }
+  params.set("M", VarDictionary.ValueType.UInt64, new Int64(kdf.memoryBytes));
+  params.set("I", VarDictionary.ValueType.UInt64, new Int64(kdf.iterations));
+  params.set("P", VarDictionary.ValueType.UInt32, kdf.parallelism);
+}
+
+/** A limit as KDBX stores it, where a negative number means unlimited. */
+function limitToKdbx(limit: number | undefined): number {
+  return limit ?? -1;
+}
+
+function limitFromKdbx(value: number | undefined, fallback: number): number | undefined {
+  const limit = resolveLimit(value, fallback);
+  return limit === Infinity ? undefined : limit;
+}
+
+function applyDefaultKdf(db: Kdbx): void {
+  applyKdf(db, { kind: "argon2id", ...DEFAULT_KDF });
+}
+
+const UNREADABLE_KEY_FILE = "That key file couldn't be read. Is it the right file?";
 
 /**
  * A key file with an empty password means a key-file-only vault, whose
@@ -59,12 +115,15 @@ async function credentialsFor({ password, keyFile }: VaultKey): Promise<Credenti
     // Parsing the key file happens here, before any decryption is attempted.
     return await credentials.ready;
   } catch (cause) {
-    throw new Error("That key file couldn't be read. Is it the right file?", { cause });
+    throw new Error(UNREADABLE_KEY_FILE, { cause });
   }
 }
 
 async function loadKdbx(fileBytes: ArrayBuffer, key: VaultKey): Promise<Kdbx> {
   configureKdbxCrypto();
+  // Before anything else: kdbxweb starts the key transform as soon as it has
+  // the header, and offers no way to stop it.
+  checkAesKdfLimit(fileBytes);
   const credentials = await credentialsFor(key);
   try {
     return await Kdbx.load(fileBytes, credentials);
@@ -120,6 +179,47 @@ class KdbxVaultSession implements VaultSession {
       throw new IncorrectMasterPasswordError();
     }
     await this.db.credentials.setPassword(ProtectedValue.fromString(newMasterPassword));
+    this.db.meta.keyChanged = new Date();
+  }
+
+  async changeKeyFile(
+    currentMasterPassword: string,
+    keyFile: ArrayBuffer | undefined,
+  ): Promise<void> {
+    if (!(await this.matchesCurrentPassword(currentMasterPassword))) {
+      throw new IncorrectMasterPasswordError();
+    }
+    if (!keyFile && !this.db.credentials.passwordHash) {
+      throw new Error(
+        "This vault has no master password, so its key file is all that locks it. " +
+          "Set a master password before removing the key file.",
+      );
+    }
+    try {
+      await this.db.credentials.setKeyFile(keyFile);
+    } catch (cause) {
+      throw new Error(UNREADABLE_KEY_FILE, { cause });
+    }
+    this.db.meta.keyChanged = new Date();
+  }
+
+  get settings(): VaultSettings {
+    const { meta } = this.db;
+    return {
+      historyMaxItems: limitFromKdbx(meta.historyMaxItems, Consts.Defaults.HistoryMaxItems),
+      historyMaxSizeBytes: limitFromKdbx(meta.historyMaxSize, Consts.Defaults.HistoryMaxSize),
+      kdf: kdfFromKdbx(this.db),
+    };
+  }
+
+  applySettings(settings: VaultSettings): void {
+    const problem = vaultSettingsError(settings);
+    if (problem) {
+      throw new Error(problem);
+    }
+    applyKdf(this.db, settings.kdf);
+    this.db.meta.historyMaxItems = limitToKdbx(settings.historyMaxItems);
+    this.db.meta.historyMaxSize = limitToKdbx(settings.historyMaxSizeBytes);
   }
 
   upgradeFormat(): void {
@@ -157,11 +257,10 @@ export class KdbxVaultRepository implements VaultRepository {
   async rekeyFile(
     fileBytes: ArrayBuffer,
     currentKey: VaultKey,
-    newMasterPassword: string,
+    newKey: VaultKey,
   ): Promise<ArrayBuffer> {
     const db = await loadKdbx(fileBytes, currentKey);
-    // Replaces only the password part; the key file hash stays in place.
-    await db.credentials.setPassword(ProtectedValue.fromString(newMasterPassword));
+    db.credentials = await credentialsFor(newKey);
     return db.save();
   }
 

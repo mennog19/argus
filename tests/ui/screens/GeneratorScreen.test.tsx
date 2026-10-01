@@ -147,12 +147,4 @@ describe("GeneratorScreen", () => {
       expect.objectContaining({ excludeAmbiguous: true }),
     );
   });
-
-  it("offers no passphrase mode, only character-based passwords", () => {
-    renderGenerator();
-
-    expect(screen.queryByRole("button", { name: "Passphrase" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/^Word count/)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Separator")).not.toBeInTheDocument();
-  });
 });

@@ -1,4 +1,5 @@
 import { Vault } from "../domain";
+import { VaultSettings } from "./vault-settings";
 
 /**
  * Thrown by `changeMasterPassword` when `currentMasterPassword` doesn't
@@ -61,6 +62,24 @@ export interface VaultSession {
    */
   changeMasterPassword(currentMasterPassword: string, newMasterPassword: string): Promise<void>;
   /**
+   * Replaces the key file half of the open document's key with `keyFile`, or
+   * takes it away when `keyFile` is `undefined`, after verifying
+   * `currentMasterPassword` the way `changeMasterPassword` does. The password
+   * half stays as it is. Refuses to remove the key file of a vault that has
+   * no master password, which would leave it with no key at all. Doesn't
+   * persist anything by itself; follow with `save`.
+   */
+  changeKeyFile(currentMasterPassword: string, keyFile: ArrayBuffer | undefined): Promise<void>;
+  /** The document's own settings: as opened, or as of the last `applySettings`. */
+  readonly settings: VaultSettings;
+  /**
+   * Changes the document's history limits and key derivation. Throws, with a
+   * message for the user, on settings `vaultSettingsError` rejects or a KDF
+   * the document's format can't use. Doesn't persist anything by itself;
+   * follow with `save`.
+   */
+  applySettings(settings: VaultSettings): void;
+  /**
    * Converts a KDBX 3 document to KDBX 4, deriving its key with Argon2id from
    * then on. Does nothing to a document that is already KDBX 4. Like
    * `changeMasterPassword`, doesn't persist anything by itself; follow with
@@ -79,16 +98,11 @@ export interface VaultRepository {
    */
   generateKeyFile(): Promise<ArrayBuffer>;
   /**
-   * Re-encrypts a whole vault file under `newMasterPassword` without opening
-   * it as a session or mapping it through the domain model, so everything
-   * but the credentials comes back out unchanged. For re-keying the backups
-   * that sit next to a vault whose password just changed; `currentKey`'s key
-   * file, if any, stays part of the new key. Rejects if `currentKey` doesn't
-   * open `fileBytes`.
+   * Re-encrypts a whole vault file under `newKey` without opening it as a
+   * session or mapping it through the domain model, so everything but the
+   * credentials comes back out unchanged. For re-keying the backups that sit
+   * next to a vault whose password or key file just changed. Rejects if
+   * `currentKey` doesn't open `fileBytes`.
    */
-  rekeyFile(
-    fileBytes: ArrayBuffer,
-    currentKey: VaultKey,
-    newMasterPassword: string,
-  ): Promise<ArrayBuffer>;
+  rekeyFile(fileBytes: ArrayBuffer, currentKey: VaultKey, newKey: VaultKey): Promise<ArrayBuffer>;
 }

@@ -1,10 +1,10 @@
 import { EffectiveSettings } from "../../application/settings";
 import { SettingsImportResult } from "../../application/settings-transfer-service";
-import { MasterPasswordChangeResult, VaultFileInfo } from "../../application/vault-access-service";
+import { VaultFileInfo } from "../../application/vault-access-service";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 import { AppearanceSection } from "./settings/AppearanceSection";
 import { AutoTypeSection } from "./settings/AutoTypeSection";
-import { DangerZoneSection } from "./settings/DangerZoneSection";
+import { DangerZoneSection, VaultFileActions } from "./settings/DangerZoneSection";
 import { EntryCreationSection } from "./settings/EntryCreationSection";
 import { ExpiredEntriesSection } from "./settings/ExpiredEntriesSection";
 import { GroupsSection } from "./settings/GroupsSection";
@@ -16,15 +16,12 @@ import { WindowSection } from "./settings/WindowSection";
 
 interface SettingsScreenProps {
   filePath: string;
+  vaultName: string;
   fileInfo: VaultFileInfo | undefined;
   entryCount: number;
   settings: EffectiveSettings;
   onSettingChange: SettingChangeHandler;
-  onChangeMasterPassword: (
-    currentPassword: string,
-    newPassword: string,
-  ) => Promise<MasterPasswordChangeResult>;
-  onUpgradeFormat: () => Promise<void>;
+  vaultFileActions: VaultFileActions;
   /** Why the last merge attempt never got started, e.g. the picked file is this vault. */
   mergeError: string | undefined;
   onOpenMergeWizard: () => void;
@@ -34,12 +31,12 @@ interface SettingsScreenProps {
 
 export function SettingsScreen({
   filePath,
+  vaultName,
   fileInfo,
   entryCount,
   settings,
   onSettingChange,
-  onChangeMasterPassword,
-  onUpgradeFormat,
+  vaultFileActions,
   mergeError,
   onOpenMergeWizard,
   onExportSettings,
@@ -91,9 +88,9 @@ export function SettingsScreen({
           <DangerZoneSection
             mergeError={mergeError}
             onOpenMergeWizard={onOpenMergeWizard}
-            onChangeMasterPassword={onChangeMasterPassword}
-            format={fileInfo?.format}
-            onUpgradeFormat={onUpgradeFormat}
+            vaultName={vaultName}
+            fileInfo={fileInfo}
+            actions={vaultFileActions}
           />
         </div>
       </div>

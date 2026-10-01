@@ -176,13 +176,14 @@ export class Vault {
 
   /** This vault with `changes` applied; everything not named is carried over. */
   private with(changes: {
+    name?: string;
     rootGroup?: Group;
     recycleBinId?: GroupId;
     purgedEntryIds?: readonly EntryId[];
     customIcons?: CustomIcons;
   }): Vault {
     return new Vault(
-      this.name,
+      changes.name ?? this.name,
       changes.rootGroup ?? this.rootGroup,
       changes.recycleBinId ?? this.recycleBinId,
       changes.purgedEntryIds ?? this.purgedEntryIds,
@@ -192,6 +193,18 @@ export class Vault {
 
   static create(name: string): Vault {
     return new Vault(name, Group.create(name));
+  }
+
+  /**
+   * The same vault under a new name. Only the vault's own name changes: its
+   * root group keeps the name it has, as in KeePass.
+   */
+  rename(name: string): Vault {
+    const trimmed = name.trim();
+    if (trimmed === "") {
+      throw new Error("A vault needs a name");
+    }
+    return this.with({ name: trimmed });
   }
 
   get recycleBin(): Group | undefined {

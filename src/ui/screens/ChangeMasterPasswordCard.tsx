@@ -3,18 +3,13 @@ import { MasterPasswordChangeResult } from "../../application/vault-access-servi
 import { MASTER_PASSWORD_HINT, masterPasswordRuleError } from "../master-password-rules";
 import { useAsyncAction } from "../use-async-action";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
+import { RekeyedBackupsNotes } from "./RekeyedBackupsNotes";
 
 interface ChangeMasterPasswordCardProps {
   onChangeMasterPassword: (
     currentPassword: string,
     newPassword: string,
   ) => Promise<MasterPasswordChangeResult>;
-}
-
-function removedBackupsNote(paths: string[]): string {
-  return paths.length === 1
-    ? "1 backup couldn't be re-encrypted and was deleted."
-    : `${paths.length} backups couldn't be re-encrypted and were deleted.`;
 }
 
 export function ChangeMasterPasswordCard({
@@ -138,21 +133,11 @@ export function ChangeMasterPasswordCard({
         {success && (
           <>
             <div className="field-success">Master password changed.</div>
-            <div className="danger-zone-row-hint">
-              The vault&apos;s .bak backups were re-encrypted with the new password too.
-              {success.removedBackups.length > 0 &&
-                ` ${removedBackupsNote(success.removedBackups)}`}
-            </div>
-            {success.unprotectedBackups.length > 0 && (
-              <div className="field-error">
-                These backups could not be re-encrypted or deleted and may still open with the old
-                password. Delete them yourself: {success.unprotectedBackups.join(", ")}
-              </div>
-            )}
-            <div className="danger-zone-row-hint">
-              Copies made outside Argus, such as cloud sync version history or files you copied
-              yourself, still open with the old password.
-            </div>
+            <RekeyedBackupsNotes
+              result={success}
+              nowOpen="with the new password"
+              stillOpen="with the old password"
+            />
           </>
         )}
         <button type="submit" className="btn-danger" disabled={busy}>

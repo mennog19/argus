@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./ui/App";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { AttachmentExportService } from "./application/attachment-export-service";
 import { VaultAccessService } from "./application/vault-access-service";
 import { KdbxVaultMergeSource } from "./infrastructure/kdbx-vault-merge-source";
@@ -51,21 +52,26 @@ const updater = new TauriUpdater();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App
-      vaultAccessService={vaultAccessService}
-      settingsStore={settingsStore}
-      settingsTransferService={settingsTransferService}
-      attachmentExportService={attachmentExportService}
-      urlOpener={urlOpener}
-      clipboardWriter={clipboardWriter}
-      windowEvents={windowEvents}
-      windowProtection={windowProtection}
-      windowCloseBehavior={windowCloseBehavior}
-      mergeSource={mergeSource}
-      autoTypeService={autoTypeService}
-      globalHotkey={globalHotkey}
-      vaultOpenRequests={vaultOpenRequests}
-      updater={updater}
-    />
+    <ErrorBoundary
+      onCrash={() => vaultAccessService.closeVault()}
+      onRestart={() => window.location.reload()}
+    >
+      <App
+        vaultAccessService={vaultAccessService}
+        settingsStore={settingsStore}
+        settingsTransferService={settingsTransferService}
+        attachmentExportService={attachmentExportService}
+        urlOpener={urlOpener}
+        clipboardWriter={clipboardWriter}
+        windowEvents={windowEvents}
+        windowProtection={windowProtection}
+        windowCloseBehavior={windowCloseBehavior}
+        mergeSource={mergeSource}
+        autoTypeService={autoTypeService}
+        globalHotkey={globalHotkey}
+        vaultOpenRequests={vaultOpenRequests}
+        updater={updater}
+      />
+    </ErrorBoundary>
   </React.StrictMode>,
 );

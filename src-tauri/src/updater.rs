@@ -42,6 +42,13 @@ pub struct DownloadProgress {
     total: Option<u64>,
 }
 
+/// A release's notes, or `None` when it has none worth showing: the feed
+/// carries an empty or whitespace-only body for a release published without
+/// any.
+fn release_notes(body: Option<String>) -> Option<String> {
+    body.filter(|notes| !notes.trim().is_empty())
+}
+
 /// Asks the release feed whether a newer version exists. Resolves to `None`
 /// when Argus is up to date.
 #[tauri::command]
@@ -58,7 +65,7 @@ pub async fn check_for_update(
     let available = update.as_ref().map(|update| AvailableUpdate {
         version: update.version.clone(),
         current_version: update.current_version.clone(),
-        notes: update.body.clone().filter(|notes| !notes.trim().is_empty()),
+        notes: release_notes(update.body.clone()),
     });
     *pending.0.lock().map_err(|error| error.to_string())? = update;
     Ok(available)
@@ -99,4 +106,67 @@ pub async fn install_update(
     update.install(bytes).map_err(|error| error.to_string())?;
     // Only reached where installing doesn't end the process itself.
     app.restart();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn keeps_release_notes_that_say_something() {
+        let notes = Some("Fixes auto-type in Firefox.".to_string());
+
+        assert_eq!(release_notes(notes.clone()), notes);
+    }
+
+    #[test]
+    fn drops_missing_empty_and_blank_release_notes() {
+        assert_eq!(release_notes(None), None);
+        assert_eq!(release_notes(Some(String::new())), None);
+        assert_eq!(release_notes(Some("  \r\n\t ".to_string())), None);
+    }
+
+    // The webview reads these by name; see `tauri-updater.ts`.
+    #[test]
+    fn tells_the_webview_about_an_update_in_camel_case() {
+        let update = AvailableUpdate {
+            version: "0.2.0".into(),
+            current_version: "0.1.1".into(),
+            notes: None,
+        };
+
+        assert_eq!(
+            serde_json::to_value(update).unwrap(),
+            json!({ "version": "0.2.0", "currentVersion": "0.1.1", "notes": null })
+        );
+    }
+
+    #[test]
+    fn reports_download_progress_with_an_unknown_total_as_null() {
+        let known = DownloadProgress {
+            downloaded: 512,
+            total: Some(2048),
+        };
+        let unknown = DownloadProgress {
+            downloaded: 512,
+            total: None,
+        };
+
+        assert_eq!(
+            serde_json::to_value(known).unwrap(),
+            json!({ "downloaded": 512, "total": 2048 })
+        );
+        assert_eq!(
+            serde_json::to_value(unknown).unwrap(),
+            json!({ "downloaded": 512, "total": null })
+        );
+    }
+
+    #[test]
+    fn starts_out_with_no_update_to_install() {
+        let pending = PendingUpdate::default();
+
+        assert!(pending.0.lock().unwrap().is_none());
+    }
 }

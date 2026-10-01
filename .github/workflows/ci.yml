@@ -92,3 +92,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm tauri build --no-bundle
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --locked
+
+      # Drives the app just built through WebDriver: unlock a vault, add an
+      # entry, lock, and find it again. The unit tests fake everything Tauri
+      # provides, so this is what shows the two halves still fit together.
+      - name: End-to-end smoke test
+        run: pnpm test:e2e
