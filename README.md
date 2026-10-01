@@ -32,11 +32,11 @@ Compare the output with the matching `.sha256` file on the release page. If they
 
 ### Vaults
 
-- **Open, create and save `.kdbx` files**, by picking them in Argus or by double-clicking one in Explorer. Argus shows one vault at a time and remembers the last five.
+- **Open, create and save `.kdbx` files**, by picking them in Argus or by double-clicking one in Explorer. Argus remembers the last five.
 - **Master password, key file, or both.** A new vault can get a key file generated in KeePassXC's format or use a file you already have. An open vault's password and key file can be changed from Settings.
-- **Rolling backups.** Every save keeps the three previous versions of the file next to it, as `<vault>.kdbx.bak1` (newest) to `.bak3`.
+- **Rolling backups.** Every save keeps the three previous versions of the file next to it.
 - **Vault settings.** The vault's name, how much history each entry keeps, and its key-derivation settings (Argon2 memory, iterations and parallelism, or AES-KDF rounds) can be changed from Settings.
-- **KDBX 4 upgrade.** A KDBX 3 vault can be upgraded from Settings, which moves its key derivation from AES-KDF to Argon2id. The KDBX 3 file is kept next to the vault as `<vault>.kdbx3-backup.kdbx`.
+- **KDBX 4 upgrade.** A KDBX 3 vault can be upgraded from Settings, which moves its key derivation from AES-KDF to Argon2id. The KDBX 3 file is kept as a backup.
 - **Merge.** A wizard reconciles a vault that was edited in two places, entry by entry.
 - **Save conflicts.** If the file changed on disk since Argus read it, saving asks whether to overwrite it or drop your change rather than doing either silently.
 
@@ -44,7 +44,7 @@ Compare the output with the matching `.sha256` file on the release page. If they
 
 - **Fields.** Title, username, password, URL, notes, tags, an expiry date, and custom fields, which can be protected. URLs typed without a scheme (`github.com/login`) open as https.
 - **Groups and a recycle bin.** Groups nest and can be reordered by dragging; entries can be dragged between them. Deleted entries and groups go to the recycle bin first.
-- **Search** across title, username, URL, notes, tags and custom fields. **Ctrl+F** jumps to the search box, the arrow keys move through the results, and Esc clears the search.
+- **Search** across title, username, URL, notes, tags and custom fields. Esc clears the search.
 - **TOTP.** Shows time-based one-time codes stored the way KeePassXC or the classic KeePass TOTP plugin stores them.
 - **History.** Every edit keeps the previous version. Earlier versions can be viewed, restored, or deleted, for example to remove an old password from the file.
 - **Attachments.** Files stored in an entry can be added, renamed, deleted, or saved to disk.
@@ -57,7 +57,7 @@ Compare the output with the matching `.sha256` file on the release page. If they
 - **Generator** for random passwords, with a configurable length and character sets.
 - **Health check** that finds expired entries and reused, weak, and fair-strength passwords. It runs on your device; nothing is sent anywhere.
 - **Clipboard auto-clear.** A copied secret is cleared after 20 seconds by default, and after at most 10 minutes.
-- **Auto-type.** An opt-in global hotkey types a matching entry's username and password into the window you were in, after you confirm the entry in a picker that names the target window. In a browser, entries are matched on the address in the address bar, not the page title.
+- **Auto-type.** An opt-in global hotkey types a matching entry's username and password into the window you were in, after you confirm the entry in a picker that names the target window.
 
 ### App
 
@@ -66,7 +66,7 @@ Compare the output with the matching `.sha256` file on the release page. If they
 - **Keyboard shortcuts** for locking, copying, and editing, which [you can change](#keyboard-shortcuts).
 - **Close to tray**, a dark and a light theme, and a choice of accent colour.
 - **Settings export and import**, separate from any vault.
-- **Update check**, opt-in. When it's on, Argus asks GitHub for a newer release each time it starts and offers to install it.
+- **Update check**, opt-in, which offers to install a newer release when there is one.
 
 ## Keyboard shortcuts
 
@@ -158,12 +158,12 @@ So a flaw in vault encryption itself would most likely be a flaw in one of those
 
 ## Security model
 
-- **Local only.** No accounts, no sync service, no telemetry. The only network request Argus makes by itself is the update check, which is off unless you turn it on. Opening an entry's URL hands it to your default browser.
-- **Encryption.** Argus adds no cryptography of its own: a vault is protected by the KDBX format's encryption and key derivation, through [kdbxweb](https://github.com/keeweb/kdbxweb) with Argon2 from [hash-wasm](https://github.com/Daninet/hash-wasm). [What Argus is built on](#what-argus-is-built-on) lists which parts come from libraries and which are Argus's own.
-- **Master password and key files.** A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they have. Argus remembers the _path_ of the key file each recent vault was last unlocked with, never its contents. Changing the password or the key file re-encrypts the vault's `.bak` backups to match; a backup that can't be re-encrypted is deleted, and Argus tells you.
+- **Local only.** The only network request Argus makes by itself is the update check, which is off unless you turn it on. Opening an entry's URL hands it to your default browser.
+- **Encryption.** Argus adds no cryptography of its own: a vault is protected by the KDBX format's encryption and key derivation, through the libraries listed in [What Argus is built on](#what-argus-is-built-on).
+- **Master password and key files.** A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they have. Changing the password or the key file re-encrypts the vault's `.bak` backups to match; a backup that can't be re-encrypted is deleted, and Argus tells you.
 - **In memory.** Locking drops the decrypted vault, and unlocking reads the file again. While a vault is unlocked, its contents are in Argus's memory as ordinary strings. Argus runs in a webview, which can't pin or wipe memory, so it does not protect an unlocked vault from malware running under your account.
-- **Locking.** Argus locks when you tell it to and when it quits. The auto-lock triggers are all off until you turn them on in Settings.
-- **Screen capture.** The window is excluded from screenshots, recordings and screen sharing by default. An imported settings file can't turn that off.
+- **Locking.** Until you turn on an auto-lock trigger, Argus locks only when you tell it to and when it quits.
+- **Screen capture.** The protection is on by default, and an imported settings file can't turn it off.
 - **Clipboard.** A copied secret is cleared after the timeout, when the vault closes, when Argus quits, and at the next launch after a crash. The clear only happens if the clipboard still holds what Argus copied. Copies are kept out of Windows clipboard history (Win+V) and cloud clipboard sync.
 - **Saving.** Saves are atomic: the vault is written to a new, randomly named temporary file next to it (`.<vault>.<random>.tmp`), flushed to disk, then renamed over the original. If Argus is killed mid-save, one temporary file can be left behind; it is safe to delete.
 - **Crafted files.** A vault's key-derivation settings sit unencrypted in its header, so a malicious `.kdbx` could ask for enough work to freeze the app. Argus refuses a file that asks for more than 1 GiB of memory, 1000 iterations, or 64 lanes of Argon2, or more than a billion rounds of AES-KDF, and won't write settings above those limits either.
@@ -186,14 +186,14 @@ Please report vulnerabilities privately, through **Security → Report a vulnera
 - **No import or export** of other formats, such as CSV. Vaults move in and out as `.kdbx` files.
 - **No browser extension, no biometric unlock, no hardware keys, no breach checking.**
 - **The generator makes random-character passwords only**, not passphrases.
-- **Updates need the check turned on.** With it off (the default), new versions have to be downloaded by hand. The check runs at startup only; there is no "check now" button.
+- **No "check now" button for updates.** The check runs at startup only, and with it off (the default) new versions have to be downloaded by hand.
 - **Field references can't be created in Argus**, only resolved.
-- **Attachments are for small files.** Argus won't attach a file over 10 MB, because the whole vault is rewritten on every save and each backup holds a copy. Larger attachments added in KeePass or KeePassXC still load and are kept. Attachments can be saved to disk but not previewed.
+- **Attachments are for small files.** Argus won't attach a file over 10 MB, because the whole vault is rewritten on every save and each backup holds a copy. Larger attachments added in KeePass or KeePassXC still load and are kept. Attachments can't be previewed.
 - **Deleting an attachment doesn't remove it straight away.** The entry's history keeps the versions that held the file. Its bytes leave the vault once those versions are deleted too.
 
 ## Building from source
 
-Argus is built with Tauri 2, React and TypeScript. You need Node.js with pnpm for the frontend, and Rust with the MSVC C++ toolchain for the backend.
+You need Node.js with pnpm for the frontend, and Rust with the MSVC C++ toolchain for the backend.
 
 ### 1. Install prerequisites
 
