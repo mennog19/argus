@@ -10,7 +10,6 @@ export interface ResolvedConflict {
 export interface VaultMergeSelections {
   readonly newEntries: readonly Entry[];
   readonly resolvedConflicts: readonly ResolvedConflict[];
-  /** Source entries from `identical` pairs the user opted to import anyway. */
   readonly identicalEntriesToImport: readonly Entry[];
 }
 
@@ -34,8 +33,8 @@ function ensureMergeGroup(vault: Vault): { vault: Vault; groupId: GroupId } {
  * single lazily-created group so the target vault's existing groups are
  * left untouched. "Use theirs" never costs the target entry a file: it keeps
  * its attachments and gains the source's. Custom icons the brought-over
- * entries use are copied from `sourceIcons`. Returns an ordinary in-memory `Vault` — callers persist it
- * the same way as any other edit.
+ * entries use are copied from `sourceIcons`. Returns an ordinary in-memory
+ * `Vault` — callers persist it the same way as any other edit.
  */
 export function applyVaultMerge(
   target: Vault,

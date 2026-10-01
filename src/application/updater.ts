@@ -1,4 +1,3 @@
-/** A newer version of Argus than the one running. */
 export interface AvailableUpdate {
   readonly version: string;
   readonly currentVersion: string;

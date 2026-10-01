@@ -14,7 +14,6 @@ interface RawDownloadProgress {
   total: number | null;
 }
 
-/** `Updater` backed by the Rust side (`updater.rs`). */
 export class TauriUpdater implements Updater {
   async checkForUpdate(): Promise<AvailableUpdate | undefined> {
     const raw = await invoke<RawAvailableUpdate | null>("check_for_update");

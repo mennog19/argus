@@ -23,8 +23,7 @@ const DEFAULT_FALLBACK = "Something went wrong.";
 
 /**
  * The "run something, disable the button, show what went wrong" pattern that
- * every screen doing a save needs — previously hand-written, identically, in
- * eleven places.
+ * every screen doing a save needs.
  */
 export function useAsyncAction(): AsyncAction {
   const [busy, setBusy] = useState(false);

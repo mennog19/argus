@@ -9,10 +9,10 @@ import {
   ProtectedValue,
   VarDictionary,
 } from "kdbxweb";
-import { VaultSettings } from "../../src/application/vault-settings";
+import { DEFAULT_KDF, VaultSettings } from "../../src/application/vault-settings";
 import { CustomField, CustomFields, Password } from "../../src/domain";
 import { configureKdbxCrypto } from "../../src/infrastructure/kdbx-crypto";
-import { DEFAULT_KDF, KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
+import { KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 import { KEEPASS_FIXTURE_PASSWORD, readKeePassFixture } from "./keepass-fixtures";
 
 const MASTER_PASSWORD = "correct horse battery staple";

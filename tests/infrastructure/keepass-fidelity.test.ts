@@ -9,7 +9,8 @@ import {
   totpConfigFromCustomFields,
 } from "../../src/domain";
 import { VaultSession } from "../../src/application/vault-repository";
-import { DEFAULT_KDF, KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
+import { DEFAULT_KDF } from "../../src/application/vault-settings";
+import { KdbxVaultRepository } from "../../src/infrastructure/kdbx-vault-repository";
 import {
   KEEPASS_FIXTURE_PASSWORD,
   KeePassFixture,

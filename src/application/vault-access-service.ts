@@ -7,7 +7,6 @@ import { VaultSettings } from "./vault-settings";
 export interface OpenedVault {
   vault: Vault;
   filePath: string;
-  /** The key file it was unlocked with, if any. */
   keyFilePath?: string;
 }
 
@@ -30,7 +29,6 @@ export interface VaultFileInfo {
   lastModifiedMs: number;
   /** The open vault's format, which is what its last open or save left on disk. */
   format: VaultFormat;
-  /** Whether the open vault's key includes a key file. */
   hasKeyFile: boolean;
   /** The open vault's own settings, as its last open or save left them on disk. */
   settings: VaultSettings;
@@ -412,9 +410,8 @@ export class VaultAccessService {
    *
    * A backup that can't be re-keyed -- most likely one the old key doesn't
    * open, written by another app or left over from an earlier password -- is
-   * removed rather than left in an unknown state. One that
-   * can be neither re-keyed nor removed is reported back so the user can deal
-   * with it by hand.
+   * removed rather than left in an unknown state. One that can be neither
+   * re-keyed nor removed is reported back so the user can deal with it by hand.
    */
   private async rekeyBackups(
     filePath: string,

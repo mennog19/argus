@@ -34,7 +34,6 @@ export class SettingsTransferService {
     private readonly fileStorage: FileStorage,
   ) {}
 
-  /** Returns the path written to, or `undefined` if the user cancelled. */
   async exportSettings(settings: AppSettings): Promise<string | undefined> {
     const filePath = await this.dialog.pickPathForExport();
     if (!filePath) {

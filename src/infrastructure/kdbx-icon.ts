@@ -2,7 +2,6 @@ import { Consts, KdbxEntry, KdbxGroup } from "kdbxweb";
 import { Icon } from "../domain";
 import { domainIdToKdbxUuid, kdbxUuidToDomainId } from "./kdbx-id";
 
-/** An entry or group, the two KDBX node types that carry an icon. */
 type KdbxIconHost = KdbxEntry | KdbxGroup;
 
 /**

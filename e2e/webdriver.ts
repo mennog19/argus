@@ -17,7 +17,6 @@ const POLL_INTERVAL_MS = 150;
 export type Locator = { css: string } | { xpath: string };
 
 export interface TauriCapabilities {
-  /** The app's executable. */
   application: string;
 }
 
@@ -76,7 +75,6 @@ export class WebDriverSession {
     return elements.map((element) => element[ELEMENT_KEY]);
   }
 
-  /** Whether the page currently has an element matching `locator`. */
   async exists(locator: Locator): Promise<boolean> {
     return (await this.findAll(locator)).length > 0;
   }
@@ -112,7 +110,6 @@ export class WebDriverSession {
     return text === "" ? "(nothing)" : text.slice(0, 500);
   }
 
-  /** Waits until nothing matches `locator` any more. */
   async waitUntilGone(locator: Locator, timeoutMs = 30_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (await this.exists(locator)) {

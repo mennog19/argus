@@ -41,10 +41,8 @@ interface VaultShellProps {
   clipboardWriter: ClipboardWriter;
   mergeSource: VaultMergeSource;
   /**
-   * Passed whole rather than one prop per setting. The shell reads a few of
-   * these itself and forwards the rest to the settings screen; enumerating
-   * them here meant every new setting changed this file twice — once for the
-   * value, once for its setter — without the shell ever caring what it was.
+   * Passed whole rather than one prop per setting: the shell reads a few of
+   * these itself and forwards the rest to the settings screen.
    */
   settings: EffectiveSettings;
   onSettingChange: SettingChangeHandler;
@@ -112,9 +110,8 @@ export function VaultShell({
   const clipboard = useClipboardCopy(clipboardWriter, clipboardClearSeconds);
 
   const rootGroup = vault.rootGroup;
-  // Both walk the tree, and both were being recomputed several times per
-  // render — the entry list, the health screen, and two sidebar counts each
-  // asked for the same walk.
+  // Both walk the tree, and the entry list, the health screen, and two
+  // sidebar counts all read them.
   const recycleBin = useMemo(() => vault.recycleBin, [vault]);
   const excludeFromBrowsing = useMemo(() => (recycleBin ? [recycleBin.id] : []), [recycleBin]);
   const allEntries = useMemo(

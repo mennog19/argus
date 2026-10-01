@@ -95,10 +95,6 @@ function dropZoneFor(event: DragEvent<HTMLDivElement>): DropZone {
 /**
  * Both drags the group sidebar accepts: an entry dropped onto a group, and a
  * group dragged among (or into) other groups.
- *
- * Lifted out of `GroupTree` because it was five pieces of state and eight
- * handlers that nothing else in that component read — leaving the tree to
- * render the tree, and making the row's drag wiring a single spread.
  */
 export function useGroupDragDrop(callbacks: GroupDragDropCallbacks): GroupDragDrop {
   const { onDropEntry, onMoveGroupToPosition, onMoveGroupToParent } = callbacks;

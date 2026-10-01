@@ -1,4 +1,3 @@
-/** Whether `timeoutMinutes` of inactivity has elapsed since `lastActivityAt`. */
 export function hasIdleTimedOut(
   lastActivityAt: number,
   now: number,

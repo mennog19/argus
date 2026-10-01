@@ -90,7 +90,6 @@ mod platform {
 
         /// `WTS_SESSION_UNLOCK`, sent with the same message as a lock.
         const WTS_SESSION_UNLOCK: usize = 0x8;
-        /// `WTS_SESSION_LOGON`.
         const WTS_SESSION_LOGON: usize = 0x5;
 
         #[test]

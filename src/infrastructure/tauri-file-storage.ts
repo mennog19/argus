@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { copyFile, exists, readFile, remove, stat } from "@tauri-apps/plugin-fs";
 import { FileStorage } from "../application/file-storage";
 
-/** `FileStorage` backed by Tauri's filesystem plugin. */
 export class TauriFileStorage implements FileStorage {
   async readFile(path: string): Promise<ArrayBuffer> {
     const bytes = await readFile(path);

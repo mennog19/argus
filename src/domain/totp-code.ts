@@ -5,7 +5,6 @@ export interface TotpCode {
   readonly secondsRemaining: number;
 }
 
-/** Computes an HMAC over `message` with `key`, using the given TOTP algorithm. */
 export type Hmac = (
   algorithm: TotpAlgorithm,
   key: Uint8Array<ArrayBuffer>,

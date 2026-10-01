@@ -109,9 +109,10 @@ export function vaultFromKdbx(db: Kdbx, attachments = new KdbxAttachmentStore())
 
 /**
  * Canonical, order-independent snapshot of the value an `Entry` carries, bar
- * its attachments, used to detect real changes. `times` is deliberately absent: timestamps are
- * metadata about the entry, not part of it, so recording that an entry was
- * opened must not look like an edit and must not push a history revision.
+ * its attachments, used to detect real changes. `times` is deliberately
+ * absent: timestamps are metadata about the entry, not part of it, so
+ * recording that an entry was opened must not look like an edit and must not
+ * push a history revision.
  */
 function snapshotEntry(entry: Entry): string {
   return JSON.stringify({

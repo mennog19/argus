@@ -33,7 +33,6 @@ pub enum AutoTypeStep {
     Text {
         text: String,
     },
-    /// Presses Enter.
     Submit,
 }
 

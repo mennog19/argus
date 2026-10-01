@@ -17,7 +17,6 @@ export interface FormLayout {
   readonly hasPasswordField: boolean;
 }
 
-/** Form fields a step can move focus to. */
 export type AutoTypeFormField = "username" | "password";
 
 /** A fully resolved instruction for the OS adapter: no entry data left to look up. */
@@ -25,10 +24,8 @@ export type AutoTypeStep =
   /** Puts the caret in the named field with its existing text selected. */
   | { readonly kind: "focus"; readonly field: AutoTypeFormField }
   | { readonly kind: "text"; readonly text: string }
-  /** Presses Enter. */
   | { readonly kind: "submit" };
 
-/** The entry values auto-type can fill in. */
 export interface AutoTypeCredentials {
   readonly username: string;
   readonly password: string;

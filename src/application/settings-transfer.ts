@@ -106,7 +106,6 @@ export function toPortableSettings(settings: AppSettings): PortableSettings {
   };
 }
 
-/** The JSON text written to the exported file. */
 export function serializePortableSettings(portable: PortableSettings): string {
   return `${JSON.stringify(portable, null, 2)}\n`;
 }

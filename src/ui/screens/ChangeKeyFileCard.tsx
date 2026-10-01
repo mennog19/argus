@@ -7,7 +7,6 @@ import { RekeyedBackupsNotes } from "./RekeyedBackupsNotes";
 type ChangeKind = KeyFileChange["kind"];
 
 interface ChangeKeyFileCardProps {
-  /** Whether the open vault's key includes a key file. */
   hasKeyFile: boolean;
   /** Where to save a generated key file; `undefined` when the user cancels. */
   onPickSaveLocation: () => Promise<string | undefined>;

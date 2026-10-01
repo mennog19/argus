@@ -105,12 +105,10 @@ export class Entry {
     });
   }
 
-  /** Whether the entry's expiry date has been reached by `now`. */
   isExpired(now: Date): boolean {
     return this.expiresAt !== undefined && this.expiresAt.getTime() <= now.getTime();
   }
 
-  /** The same entry with `at` recorded as when it was last opened. */
   markAccessed(at: Date): Entry {
     return this.update({ times: { ...this.times, accessedAt: at } });
   }

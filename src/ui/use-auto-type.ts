@@ -14,7 +14,6 @@ export interface AutoTypeController {
   readonly typeInto: (entry: Entry) => void;
   /** Closes the picker without typing anything. */
   readonly dismiss: () => void;
-  /** Acknowledges `error`, hiding it. */
   readonly dismissError: () => void;
 }
 

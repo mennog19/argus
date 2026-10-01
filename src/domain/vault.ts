@@ -304,7 +304,6 @@ export class Vault {
     );
   }
 
-  /** Creates the recycle bin group under the root, if one doesn't already exist. */
   private ensureRecycleBin(): { vault: Vault; recycleBinId: GroupId } {
     if (this.recycleBinId && this.findGroup(this.recycleBinId)) {
       return { vault: this, recycleBinId: this.recycleBinId };
@@ -389,12 +388,10 @@ export class Vault {
     return this.removeEntry(entryId).addEntry(targetGroupId, entry);
   }
 
-  /** Moves a recycled entry back out of the recycle bin into `targetGroupId`. */
   restoreEntry(entryId: EntryId, targetGroupId: GroupId): Vault {
     return this.moveEntry(entryId, targetGroupId);
   }
 
-  /** Moves a recycled group back out of the recycle bin into `targetGroupId`. */
   restoreGroup(groupId: GroupId, targetGroupId: GroupId): Vault {
     const group = this.findGroup(groupId);
     if (!group) {
@@ -449,7 +446,6 @@ export class Vault {
     return moved.reorderGroup(groupId, beforeId);
   }
 
-  /** Permanently deletes everything currently in the recycle bin, leaving it empty. */
   emptyRecycleBin(): Vault {
     if (!this.recycleBinId) {
       return this;

@@ -16,7 +16,6 @@ function suggestedFileName(vaultName: string, extension: string): string {
   return `${safeFileName(vaultName, "Vault")}.${extension}`;
 }
 
-/** `VaultFileDialog` backed by Tauri's native file-picker plugin. */
 export class TauriVaultFileDialog implements VaultFileDialog {
   async pickVaultToOpen(): Promise<string | undefined> {
     const path = await open({ filters: KDBX_FILTERS, multiple: false, directory: false });

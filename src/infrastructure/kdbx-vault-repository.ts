@@ -28,9 +28,6 @@ import { configureKdbxCrypto } from "./kdbx-crypto";
 import { resolveLimit } from "./kdbx-history";
 import { applyVaultToKdbx, vaultFromKdbx } from "./kdbx-mapper";
 
-// Re-exported for the callers that knew it from here before it moved.
-export { DEFAULT_KDF };
-
 // Both inputs are always 32-byte SHA-256 digests here, so a length check
 // would be dead code — a mismatched byte still fails the comparison.
 function buffersEqual(a: Uint8Array, b: Uint8Array): boolean {

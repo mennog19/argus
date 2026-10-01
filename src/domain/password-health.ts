@@ -43,7 +43,6 @@ export function passwordStrength(
   return isStrong ? "strong" : "fair";
 }
 
-/** Groups of two or more entries that share the same non-empty password. */
 export function findDuplicatePasswords(entries: readonly Entry[]): Entry[][] {
   const byPassword = new Map<string, Entry[]>();
   for (const entry of entries) {

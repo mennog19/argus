@@ -12,7 +12,6 @@ export interface RecentVaultEntry {
   readonly keyFilePath?: string;
 }
 
-/** Which vault was opened, and with which key file if any. */
 export interface OpenedVaultLocation {
   readonly path: string;
   readonly keyFilePath?: string;
@@ -95,7 +94,6 @@ export type AccentColor =
 
 export const DEFAULT_ACCENT_COLOR: AccentColor = { kind: "preset", id: "blue" };
 
-/** The app's overall color scheme. */
 export const THEMES = ["dark", "light"] as const;
 
 export type Theme = (typeof THEMES)[number];
@@ -177,46 +175,33 @@ export type EntrySortId = (typeof ENTRY_SORT_IDS)[number];
 
 export const DEFAULT_ENTRY_SORT: EntrySortId = "manual";
 
+/**
+ * The settings file. Every setting is undefined until the user first changes
+ * it; `resolveSettings` fills those in with their defaults.
+ */
 export interface AppSettings {
   readonly recentVaults: readonly RecentVaultEntry[];
-  /** Shared password generator settings, used by both the dedicated generator
-   * screen and "generate for new entry". Undefined until the user changes a
-   * setting for the first time, at which point `PasswordPolicy`'s own
-   * defaults apply. */
+  /** Shared by the generator screen and "generate for new entry". */
   readonly generatorPolicy?: PasswordPolicyOptions;
-  /** Seconds after a copy-to-clipboard before it's cleared automatically.
-   * Undefined until the user changes it, at which point `DEFAULT_CLIPBOARD_CLEAR_SECONDS` applies. */
+  /** Seconds after a copy-to-clipboard before it's cleared automatically. */
   readonly clipboardClearSeconds?: number;
-  /** Undefined until the user changes it, at which point `DEFAULT_AUTO_LOCK` applies. */
   readonly autoLock?: AutoLockSettings;
-  /** Undefined until the user changes it, at which point `DEFAULT_AUTO_TYPE` applies.
-   * Deliberately left out of the portable settings file: which hotkey is free
+  /** Deliberately left out of the portable settings file: which hotkey is free
    * is a property of one machine, not of a user's preferences. */
   readonly autoType?: AutoTypeSettings;
-  /** Undefined until the user changes it, at which point `DEFAULT_GROUP_DELETE_MODE` applies. */
   readonly groupDeleteMode?: GroupDeleteMode;
-  /** Undefined until the user changes it, at which point `DEFAULT_EXPIRED_ENTRY_ACTION` applies. */
   readonly expiredEntryAction?: ExpiredEntryAction;
-  /** Undefined until the user changes it, at which point `DEFAULT_ACCENT_COLOR` applies. */
   readonly accentColor?: AccentColor;
-  /** Undefined until the user changes it, at which point `DEFAULT_THEME` applies. */
   readonly theme?: Theme;
-  /** Undefined until the user changes it, at which point `DEFAULT_CONTENT_PROTECTION` applies. */
   readonly contentProtection?: boolean;
-  /** Undefined until the user changes it, at which point `DEFAULT_CLOSE_TO_TRAY` applies. */
   readonly closeToTray?: boolean;
-  /** Undefined until the user changes it, at which point `DEFAULT_CHECK_FOR_UPDATES` applies.
-   * Deliberately left out of the portable settings file: agreeing to network
+  /** Deliberately left out of the portable settings file: agreeing to network
    * requests is for the user of each machine, not something a file someone
    * sends them should switch on. */
   readonly checkForUpdates?: boolean;
-  /** Which fields are shown on the entry creation form. Undefined until the
-   * user changes it, at which point `DEFAULT_ENTRY_FIELD_VISIBILITY` applies.
-   * Only applies to creating new entries; editing an existing entry always
+  /** Only applies to creating new entries; editing an existing entry always
    * shows all of its fields. */
   readonly entryFieldVisibility?: EntryFieldVisibility;
-  /** How the entry list is sorted. Undefined until the user changes it, at
-   * which point `DEFAULT_ENTRY_SORT` applies. */
   readonly entrySort?: EntrySortId;
 }
 
@@ -314,14 +299,7 @@ export function recordVaultOpened(
   return { ...settings, recentVaults };
 }
 
-/**
- * Returns settings with `key` recorded as `value`.
- *
- * One function rather than one per setting: every such helper was the same
- * spread, and a per-setting name meant adding a setting touched this file,
- * the App handler that called it, and both of their tests before the setting
- * itself did anything.
- */
+/** Returns settings with `key` recorded as `value`. */
 export function withSetting<K extends ConfigurableSetting>(
   settings: AppSettings,
   key: K,

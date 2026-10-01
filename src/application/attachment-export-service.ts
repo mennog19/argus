@@ -16,7 +16,6 @@ export class AttachmentExportService {
     private readonly fileStorage: FileStorage,
   ) {}
 
-  /** Returns the path written to, or `undefined` if the user cancelled. */
   async exportAttachment(attachment: Attachment): Promise<string | undefined> {
     const filePath = await this.dialog.pickPathForAttachment(attachment.name);
     if (!filePath) {

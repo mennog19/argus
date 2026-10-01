@@ -4,17 +4,14 @@ import process from "node:process";
 import tauriConfig from "./src-tauri/tauri.conf.json" with { type: "json" };
 const host = process.env.TAURI_DEV_HOST;
 
-// https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [react()],
   // The version Tauri builds and the updater compares against, shown in Settings.
   define: { __APP_VERSION__: JSON.stringify(tauriConfig.version) },
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+  // Keeps Vite from clearing Rust errors off the terminal.
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
+  // Tauri expects a fixed port, so fail if it's taken.
   server: {
     port: 1420,
     strictPort: true,
@@ -27,7 +24,6 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
   },
