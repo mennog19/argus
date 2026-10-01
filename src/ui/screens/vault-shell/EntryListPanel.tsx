@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { KeyboardEvent, useEffect, useRef } from "react";
 import { Entry, FieldReferences } from "../../../domain";
 import { EntrySortId } from "../../../application/settings";
 import { ENTRY_DRAG_TYPE } from "../../entry-drag";
@@ -58,6 +58,42 @@ export function EntryListPanel({
     }
   }, [searchFocusRequest]);
 
+  const listRef = useRef<HTMLDivElement>(null);
+
+  /** Selects the entry `step` rows on from the selected one, or the nearest end of the list when none is. */
+  function selectNeighbour(step: 1 | -1) {
+    if (entries.length === 0) {
+      return;
+    }
+    const current = entries.findIndex(({ entry }) => entry.id.toString() === selectedEntryId);
+    const start = step === 1 ? -1 : entries.length;
+    const target = Math.min(
+      Math.max((current === -1 ? start : current) + step, 0),
+      entries.length - 1,
+    );
+    onSelectEntry(entries[target].entry);
+    // Rows are rendered in the order of `entries`. Focus follows the
+    // selection, which also scrolls the row into view.
+    listRef.current?.querySelectorAll<HTMLButtonElement>(".entry-row").item(target).focus();
+  }
+
+  function handleArrowKeys(event: KeyboardEvent) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      selectNeighbour(event.key === "ArrowDown" ? 1 : -1);
+    }
+  }
+
+  function handleSearchKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      onSearchChange("");
+    } else if (event.key === "Enter" && entries.length > 0) {
+      onSelectEntry(entries[0].entry);
+    } else {
+      handleArrowKeys(event);
+    }
+  }
+
   return (
     <div className="entry-list-panel">
       <div className="entry-list-header">
@@ -76,6 +112,7 @@ export function EntryListPanel({
           aria-label="Search entries"
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
+          onKeyDown={handleSearchKeyDown}
         />
         {isSearching && (
           <button
@@ -89,7 +126,7 @@ export function EntryListPanel({
         )}
         <EntrySortMenu value={entrySort} onChange={onSortChange} />
       </div>
-      <div className="entry-list">
+      <div className="entry-list" ref={listRef}>
         {entries.length === 0 && (
           <div className="entry-list-empty">
             {isSearching ? `No entries match "${trimmedQuery}".` : "No entries in this group."}
@@ -113,6 +150,7 @@ export function EntryListPanel({
               }}
               onDragEnd={onDragEndEntry}
               onClick={() => onSelectEntry(entry)}
+              onKeyDown={handleArrowKeys}
             >
               <EntryAvatar entry={entry} />
               <div className="entry-row-text">

@@ -128,3 +128,35 @@ describe("HotkeyField", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe("HotkeyField, for a shortcut inside Argus", () => {
+  it("records a key on its own when bare keys are allowed", async () => {
+    const onChange = vi.fn();
+    render(<HotkeyField id="hotkey" value="Control+L" onChange={onChange} allowBareKeys />);
+    const field = screen.getByRole("button");
+
+    await userEvent.click(field);
+    keyDown(field, "Delete");
+    expect(field).toHaveTextContent("Delete");
+    keyDown(field, "Enter");
+
+    expect(onChange).toHaveBeenCalledWith("Delete");
+  });
+
+  it("shows a clashing hotkey in red with the reason", () => {
+    render(<HotkeyField id="hotkey" value="Control+L" onChange={vi.fn()} conflict="Taken." />);
+
+    expect(screen.getByRole("button")).toHaveClass("conflict");
+    expect(screen.getByText("Taken.")).toHaveClass("field-error");
+  });
+
+  it("puts the clash aside while a new hotkey is being recorded", async () => {
+    render(<HotkeyField id="hotkey" value="Control+L" onChange={vi.fn()} conflict="Taken." />);
+    const field = screen.getByRole("button");
+
+    await userEvent.click(field);
+
+    expect(field).not.toHaveClass("conflict");
+    expect(screen.queryByText("Taken.")).not.toBeInTheDocument();
+  });
+});

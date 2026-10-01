@@ -19,6 +19,7 @@ import {
   resolveSettings,
   withSetting,
 } from "../../src/application/settings";
+import { DEFAULT_SHORTCUTS } from "../../src/application/shortcuts";
 
 describe("recordVaultOpened", () => {
   it("adds a path to an empty list", () => {
@@ -179,6 +180,7 @@ describe("resolveSettings", () => {
       checkForUpdates: DEFAULT_CHECK_FOR_UPDATES,
       entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
       entrySort: DEFAULT_ENTRY_SORT,
+      shortcuts: DEFAULT_SHORTCUTS,
     });
   });
 
@@ -202,6 +204,7 @@ describe("resolveSettings", () => {
       checkForUpdates: true,
       entryFieldVisibility: { ...DEFAULT_ENTRY_FIELD_VISIBILITY, notes: false },
       entrySort: "title-desc",
+      shortcuts: { ...DEFAULT_SHORTCUTS, lock: "Alt+L" },
     } satisfies Omit<AppSettings, "recentVaults">;
 
     expect(resolveSettings({ recentVaults: [], ...chosen })).toEqual(chosen);

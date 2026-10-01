@@ -1,4 +1,5 @@
 import { PasswordPolicyOptions } from "../domain";
+import { resolveShortcuts, ShortcutBindings, ShortcutOverrides } from "./shortcuts";
 
 /** One vault the user has previously opened or created, most-recent first. */
 export interface RecentVaultEntry {
@@ -203,6 +204,8 @@ export interface AppSettings {
    * shows all of its fields. */
   readonly entryFieldVisibility?: EntryFieldVisibility;
   readonly entrySort?: EntrySortId;
+  /** The in-app keyboard shortcuts the user rebound; the rest keep their defaults. */
+  readonly shortcuts?: ShortcutOverrides;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { recentVaults: [] };
@@ -245,6 +248,7 @@ export interface EffectiveSettings {
   readonly checkForUpdates: boolean;
   readonly entryFieldVisibility: EntryFieldVisibility;
   readonly entrySort: EntrySortId;
+  readonly shortcuts: ShortcutBindings;
 }
 
 /** Fills in every "not set yet" hole in `settings` with its default. */
@@ -264,6 +268,7 @@ export function resolveSettings(settings: AppSettings): EffectiveSettings {
     checkForUpdates: settings.checkForUpdates ?? DEFAULT_CHECK_FOR_UPDATES,
     entryFieldVisibility: settings.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
     entrySort: settings.entrySort ?? DEFAULT_ENTRY_SORT,
+    shortcuts: resolveShortcuts(settings.shortcuts),
   };
 }
 

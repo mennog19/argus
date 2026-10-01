@@ -234,3 +234,34 @@ describe("parseStoredSettings", () => {
     });
   });
 });
+
+describe("parseStoredSettings, shortcuts", () => {
+  it("keeps the rebound shortcuts", () => {
+    const shortcuts = { lock: "Alt+L", deleteEntry: "Control+Delete" };
+
+    expect(parse({ shortcuts }).shortcuts).toEqual(shortcuts);
+  });
+
+  it("rewrites a hand-typed shortcut in the spelling shortcuts are compared in", () => {
+    expect(parse({ shortcuts: { lock: "shift + ctrl + l" } }).shortcuts).toEqual({
+      lock: "Control+Shift+L",
+    });
+  });
+
+  it("drops a shortcut that isn't one, keeping the others", () => {
+    const shortcuts = { lock: "Alt+L", newEntry: "Control+Nope", editEntry: 5, copyUrl: "" };
+
+    expect(parse({ shortcuts }).shortcuts).toEqual({ lock: "Alt+L" });
+  });
+
+  it("ignores actions it doesn't know", () => {
+    expect(parse({ shortcuts: { selfDestruct: "Control+D" } }).shortcuts).toEqual({});
+  });
+
+  it.each([null, [], "Control+L", 42])(
+    "drops shortcuts that aren't an object (%j)",
+    (shortcuts) => {
+      expect(parse({ shortcuts }).shortcuts).toBeUndefined();
+    },
+  );
+});

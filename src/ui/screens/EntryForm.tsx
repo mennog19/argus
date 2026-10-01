@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { useContext, useState } from "react";
 import {
   CustomField,
   CustomFields,
@@ -21,6 +21,7 @@ import { IconPicker } from "../entry-icons/IconPicker";
 import { parseDateTimeLocalValue, toDateTimeLocalValue } from "../format";
 import { EyeIcon, EyeOffIcon } from "../icons";
 import { useAsyncAction } from "../use-async-action";
+import { ShortcutsContext, useShortcuts } from "../use-shortcuts";
 import { GroupOption } from "../vault-browsing";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import { TagsEditor } from "./TagsEditor";
@@ -79,6 +80,7 @@ export function EntryForm({
     initialEntry?.expiresAt ? toDateTimeLocalValue(initialEntry.expiresAt) : "",
   );
   const { busy, error, run, fail } = useAsyncAction();
+  const shortcuts = useContext(ShortcutsContext);
 
   function handleGenerate() {
     const generated = generatePassword(new PasswordPolicy(generatorPolicy));
@@ -86,8 +88,11 @@ export function EntryForm({
     setRevealed(true);
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  // The save shortcut does what the Save button does, and like the button
+  // does nothing while a save is already under way.
+  useShortcuts(shortcuts, { saveEntry: busy ? undefined : () => void submit() });
+
+  async function submit() {
     if (title.trim() === "") {
       fail("Title is required.");
       return;
@@ -164,7 +169,13 @@ export function EntryForm({
   }
 
   return (
-    <form className="entry-form" onSubmit={(event) => void handleSubmit(event)}>
+    <form
+      className="entry-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}
+    >
       <IconPicker
         value={icon}
         title={title}

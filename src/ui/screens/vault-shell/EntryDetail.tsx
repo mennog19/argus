@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Attachment,
   FieldReferences,
@@ -31,6 +31,9 @@ interface EntryDetailProps {
   clipboardClearSeconds: number;
   revealed: boolean;
   onToggleReveal: () => void;
+  /** Whether the "Delete this entry?" prompt is up. Held by the shell, so its delete shortcut can raise it. */
+  confirmingDelete: boolean;
+  onConfirmingDeleteChange: (confirming: boolean) => void;
   onEdit: () => void;
   onDelete: () => Promise<void>;
   onRestoreRevision: (index: number) => Promise<void>;
@@ -49,6 +52,8 @@ export function EntryDetail({
   clipboardClearSeconds,
   revealed,
   onToggleReveal,
+  confirmingDelete,
+  onConfirmingDeleteChange,
   onEdit,
   onDelete,
   onRestoreRevision,
@@ -67,7 +72,6 @@ export function EntryDetail({
   const otherCustomFields = totpConfig
     ? entry.customFields.values.filter((field) => !TOTP_FIELD_KEYS.has(field.key))
     : entry.customFields.values;
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { busy, error, run } = useAsyncAction();
   const revealLabel = revealed ? "Hide password" : "Show password";
 
@@ -89,6 +93,7 @@ export function EntryDetail({
               {entry.url}
             </button>
           )}
+          {clipboard.copiedField === "url" && <span className="copied-label">Copied</span>}
         </div>
         <div className="detail-header-actions">
           <button type="button" className="icon-button" aria-label="Edit entry" onClick={onEdit}>
@@ -98,7 +103,7 @@ export function EntryDetail({
             type="button"
             className="icon-button"
             aria-label="Delete entry"
-            onClick={() => setConfirmingDelete(true)}
+            onClick={() => onConfirmingDeleteChange(true)}
           >
             <TrashIcon size={18} strokeWidth={2.25} />
           </button>
@@ -111,7 +116,7 @@ export function EntryDetail({
           <button
             type="button"
             className="btn-ghost-sm"
-            onClick={() => setConfirmingDelete(false)}
+            onClick={() => onConfirmingDeleteChange(false)}
             disabled={busy}
           >
             Cancel

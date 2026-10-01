@@ -84,3 +84,26 @@ describe("formatHotkey", () => {
     expect(formatHotkey("Alt+ArrowLeft")).toBe("Alt + Left");
   });
 });
+
+describe("hotkeyFromKeyPress, for a shortcut inside Argus", () => {
+  it("accepts a key on its own", () => {
+    expect(hotkeyFromKeyPress(press("Delete"), false)).toEqual({
+      kind: "combo",
+      accelerator: "Delete",
+    });
+    expect(hotkeyFromKeyPress(press("KeyA"), false)).toEqual({ kind: "combo", accelerator: "A" });
+  });
+
+  it("still builds a combination from modifiers", () => {
+    expect(hotkeyFromKeyPress(press("KeyC", { ctrlKey: true, shiftKey: true }), false)).toEqual({
+      kind: "combo",
+      accelerator: "Control+Shift+C",
+    });
+  });
+
+  it("still waits while only a modifier is held", () => {
+    expect(hotkeyFromKeyPress(press("ShiftLeft", { shiftKey: true }), false)).toEqual({
+      kind: "pending",
+    });
+  });
+});

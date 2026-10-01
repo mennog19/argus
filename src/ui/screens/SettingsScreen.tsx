@@ -9,6 +9,7 @@ import { EntryCreationSection } from "./settings/EntryCreationSection";
 import { ExpiredEntriesSection } from "./settings/ExpiredEntriesSection";
 import { GroupsSection } from "./settings/GroupsSection";
 import { SecuritySection } from "./settings/SecuritySection";
+import { ShortcutsSection } from "./settings/ShortcutsSection";
 import { SettingChangeHandler } from "../setting-change";
 import { UpdatesSection } from "./settings/UpdatesSection";
 import { VaultInfoSection } from "./settings/VaultInfoSection";
@@ -66,6 +67,11 @@ export function SettingsScreen({
             onSettingChange={onSettingChange}
           />
           <AutoTypeSection autoType={settings.autoType} onSettingChange={onSettingChange} />
+          <ShortcutsSection
+            shortcuts={settings.shortcuts}
+            autoTypeHotkey={settings.autoType.enabled ? settings.autoType.hotkey : undefined}
+            onSettingChange={onSettingChange}
+          />
           <GroupsSection
             groupDeleteMode={settings.groupDeleteMode}
             onSettingChange={onSettingChange}

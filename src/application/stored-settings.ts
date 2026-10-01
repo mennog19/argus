@@ -23,6 +23,12 @@ import {
   positiveInteger,
   SettingsImportError,
 } from "./settings-validation";
+import {
+  normalizeAccelerator,
+  SHORTCUT_ACTIONS,
+  ShortcutAction,
+  ShortcutOverrides,
+} from "./shortcuts";
 
 /**
  * Reads the app's own settings file, validating it field by field.
@@ -69,6 +75,7 @@ export function parseStoredSettings(text: string): AppSettings {
     ),
     entryFieldVisibility: lenient(raw.entryFieldVisibility, parseFieldVisibility),
     entrySort: lenient(raw.entrySort, (value) => oneOf(value, ENTRY_SORT_IDS, "entrySort")),
+    shortcuts: lenient(raw.shortcuts, parseShortcuts),
   };
 }
 
@@ -100,6 +107,25 @@ function parseRecentVaults(value: unknown): readonly RecentVaultEntry[] {
       // A malformed key file path costs only itself, not the whole entry.
       ...(typeof keyFilePath === "string" ? { keyFilePath } : {}),
     }));
+}
+
+/**
+ * Keeps the bindings that are real accelerators, in the spelling they're
+ * compared in. A bad one costs only its own action its override.
+ */
+function parseShortcuts(value: unknown): ShortcutOverrides {
+  if (!isRecord(value)) {
+    throw new SettingsImportError("shortcuts is malformed.");
+  }
+  const overrides: Partial<Record<ShortcutAction, string>> = {};
+  for (const action of SHORTCUT_ACTIONS) {
+    const raw = value[action];
+    const accelerator = typeof raw === "string" ? normalizeAccelerator(raw) : undefined;
+    if (accelerator !== undefined) {
+      overrides[action] = accelerator;
+    }
+  }
+  return overrides;
 }
 
 function parseAutoLock(value: unknown): AutoLockSettings {

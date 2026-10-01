@@ -58,11 +58,12 @@ function keyToken(code: string): string {
 }
 
 /**
- * Interprets a key press while recording a hotkey. A global hotkey has to
- * include a modifier (or be a function key): a bare letter would be swallowed
- * from every application on the machine.
+ * Interprets a key press as a hotkey. A global hotkey has to include a
+ * modifier (or be a function key): a bare letter would be swallowed from
+ * every application on the machine. A shortcut that only works inside Argus
+ * can be a key on its own, which passing `requireModifier` as false allows.
  */
-export function hotkeyFromKeyPress(event: HotkeyKeyEvent): HotkeyKeyPress {
+export function hotkeyFromKeyPress(event: HotkeyKeyEvent, requireModifier = true): HotkeyKeyPress {
   if (!BINDABLE_CODE.test(event.code)) {
     return { kind: "pending" };
   }
@@ -74,7 +75,7 @@ export function hotkeyFromKeyPress(event: HotkeyKeyEvent): HotkeyKeyPress {
     event.metaKey && "Super",
   ].filter((modifier): modifier is string => modifier !== false);
 
-  if (modifiers.length === 0 && !FUNCTION_KEY.test(event.code)) {
+  if (requireModifier && modifiers.length === 0 && !FUNCTION_KEY.test(event.code)) {
     return { kind: "rejected", reason: "Include Ctrl, Alt, Shift, or Win in the shortcut" };
   }
 

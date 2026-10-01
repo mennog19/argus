@@ -44,7 +44,7 @@ Compare the output with the matching `.sha256` file on the release page. If they
 
 - **Fields.** Title, username, password, URL, notes, tags, an expiry date, and custom fields, which can be protected. URLs typed without a scheme (`github.com/login`) open as https.
 - **Groups and a recycle bin.** Groups nest and can be reordered by dragging; entries can be dragged between them. Deleted entries and groups go to the recycle bin first.
-- **Search** across title, username, URL, notes, tags and custom fields. **Ctrl+F** jumps to the search box.
+- **Search** across title, username, URL, notes, tags and custom fields. **Ctrl+F** jumps to the search box, the arrow keys move through the results, and Esc clears the search.
 - **TOTP.** Shows time-based one-time codes stored the way KeePassXC or the classic KeePass TOTP plugin stores them.
 - **History.** Every edit keeps the previous version. Earlier versions can be viewed, restored, or deleted, for example to remove an old password from the file.
 - **Attachments.** Files stored in an entry can be added, renamed, deleted, or saved to disk.
@@ -63,9 +63,50 @@ Compare the output with the matching `.sha256` file on the release page. If they
 
 - **Auto-lock** after a period of inactivity, when the window is minimized, when the computer sleeps, or when Windows is locked. Each is opt-in.
 - **Screen-capture protection.** The window is excluded from screenshots, recordings and screen sharing unless you turn that off.
+- **Keyboard shortcuts** for locking, copying, and editing, which [you can change](#keyboard-shortcuts).
 - **Close to tray**, a dark and a light theme, and a choice of accent colour.
 - **Settings export and import**, separate from any vault.
 - **Update check**, opt-in. When it's on, Argus asks GitHub for a newer release each time it starts and offers to install it.
+
+## Keyboard shortcuts
+
+These work while the Argus window is focused and a vault is open.
+
+| Shortcut     | Action                                  |
+| ------------ | --------------------------------------- |
+| Ctrl+F       | Search                                  |
+| Ctrl+L       | Lock the vault                          |
+| Ctrl+N       | New entry                               |
+| Ctrl+E       | Edit the selected entry                 |
+| Ctrl+S       | Save the entry being edited             |
+| Delete       | Delete the selected entry (asks first)  |
+| Ctrl+B       | Copy username                           |
+| Ctrl+Shift+C | Copy password                           |
+| Ctrl+T       | Copy authenticator code                 |
+| Ctrl+U       | Copy URL                                |
+| Ctrl+Shift+U | Open URL in the browser                 |
+| Ctrl+H       | Show or hide the password               |
+| Ctrl+G       | Open the password generator             |
+| Ctrl+,       | Open settings                           |
+| ↑ / ↓        | Move through the entry list             |
+| Enter        | In the search box: select the first hit |
+
+Copying the password is on Ctrl+Shift+C, not Ctrl+C, so that Ctrl+C keeps copying whatever text you have selected.
+
+Every shortcut except Ctrl+F and the list keys can be changed under **Settings → Keyboard shortcuts**: click one and press the new combination. A shortcut that clashes with another one, with the auto-type hotkey, or with a standard editing key such as Ctrl+C is shown in red.
+
+They can also be set in `settings.json` (see [Where Argus keeps things](#where-argus-keeps-things)), under `shortcuts`. Only the ones you change need to be listed:
+
+```json
+{
+  "shortcuts": {
+    "lock": "Control+Shift+L",
+    "deleteEntry": "Control+Delete"
+  }
+}
+```
+
+The action names are `lock`, `newEntry`, `editEntry`, `saveEntry`, `deleteEntry`, `copyUsername`, `copyPassword`, `copyTotp`, `copyUrl`, `openUrl`, `togglePassword`, `openGenerator` and `openSettings`. A combination is any of `Control`, `Alt`, `Shift` and `Super` followed by one key, joined with `+`. Keys are letters, digits, `F1` to `F24`, and names such as `Delete`, `Insert`, `Space`, `Comma` or `ArrowUp`. An entry Argus can't read is ignored and that action keeps its default. Edit the file while Argus is closed.
 
 ## KeePass and KeePassXC compatibility
 

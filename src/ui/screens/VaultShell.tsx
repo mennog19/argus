@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Attachment, CustomIcon, Entry, EntryId, Group, GroupId, Vault } from "../../domain";
+import {
+  Attachment,
+  CustomIcon,
+  Entry,
+  EntryId,
+  generateTotpCode,
+  Group,
+  GroupId,
+  openableUrl,
+  totpConfigFromCustomFields,
+  Vault,
+} from "../../domain";
 import { DEFAULT_ENTRY_FIELD_VISIBILITY, EffectiveSettings } from "../../application/settings";
 import { VaultFileInfo } from "../../application/vault-access-service";
 import { VaultMergeSource } from "../../application/vault-merge-source";
@@ -8,6 +19,7 @@ import { ClipboardWriter } from "../../application/clipboard";
 import { UrlOpener } from "../../application/url-opener";
 import { CustomIconLibrary, CustomIconsContext } from "../entry-icons/custom-icons-context";
 import { useClipboardCopy } from "../use-clipboard-copy";
+import { ShortcutHandlers, ShortcutsContext, useShortcuts } from "../use-shortcuts";
 import { sortEntries } from "../entry-sort";
 import { vaultCommands } from "../vault-commands";
 import {
@@ -86,6 +98,7 @@ export function VaultShell({
     entrySort,
     generatorPolicy,
     groupDeleteMode,
+    shortcuts,
   } = settings;
   const [view, setView] = useState<ShellView>("vault");
   const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_ITEMS);
@@ -95,6 +108,7 @@ export function VaultShell({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocusRequest, setSearchFocusRequest] = useState(0);
   const [draggingEntryId, setDraggingEntryId] = useState<string | undefined>(undefined);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | undefined>(undefined);
   const merge = useMergeFlow(mergeSource, filePath);
   const commands = vaultCommands(vault, onSave);
   const customIconLibrary: CustomIconLibrary = {
@@ -181,11 +195,59 @@ export function VaultShell({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [mergeInProgress, isRecycleBinSelected]);
 
+  // The entry the detail pane is showing, which is what the entry shortcuts
+  // act on. None while a form is open or another view is up.
+  const shown = view === "vault" && formMode === "none" ? selected : undefined;
+
+  function entryShortcuts(): ShortcutHandlers {
+    if (!shown) {
+      return {};
+    }
+    // Resolved, as the detail pane shows it: a linked entry copies the values
+    // it points at, not its `{REF:…}` text.
+    const entry = references.resolveEntry(shown.entry);
+    const totp = totpConfigFromCustomFields(entry.customFields);
+    return {
+      editEntry: startEditEntry,
+      deleteEntry: () => setConfirmingDeleteId(entry.id.toString()),
+      togglePassword: () => setRevealed((value) => !value),
+      copyUsername: () => void clipboard.copy(entry.username, "username"),
+      copyPassword: () => void clipboard.copy(entry.password.reveal(), "password"),
+      copyTotp:
+        totp &&
+        (() => void generateTotpCode(totp).then((code) => clipboard.copy(code.value, "totp"))),
+      ...(entry.url !== "" && {
+        copyUrl: () => void clipboard.copy(entry.url, "url"),
+        openUrl: () => void urlOpener.open(openableUrl(entry.url)),
+      }),
+    };
+  }
+
+  // Locking always works. Everything else is left alone while a merge is in
+  // progress, like Ctrl+F, so that a stray key doesn't abandon the merge.
+  useShortcuts(shortcuts, {
+    lock: onLock,
+    ...(!mergeInProgress && {
+      newEntry: () => {
+        setView("vault");
+        if (isRecycleBinSelected) {
+          // The recycle bin has no detail pane to put the form in.
+          selectGroup(ALL_ITEMS);
+        }
+        startCreateEntry();
+      },
+      openGenerator: () => goToView("generator"),
+      openSettings: () => goToView("settings"),
+      ...entryShortcuts(),
+    }),
+  });
+
   const newEntryGroupId =
     effectiveGroupId === ALL_ITEMS ? rootGroup.id.toString() : effectiveGroupId;
 
   function selectGroup(groupId: string) {
     setSelectedGroupId(groupId);
+    setConfirmingDeleteId(undefined);
     setSelectedEntryId(undefined);
     setRevealed(false);
     setFormMode("none");
@@ -200,6 +262,7 @@ export function VaultShell({
    */
   function selectEntry(entry: Entry) {
     setSelectedEntryId(entry.id.toString());
+    setConfirmingDeleteId(undefined);
     setRevealed(false);
     setFormMode("none");
     onVaultChange(vault.updateEntry(entry.markAccessed(new Date())));
@@ -236,6 +299,7 @@ export function VaultShell({
 
   async function handleDeleteEntry(entryId: EntryId) {
     await commands.deleteEntry(entryId);
+    setConfirmingDeleteId(undefined);
     setSelectedEntryId(undefined);
   }
 
@@ -252,12 +316,19 @@ export function VaultShell({
   /** Leaving via the nav rail abandons any in-progress merge. */
   function goToView(next: ShellView) {
     merge.reset();
+    setConfirmingDeleteId(undefined);
     setView(next);
   }
 
   function startCreateEntry() {
     setSelectedEntryId(undefined);
+    setConfirmingDeleteId(undefined);
     setFormMode("create");
+  }
+
+  function startEditEntry() {
+    setConfirmingDeleteId(undefined);
+    setFormMode("edit");
   }
 
   function renderDetailPane() {
@@ -300,7 +371,11 @@ export function VaultShell({
         clipboardClearSeconds={clipboardClearSeconds}
         revealed={revealed}
         onToggleReveal={() => setRevealed((value) => !value)}
-        onEdit={() => setFormMode("edit")}
+        confirmingDelete={confirmingDeleteId === selected.entry.id.toString()}
+        onConfirmingDeleteChange={(confirming) =>
+          setConfirmingDeleteId(confirming ? selected.entry.id.toString() : undefined)
+        }
+        onEdit={startEditEntry}
         onDelete={() => handleDeleteEntry(selected.entry.id)}
         onRestoreRevision={(index) => commands.restoreEntryRevision(selected.entry, index)}
         onDeleteRevision={(index) => commands.deleteEntryRevision(selected.entry, index)}
@@ -417,10 +492,12 @@ export function VaultShell({
 
   return (
     <CustomIconsContext value={customIconLibrary}>
-      <div className="vault-shell">
-        <NavRail view={view} onNavigate={goToView} onLock={onLock} />
-        {renderView()}
-      </div>
+      <ShortcutsContext value={shortcuts}>
+        <div className="vault-shell">
+          <NavRail view={view} onNavigate={goToView} onLock={onLock} />
+          {renderView()}
+        </div>
+      </ShortcutsContext>
 
       {merge.filePath !== undefined && merge.sourceVault === undefined && (
         <MergeUnlockDialog

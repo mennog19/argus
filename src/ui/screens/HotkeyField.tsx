@@ -6,6 +6,10 @@ interface HotkeyFieldProps {
   /** The current accelerator, e.g. `"Control+Shift+A"`. */
   value: string;
   onChange: (accelerator: string) => void;
+  /** Lets a key be recorded with no modifier held. Not for OS-wide hotkeys. */
+  allowBareKeys?: boolean;
+  /** Why the current hotkey clashes with something else. Shown in red with the hotkey itself. */
+  conflict?: string;
 }
 
 /**
@@ -14,10 +18,18 @@ interface HotkeyFieldProps {
  * Nothing is reported until Enter, so a half-typed combination can never
  * reach the OS as a registration attempt.
  */
-export function HotkeyField({ id, value, onChange }: HotkeyFieldProps) {
+export function HotkeyField({
+  id,
+  value,
+  onChange,
+  allowBareKeys = false,
+  conflict,
+}: HotkeyFieldProps) {
   const [recording, setRecording] = useState(false);
   const [pending, setPending] = useState<string | undefined>(undefined);
   const [rejection, setRejection] = useState<string | undefined>(undefined);
+
+  const showConflict = conflict !== undefined && !recording;
 
   function stopRecording() {
     setRecording(false);
@@ -46,7 +58,7 @@ export function HotkeyField({ id, value, onChange }: HotkeyFieldProps) {
       return;
     }
 
-    const press = hotkeyFromKeyPress(event);
+    const press = hotkeyFromKeyPress(event, !allowBareKeys);
     if (press.kind === "combo") {
       setPending(press.accelerator);
       setRejection(undefined);
@@ -60,7 +72,7 @@ export function HotkeyField({ id, value, onChange }: HotkeyFieldProps) {
       <button
         id={id}
         type="button"
-        className={`hotkey-field-value${recording ? " recording" : ""}`}
+        className={`hotkey-field-value${recording ? " recording" : ""}${showConflict ? " conflict" : ""}`}
         onClick={() => setRecording(true)}
         onKeyDown={handleKeyDown}
         onBlur={stopRecording}
@@ -76,6 +88,7 @@ export function HotkeyField({ id, value, onChange }: HotkeyFieldProps) {
           {rejection ?? (pending !== undefined ? "Enter to save · Esc to cancel" : "Esc to cancel")}
         </span>
       )}
+      {showConflict && <span className="field-error">{conflict}</span>}
     </div>
   );
 }

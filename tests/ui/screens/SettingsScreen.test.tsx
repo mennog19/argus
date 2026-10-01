@@ -13,6 +13,7 @@ import {
   GroupDeleteMode,
   Theme,
 } from "../../../src/application/settings";
+import { DEFAULT_SHORTCUTS, ShortcutBindings } from "../../../src/application/shortcuts";
 import { VaultFileInfo } from "../../../src/application/vault-access-service";
 import { SettingsScreen } from "../../../src/ui/screens/SettingsScreen";
 import { VaultFileActions } from "../../../src/ui/screens/settings/DangerZoneSection";
@@ -46,6 +47,7 @@ function renderSettings(
     closeToTray?: boolean;
     checkForUpdates?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
+    shortcuts?: ShortcutBindings;
     vaultName?: string;
     vaultFileActions?: Partial<VaultFileActions>;
     onOpenMergeWizard?: () => void;
@@ -75,6 +77,7 @@ function renderSettings(
     checkForUpdates: overrides.checkForUpdates ?? false,
     entryFieldVisibility: overrides.entryFieldVisibility ?? DEFAULT_ENTRY_FIELD_VISIBILITY,
     entrySort: "manual",
+    shortcuts: overrides.shortcuts ?? DEFAULT_SHORTCUTS,
   };
   const { container, unmount } = render(
     <SettingsScreen

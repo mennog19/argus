@@ -32,6 +32,7 @@ import {
   Theme,
 } from "../../../src/application/settings";
 import { ClipboardWriter } from "../../../src/application/clipboard";
+import { DEFAULT_SHORTCUTS, ShortcutBindings } from "../../../src/application/shortcuts";
 import { UrlOpener } from "../../../src/application/url-opener";
 import { VaultMergeSource } from "../../../src/application/vault-merge-source";
 import { GROUP_DRAG_TYPE } from "../../../src/ui/group-drag";
@@ -66,6 +67,7 @@ const TEST_SETTINGS: EffectiveSettings = {
   checkForUpdates: false,
   entryFieldVisibility: DEFAULT_ENTRY_FIELD_VISIBILITY,
   entrySort: DEFAULT_ENTRY_SORT,
+  shortcuts: DEFAULT_SHORTCUTS,
 };
 
 function fakeUrlOpener(): UrlOpener {
@@ -100,6 +102,8 @@ function renderShell(
     contentProtection?: boolean;
     entryFieldVisibility?: EntryFieldVisibility;
     entrySort?: EntrySortId;
+    shortcuts?: ShortcutBindings;
+    urlOpener?: UrlOpener;
     onExportSettings?: () => Promise<string | undefined>;
     onImportSettings?: () => Promise<SettingsImportResult | undefined>;
     onVaultChange?: (vault: Vault) => void;
@@ -122,6 +126,7 @@ function renderShell(
   const onVaultChange = overrides.onVaultChange ?? vi.fn();
   const onExportAttachment = overrides.onExportAttachment ?? vi.fn().mockResolvedValue(undefined);
   const mergeSource = overrides.mergeSource ?? fakeMergeSource();
+  const urlOpener = overrides.urlOpener ?? fakeUrlOpener();
   // Flat overrides are this helper's own convenience; the shell itself takes
   // one resolved settings object.
   const settings: EffectiveSettings = {
@@ -138,13 +143,14 @@ function renderShell(
     checkForUpdates: TEST_SETTINGS.checkForUpdates,
     entryFieldVisibility: overrides.entryFieldVisibility ?? TEST_SETTINGS.entryFieldVisibility,
     entrySort: overrides.entrySort ?? TEST_SETTINGS.entrySort,
+    shortcuts: overrides.shortcuts ?? TEST_SETTINGS.shortcuts,
   };
   render(
     <VaultShell
       vault={vault}
       filePath="C:/vaults/personal.kdbx"
       fileInfo={undefined}
-      urlOpener={fakeUrlOpener()}
+      urlOpener={urlOpener}
       clipboardWriter={clipboardWriter}
       mergeSource={mergeSource}
       settings={settings}
@@ -169,6 +175,7 @@ function renderShell(
     onVaultChange,
     onExportAttachment,
     mergeSource,
+    urlOpener,
   };
 }
 
