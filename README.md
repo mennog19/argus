@@ -129,10 +129,37 @@ Argus edits the original KDBX document in place and doesn't rebuild it, so what 
 
 The settings file holds preferences, the paths of recently opened vaults, and the path of the key file each was last unlocked with. It never holds a password or a key file's contents. Uninstalling Argus leaves your vaults and their backups where they are.
 
+## What Argus is built on
+
+Argus is the app around a vault, not the cryptography inside it. Encrypting and decrypting a vault is done by established open-source libraries; Argus's own code is the interface and the handling of the file and its contents once they are open.
+
+**From libraries**
+
+| What                                                    | Library                                                                 |
+| ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Reading, writing, encrypting and decrypting KDBX files  | [kdbxweb](https://github.com/keeweb/kdbxweb), the library behind KeeWeb |
+| Argon2 key derivation                                   | [hash-wasm](https://github.com/Daninet/hash-wasm)                       |
+| Random numbers and the HMAC behind one-time codes       | The webview's built-in Web Crypto                                       |
+| The window, file access, tray, global hotkey, updater   | [Tauri 2](https://tauri.app/) and its official plugins                  |
+| The interface                                           | [React](https://react.dev/)                                             |
+
+kdbxweb is used with a small patch, in [`patches/`](patches/), that fixes how a few timestamps and entry fields are written. It doesn't touch encryption.
+
+**Written for Argus**
+
+- The interface, and everything it does with an open vault: search, merge, history, the health check, expiry handling and field references.
+- The password generator and the one-time code calculation. Both get their randomness and HMAC from Web Crypto and implement no cipher or hash themselves.
+- The connection between kdbxweb and hash-wasm, and the limits on how much key-derivation work a file may ask for (see [Security model](#security-model)).
+- The key-derivation settings a new vault gets, and the master password rules.
+- Atomic saving and the rolling backups.
+- Clipboard clearing, auto-type, auto-lock and screen-capture protection, which call Windows APIs directly.
+
+So a flaw in vault encryption itself would most likely be a flaw in one of those libraries, and a flaw in how secrets are shown, copied, typed or saved would be Argus's.
+
 ## Security model
 
 - **Local only.** No accounts, no sync service, no telemetry. The only network request Argus makes by itself is the update check, which is off unless you turn it on. Opening an entry's URL hands it to your default browser.
-- **Encryption.** Argus adds no cryptography of its own: a vault is protected by the KDBX format's encryption and key derivation, through [kdbxweb](https://github.com/keeweb/kdbxweb) with Argon2 from [hash-wasm](https://github.com/Daninet/hash-wasm).
+- **Encryption.** Argus adds no cryptography of its own: a vault is protected by the KDBX format's encryption and key derivation, through [kdbxweb](https://github.com/keeweb/kdbxweb) with Argon2 from [hash-wasm](https://github.com/Daninet/hash-wasm). [What Argus is built on](#what-argus-is-built-on) lists which parts come from libraries and which are Argus's own.
 - **Master password and key files.** A new master password needs at least 8 characters, including a capital letter, a number, and a symbol. Existing vaults open with whatever password they have. Argus remembers the _path_ of the key file each recent vault was last unlocked with, never its contents. Changing the password or the key file re-encrypts the vault's `.bak` backups to match; a backup that can't be re-encrypted is deleted, and Argus tells you.
 - **In memory.** Locking drops the decrypted vault, and unlocking reads the file again. While a vault is unlocked, its contents are in Argus's memory as ordinary strings. Argus runs in a webview, which can't pin or wipe memory, so it does not protect an unlocked vault from malware running under your account.
 - **Locking.** Argus locks when you tell it to and when it quits. The auto-lock triggers are all off until you turn them on in Settings.
@@ -260,6 +287,8 @@ The release workflow runs CI, builds and signs both installers, and attaches the
 
 A local `pnpm tauri build` doesn't produce updater signatures and needs no key. To build signed installers the way the release does, set `TAURI_SIGNING_PRIVATE_KEY` and add `--ci --config src-tauri/tauri.release.conf.json`. Without `--ci`, a key with no password leaves the build waiting at a password prompt.
 
-## License
+## License and disclaimer
 
-MIT. See [`LICENSE`](LICENSE).
+Argus is open source under the MIT license; see [`LICENSE`](LICENSE). The full source is in this repository, so you can read it, build it yourself, and change it.
+
+Argus is provided as is, without warranty of any kind. You use it at your own risk: the authors and contributors are not liable for lost or corrupted vaults, locked-out or leaked passwords, or any other damage that comes from using it. Keep your own backups of every vault you open with it.
