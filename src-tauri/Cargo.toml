@@ -35,7 +35,7 @@ percent-encoding = "2"
 # secrets uses the Win32 clipboard directly too, to keep them out of clipboard
 # history and cloud sync. Session-lock detection uses WTS notifications.
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.61", features = [
+windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_System_Com",
     "Win32_System_DataExchange",
