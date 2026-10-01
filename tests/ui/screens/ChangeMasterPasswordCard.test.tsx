@@ -98,6 +98,25 @@ describe("ChangeMasterPasswordCard", () => {
     expect(onChangeMasterPassword).not.toHaveBeenCalled();
   });
 
+  it.each(["New password", "Confirm new password"])(
+    "clears the mismatch error when the %s field is edited",
+    async (label) => {
+      const user = userEvent.setup();
+      render(<ChangeMasterPasswordCard onChangeMasterPassword={vi.fn()} />);
+
+      await reveal(user);
+      await user.type(screen.getByLabelText("Current password"), "old-pw");
+      await user.type(screen.getByLabelText("New password"), "New-password1");
+      await user.type(screen.getByLabelText("Confirm new password"), "different");
+      await user.click(screen.getByRole("button", { name: /change master password/i }));
+      expect(await screen.findByText("New passwords do not match.")).toBeInTheDocument();
+
+      await user.type(screen.getByLabelText(label), "x");
+
+      expect(screen.queryByText("New passwords do not match.")).not.toBeInTheDocument();
+    },
+  );
+
   it("submits the current and new password, clears the form, and shows a success message", async () => {
     const user = userEvent.setup();
     const onChangeMasterPassword = vi.fn().mockResolvedValue(NOTHING_LEFT_BEHIND);

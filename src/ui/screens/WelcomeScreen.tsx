@@ -174,7 +174,10 @@ export function WelcomeScreen({
                 type={createPasswordRevealed ? "text" : "password"}
                 className="field-input"
                 value={createPassword}
-                onChange={(event) => setCreatePassword(event.target.value)}
+                onChange={(event) => {
+                  setCreatePassword(event.target.value);
+                  clearError();
+                }}
                 placeholder="Master password"
                 aria-describedby="create-password-hint"
               />
@@ -203,7 +206,10 @@ export function WelcomeScreen({
                 type={createConfirmRevealed ? "text" : "password"}
                 className="field-input"
                 value={createConfirmPassword}
-                onChange={(event) => setCreateConfirmPassword(event.target.value)}
+                onChange={(event) => {
+                  setCreateConfirmPassword(event.target.value);
+                  clearError();
+                }}
                 placeholder="Confirm password"
               />
               <button

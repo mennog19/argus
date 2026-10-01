@@ -24,7 +24,7 @@ export function ChangeMasterPasswordCard({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const { busy, error, run, fail } = useAsyncAction();
+  const { busy, error, run, fail, clearError } = useAsyncAction();
   const [success, setSuccess] = useState<MasterPasswordChangeResult | undefined>(undefined);
 
   async function handleSubmit(event: FormEvent) {
@@ -110,7 +110,10 @@ export function ChangeMasterPasswordCard({
             type="password"
             className="field-input"
             value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
+            onChange={(event) => {
+              setNewPassword(event.target.value);
+              clearError();
+            }}
             placeholder={MASTER_PASSWORD_HINT}
           />
           <PasswordStrengthMeter password={newPassword} />
@@ -124,7 +127,10 @@ export function ChangeMasterPasswordCard({
             type="password"
             className="field-input"
             value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              clearError();
+            }}
             placeholder="Confirm new password"
           />
         </div>

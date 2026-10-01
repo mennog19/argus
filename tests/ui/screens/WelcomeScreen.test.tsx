@@ -353,6 +353,32 @@ describe("WelcomeScreen", () => {
       expect(await screen.findByText("Passwords do not match.")).toBeInTheDocument();
     });
 
+    it.each(["Master password", "Confirm password"])(
+      "clears the mismatch error when the %s field is edited",
+      async (label) => {
+        const user = userEvent.setup();
+        render(
+          <WelcomeScreen
+            recentVaults={[]}
+            vaultAccessService={fakeService()}
+            onOpened={vi.fn()}
+            onSelectRecent={vi.fn()}
+          />,
+        );
+
+        await openCreateForm(user);
+        await user.type(screen.getByLabelText("Vault name"), "Personal");
+        await user.type(screen.getByLabelText("Master password"), "Hunter2-long");
+        await user.type(screen.getByLabelText("Confirm password"), "different");
+        await user.click(screen.getByRole("button", { name: /choose location & create/i }));
+        expect(await screen.findByText("Passwords do not match.")).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText(label), "x");
+
+        expect(screen.queryByText("Passwords do not match.")).not.toBeInTheDocument();
+      },
+    );
+
     it("creates the vault and calls onOpened on success", async () => {
       const user = userEvent.setup();
       const opened: OpenedVault = {
