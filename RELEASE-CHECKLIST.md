@@ -8,8 +8,7 @@ At the time of review, lint was clean and all 1,133 tests passed at 100% coverag
 
 - [ ] **Code signing.** Without it, Windows SmartScreen will warn users off an unsigned password manager.
 - [ ] **Report the kdbxweb date bug upstream.** kdbxweb writes two KDBX 4.1 dates (on custom data items and custom icons) in a form KeePass 2 rejects, so KeePass couldn't reopen such a vault after Argus saved it. It's fixed here with a patch in `patches/`.
-- [ ] **Lock in the app identifier before release.** Changing `dev.argus.app` later moves the settings folder and loses users' recent-vault list. Also write a changelog.
-- [ ] **Manual KeePassXC check.** The automated fixtures come from KeePass 2, and files Argus saves from them reopen in KeePass 2. Still open a real KeePassXC vault (with attachments, TOTP and custom icons), edit and save it in Argus, then reopen it in KeePassXC.
+- [ ] **Write a changelog.**
 
 ## Already done well
 
