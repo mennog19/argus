@@ -282,6 +282,57 @@ describe("WelcomeScreen", () => {
       expect(screen.getByText("Weak")).toBeInTheDocument();
     });
 
+    it("toggles each password field's visibility with its own eye button", async () => {
+      const user = userEvent.setup();
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={fakeService()}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await openCreateForm(user);
+      const password = screen.getByLabelText("Master password");
+      const confirm = screen.getByLabelText("Confirm password");
+      expect(password).toHaveAttribute("type", "password");
+      expect(confirm).toHaveAttribute("type", "password");
+
+      await user.click(screen.getByRole("button", { name: "Show password" }));
+      expect(password).toHaveAttribute("type", "text");
+      expect(confirm).toHaveAttribute("type", "password");
+
+      await user.click(screen.getByRole("button", { name: "Show confirm password" }));
+      expect(confirm).toHaveAttribute("type", "text");
+
+      await user.click(screen.getByRole("button", { name: "Hide password" }));
+      await user.click(screen.getByRole("button", { name: "Hide confirm password" }));
+      expect(password).toHaveAttribute("type", "password");
+      expect(confirm).toHaveAttribute("type", "password");
+    });
+
+    it("hides the passwords again after Back", async () => {
+      const user = userEvent.setup();
+      render(
+        <WelcomeScreen
+          recentVaults={[]}
+          vaultAccessService={fakeService()}
+          onOpened={vi.fn()}
+          onSelectRecent={vi.fn()}
+        />,
+      );
+
+      await openCreateForm(user);
+      await user.click(screen.getByRole("button", { name: "Show password" }));
+      await user.click(screen.getByRole("button", { name: "Show confirm password" }));
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      await openCreateForm(user);
+
+      expect(screen.getByLabelText("Master password")).toHaveAttribute("type", "password");
+      expect(screen.getByLabelText("Confirm password")).toHaveAttribute("type", "password");
+    });
+
     it("validates the passwords match", async () => {
       const user = userEvent.setup();
       render(

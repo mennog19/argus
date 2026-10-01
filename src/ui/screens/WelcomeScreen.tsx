@@ -5,6 +5,7 @@ import { MASTER_PASSWORD_HINT, masterPasswordRuleError } from "../master-passwor
 import { useAsyncAction } from "../use-async-action";
 import { ArgusMark } from "../ArgusMark";
 import { basename, formatRelativeTime } from "../format";
+import { EyeIcon, EyeOffIcon } from "../icons";
 import { NewKeyFileChoice, newVaultKeyFile, NO_NEW_KEY_FILE } from "../new-key-file-choice";
 import { KeyFileField } from "./KeyFileField";
 import { NewKeyFileOption } from "./NewKeyFileOption";
@@ -33,6 +34,8 @@ export function WelcomeScreen({
   const [createPassword, setCreatePassword] = useState("");
   const [createConfirmPassword, setCreateConfirmPassword] = useState("");
   const [createKeyFile, setCreateKeyFile] = useState<NewKeyFileChoice>(NO_NEW_KEY_FILE);
+  const [createPasswordRevealed, setCreatePasswordRevealed] = useState(false);
+  const [createConfirmRevealed, setCreateConfirmRevealed] = useState(false);
 
   function resetToIdle() {
     setMode("idle");
@@ -43,6 +46,8 @@ export function WelcomeScreen({
     setCreatePassword("");
     setCreateConfirmPassword("");
     setCreateKeyFile(NO_NEW_KEY_FILE);
+    setCreatePasswordRevealed(false);
+    setCreateConfirmRevealed(false);
   }
 
   async function handleOpenSubmit(event: FormEvent) {
@@ -163,28 +168,56 @@ export function WelcomeScreen({
             <label className="field-label" htmlFor="create-password">
               Master password
             </label>
-            <input
-              id="create-password"
-              type="password"
-              className="field-input"
-              value={createPassword}
-              onChange={(event) => setCreatePassword(event.target.value)}
-              placeholder={MASTER_PASSWORD_HINT}
-            />
+            <div className="field-input-with-action">
+              <input
+                id="create-password"
+                type={createPasswordRevealed ? "text" : "password"}
+                className="field-input"
+                value={createPassword}
+                onChange={(event) => setCreatePassword(event.target.value)}
+                placeholder="Master password"
+                aria-describedby="create-password-hint"
+              />
+              <button
+                type="button"
+                className="field-reveal-button"
+                aria-label={createPasswordRevealed ? "Hide password" : "Show password"}
+                title={createPasswordRevealed ? "Hide password" : "Show password"}
+                onClick={() => setCreatePasswordRevealed((value) => !value)}
+              >
+                {createPasswordRevealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
+            <div id="create-password-hint" className="field-hint">
+              {MASTER_PASSWORD_HINT}
+            </div>
             <PasswordStrengthMeter password={createPassword} />
           </div>
           <div className="field-group">
             <label className="field-label" htmlFor="create-confirm-password">
               Confirm password
             </label>
-            <input
-              id="create-confirm-password"
-              type="password"
-              className="field-input"
-              value={createConfirmPassword}
-              onChange={(event) => setCreateConfirmPassword(event.target.value)}
-              placeholder="Confirm password"
-            />
+            <div className="field-input-with-action">
+              <input
+                id="create-confirm-password"
+                type={createConfirmRevealed ? "text" : "password"}
+                className="field-input"
+                value={createConfirmPassword}
+                onChange={(event) => setCreateConfirmPassword(event.target.value)}
+                placeholder="Confirm password"
+              />
+              <button
+                type="button"
+                className="field-reveal-button"
+                aria-label={
+                  createConfirmRevealed ? "Hide confirm password" : "Show confirm password"
+                }
+                title={createConfirmRevealed ? "Hide password" : "Show password"}
+                onClick={() => setCreateConfirmRevealed((value) => !value)}
+              >
+                {createConfirmRevealed ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
           </div>
           <NewKeyFileOption
             choice={createKeyFile}
