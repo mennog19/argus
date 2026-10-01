@@ -65,6 +65,9 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-ui);
+  /* JetBrains Mono's code ligatures would merge password characters such as
+     "->" into a single arrow glyph, misrepresenting the actual value. */
+  font-variant-ligatures: no-contextual;
 }
 
 #root {
@@ -81,6 +84,7 @@ select,
 textarea,
 button {
   font-family: inherit;
+  font-variant-ligatures: inherit;
 }
 
 button {
