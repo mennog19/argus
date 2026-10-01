@@ -1,0 +1,37 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # One PR a week for everything that stays inside its major version.
+      # Major versions come as their own PRs.
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+        exclude-patterns:
+          # Gets its own PR: pnpm-workspace.yaml patches kdbxweb by exact
+          # version and overrides its @xmldom/xmldom, so a bump means redoing
+          # or dropping both by hand.
+          - kdbxweb
+    ignore:
+      # Tracks the Node version CI and `engines` are on, not the newest one.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
