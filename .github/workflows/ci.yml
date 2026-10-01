@@ -75,7 +75,11 @@ jobs:
 
   build:
     name: Build Tauri app
-    runs-on: windows-latest
+    # Not windows-latest: on the Windows Server 2025 image WebView2 never
+    # opens the DevTools port msedgedriver waits for, so the end-to-end test
+    # can't start a session ("DevToolsActivePort file doesn't exist").
+    # https://github.com/actions/runner-images/issues/14738
+    runs-on: windows-2022
     needs: [frontend, rust]
     steps:
       - uses: actions/checkout@v4
