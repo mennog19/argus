@@ -16,7 +16,8 @@ export default [
       parserOptions: {
         ecmaFeatures: { jsx: true },
       },
-      globals: { ...globals.browser, ...globals.node },
+      // `__APP_VERSION__` is the build-time constant Vite defines.
+      globals: { ...globals.browser, ...globals.node, __APP_VERSION__: "readonly" },
     },
     plugins: {
       "@typescript-eslint": tseslint,

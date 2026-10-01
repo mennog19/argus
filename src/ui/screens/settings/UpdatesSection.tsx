@@ -10,6 +10,10 @@ export function UpdatesSection({ checkForUpdates, onSettingChange }: UpdatesSect
     <section className="detail-section">
       <div className="detail-section-label">Updates</div>
       <div className="detail-card">
+        <div className="detail-field-row">
+          <span className="detail-field-row-label">Version</span>
+          <span className="detail-field-value">{__APP_VERSION__}</span>
+        </div>
         <label className="detail-field-row" htmlFor="settings-check-for-updates">
           <span className="detail-field-row-label">Check for updates when Argus starts</span>
           <input

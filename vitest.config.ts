@@ -1,8 +1,10 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tauriConfig from "./src-tauri/tauri.conf.json" with { type: "json" };
 
 export default defineConfig({
   plugins: [react()],
+  define: { __APP_VERSION__: JSON.stringify(tauriConfig.version) },
   // Lets the KeePass-written fixture vaults be imported with `?inline`.
   assetsInclude: ["**/*.kdbx", "**/*.keyx"],
   test: {

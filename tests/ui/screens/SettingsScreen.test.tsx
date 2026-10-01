@@ -18,6 +18,7 @@ import {
   VaultFileInfo,
 } from "../../../src/application/vault-access-service";
 import { SettingsScreen } from "../../../src/ui/screens/SettingsScreen";
+import tauriConfig from "../../../src-tauri/tauri.conf.json";
 
 const DEFAULT_AUTO_LOCK: AutoLockSettings = {
   lockOnMinimize: false,
@@ -464,6 +465,13 @@ describe("SettingsScreen", () => {
     const { onSettingChange: onSecondChange } = renderSettings({ closeToTray: true });
     fireEvent.click(screen.getByRole("checkbox", { name: /system tray/i }));
     expect(onSecondChange).toHaveBeenCalledWith("closeToTray", false);
+  });
+
+  it("shows the version of Argus that is running", () => {
+    renderSettings();
+
+    expect(screen.getByText("Version")).toBeInTheDocument();
+    expect(screen.getByText(tauriConfig.version)).toBeInTheDocument();
   });
 
   it("shows the launch update check off by default", () => {
