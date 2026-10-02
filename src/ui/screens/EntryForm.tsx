@@ -53,7 +53,8 @@ export function EntryForm({
   onSubmit,
   onCancel,
 }: EntryFormProps) {
-  const [title, setTitle] = useState(initialEntry?.title ?? "");
+  const initialTitle = initialEntry?.title ?? "";
+  const [title, setTitle] = useState(initialTitle);
   const [username, setUsername] = useState(initialEntry?.username ?? "");
   const [password, setPassword] = useState(initialEntry?.password.reveal() ?? "");
   const [revealed, setRevealed] = useState(false);
@@ -63,7 +64,7 @@ export function EntryForm({
   // classic TOTP Seed/Settings pair, which has no single raw value to show.
   const initialTotpValue =
     initialCustomFields.get("otp")?.value ??
-    totpConfigFromCustomFields(initialCustomFields)?.toOtpauthUri(initialEntry?.title ?? "") ??
+    totpConfigFromCustomFields(initialCustomFields)?.toOtpauthUri(initialTitle) ??
     "";
   const [totpInput, setTotpInput] = useState(initialTotpValue);
   const [totpRevealed, setTotpRevealed] = useState(false);
