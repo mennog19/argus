@@ -51,6 +51,18 @@ describe("iconFromKdbx", () => {
     expect(iconFromKdbx(entry).toString()).toBe("brand:github");
   });
 
+  it("reads a chosen generated sigil back while the KeePass icon is still the default", () => {
+    const { entry } = newEntry();
+    writeIconToKdbx(entry, Icon.SIGIL);
+
+    expect(entry.icon).toBe(Icons.Key);
+    expect(entry.customData?.get(ICON_CUSTOM_DATA_KEY)?.value).toBe("sigil");
+    expect(iconFromKdbx(entry)).toBe(Icon.SIGIL);
+
+    entry.icon = Icons.Star;
+    expect(iconFromKdbx(entry).toString()).toBe("library:star");
+  });
+
   it("follows another app's icon change over stale CustomData", () => {
     const { entry } = newEntry();
     writeIconToKdbx(entry, Icon.library("luggage"));

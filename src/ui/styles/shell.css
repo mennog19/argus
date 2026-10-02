@@ -820,7 +820,8 @@ input[type="radio"]:checked::after {
 
 /* Dragging an entry onto a group. While a drag is in flight every group gets
    a faint outline; the hovered one lights up in the accent colour. */
-.entry-drag-active .group-row {
+.entry-drag-active .group-row,
+.entry-drag-active .sidebar-row.accepts-entries {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 8%, transparent);
 }
 
@@ -829,6 +830,7 @@ input[type="radio"]:checked::after {
 }
 
 .group-row.drop-target,
+.sidebar-row.drop-target,
 .group-row.reorder-into {
   background: color-mix(in srgb, var(--color-accent) 16%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-accent) 75%, transparent);
@@ -839,7 +841,8 @@ input[type="radio"]:checked::after {
   color: var(--color-text);
 }
 
-.group-row.drop-flash {
+.group-row.drop-flash,
+.sidebar-row.drop-flash {
   animation: group-drop-flash 650ms ease-out;
 }
 
@@ -850,7 +853,8 @@ input[type="radio"]:checked::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .group-row.drop-flash {
+  .group-row.drop-flash,
+  .sidebar-row.drop-flash {
     animation-duration: 1ms;
   }
 }
@@ -942,12 +946,12 @@ input[type="radio"]:checked::after {
 .group-icon-popover {
   position: fixed;
   z-index: 60;
-  width: 300px;
+  width: 340px;
   max-height: min(480px, calc(100vh - 24px));
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 8px;
   padding: 12px;
   border-radius: 12px;
@@ -1259,6 +1263,24 @@ input[type="radio"]:checked::after {
 
 .entry-search-clear:hover {
   color: var(--color-text);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.settings-header .detail-title {
+  margin: 0;
+}
+
+.settings-search.entry-search {
+  flex: 0 1 260px;
+  margin: 0;
 }
 
 /* The sort trigger sits at the far right of the search bar, behind a hairline
@@ -1869,6 +1891,13 @@ input[type="radio"]:checked::after {
   letter-spacing: 1px;
 }
 
+/* A field with nothing in it, said in words rather than shown as a value. */
+.detail-field-value.unset {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text-dimmer);
+}
+
 .detail-meta-row {
   display: flex;
   justify-content: space-between;
@@ -2220,8 +2249,11 @@ input[type="radio"]:checked::after {
   background: var(--color-panel);
 }
 
+/* The search box drops to a row of its own when the tabs leave it too
+   little room, as in the group sidebar's narrow popover. */
 .icon-picker-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
@@ -2252,6 +2284,9 @@ input[type="radio"]:checked::after {
 }
 
 .icon-picker-search.field-input {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 0;
   padding: 8px 12px;
   font-size: 13px;
 }

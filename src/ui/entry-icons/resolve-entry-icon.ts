@@ -16,7 +16,8 @@ export type ResolvedIcon =
   | { kind: "custom"; icon: CustomIcon };
 
 /**
- * What an entry actually shows. An explicit choice wins; otherwise a known
+ * What an entry actually shows. An explicit choice wins, including the
+ * generated sigil over a logo that would have matched; otherwise a known
  * site gets its logo, a title matching a brand's name gets that brand's
  * logo, and anything else its generated sigil. A key the catalogs don't
  * know (e.g. written by a newer Argus), or a custom icon the vault no longer
@@ -39,6 +40,9 @@ export function resolveIcon(
     if (library) {
       return { kind: "library", icon: library, seed, hue: icon.hue };
     }
+  }
+  if (icon.kind === "sigil") {
+    return { kind: "sigil", seed };
   }
   const chosenBrand = icon.kind === "brand" ? brands.find(icon.key) : undefined;
   const brand = chosenBrand ?? brands.matchHost(hostOf(url) ?? "") ?? brands.matchTitle(title);

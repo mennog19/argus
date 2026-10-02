@@ -43,7 +43,7 @@ function Harness({
         title="Title"
         url=""
         brands={brands}
-        initiallyOpen
+        alwaysOpen
         onChange={(next, added) => {
           setIcon(next);
           onChange(next, added);

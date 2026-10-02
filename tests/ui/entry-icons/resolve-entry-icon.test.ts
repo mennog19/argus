@@ -58,6 +58,13 @@ describe("resolveIcon", () => {
     expect(resolved.kind === "brand" && resolved.icon.slug).toBe("notion");
   });
 
+  it("honours a chosen generated sigil over a logo that would have matched", () => {
+    expect(resolve("https://github.com", Icon.SIGIL, "Notion")).toEqual({
+      kind: "sigil",
+      seed: "github.com",
+    });
+  });
+
   it("treats unknown chosen keys as automatic", () => {
     const fromLibrary = resolve("https://github.com", Icon.library("from-the-future"));
     expect(fromLibrary.kind === "brand" && fromLibrary.icon.slug).toBe("github");

@@ -14,7 +14,7 @@ interface HealthScreenProps {
   onSelectEntry: (entry: Entry, group: Group) => void;
 }
 
-type CategoryKey = "expired" | "duplicates" | "weak" | "fair" | "strong";
+type CategoryKey = "expired" | "duplicates" | "weak" | "fair" | "strong" | "noPassword";
 type Severity = "warning" | "danger" | "neutral" | "success";
 
 interface Category {
@@ -25,15 +25,16 @@ interface Category {
   readonly groups: readonly (readonly Entry[])[];
   readonly count: number;
   /**
-   * Whether this is one of the password categories, which split the entries
-   * between them. Expiry cuts across them, so it's left out of the bar.
+   * Whether this is one of the password categories, which split the rated
+   * passwords between them. Expiry cuts across them, and an entry without a
+   * password isn't rated, so both are left out of the bar.
    */
   readonly partitions: boolean;
 }
 
-/** Whole-percent share of `total`, for the KPI tiles and overview rows. */
+/** Whole-percent share of `total`, for the KPI tiles and overview rows; 0 of nothing is 0%. */
 function percentage(count: number, total: number): number {
-  return Math.round((count / total) * 100);
+  return total === 0 ? 0 : Math.round((count / total) * 100);
 }
 
 function healthEntryRow(
@@ -69,13 +70,17 @@ function healthEntryRow(
 function HealthOverview({
   categories,
   total,
+  passwordCount,
   healthyCount,
 }: {
   categories: readonly Category[];
+  /** Every entry checked, which is what each row's share is a share of. */
   total: number;
+  /** The entries that have a password to rate. */
+  passwordCount: number;
   healthyCount: number;
 }) {
-  const attentionCount = total - healthyCount;
+  const attentionCount = passwordCount - healthyCount;
 
   return (
     <div className="health-overview">
@@ -180,6 +185,15 @@ export function HealthScreen({ entries: allEntries, onSelectEntry }: HealthScree
       count: report.strong.length,
       partitions: true,
     },
+    {
+      key: "noPassword",
+      label: "No password",
+      heading: "Entries without a password",
+      severity: "neutral",
+      groups: [report.noPassword],
+      count: report.noPassword.length,
+      partitions: false,
+    },
   ];
 
   // No category is open to begin with: the overview is the landing view.
@@ -189,6 +203,10 @@ export function HealthScreen({ entries: allEntries, onSelectEntry }: HealthScree
   const healthyCount = [...report.fair, ...report.strong].filter(
     (entry) => !expiredIds.has(entry.id.toString()),
   ).length;
+  // Entries that sign in some other way have nothing to rate, so they count
+  // neither for nor against the vault's health.
+  const unratedCount = report.noPassword.length;
+  const passwordCount = entries.length - unratedCount;
 
   return (
     <div className="detail-pane">
@@ -200,7 +218,11 @@ export function HealthScreen({ entries: allEntries, onSelectEntry }: HealthScree
         ) : (
           <>
             <p className="health-summary">
-              {healthyCount} of {entries.length} passwords are healthy.
+              {healthyCount} of {passwordCount} passwords are healthy.
+              {unratedCount > 0 &&
+                ` ${unratedCount} ${
+                  unratedCount === 1 ? "entry has" : "entries have"
+                } no password and ${unratedCount === 1 ? "isn't" : "aren't"} rated.`}
             </p>
 
             <div className="health-stats">
@@ -211,7 +233,7 @@ export function HealthScreen({ entries: allEntries, onSelectEntry }: HealthScree
                 onClick={() => setSelectedKey(undefined)}
               >
                 <div className="health-stat-number accent">
-                  {percentage(healthyCount, entries.length)}%
+                  {percentage(healthyCount, passwordCount)}%
                 </div>
                 <div className="health-stat-label">Healthy</div>
               </button>
@@ -256,6 +278,7 @@ export function HealthScreen({ entries: allEntries, onSelectEntry }: HealthScree
               <HealthOverview
                 categories={categories}
                 total={entries.length}
+                passwordCount={passwordCount}
                 healthyCount={healthyCount}
               />
             )}

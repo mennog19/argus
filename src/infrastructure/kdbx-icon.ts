@@ -6,8 +6,8 @@ type KdbxIconHost = KdbxEntry | KdbxGroup;
 
 /**
  * CustomData key holding Argus's own icon choice for an entry or group
- * (`library:star`, `brand:github`, or `library:star:235` for a library icon
- * with a manual colour override).
+ * (`library:star`, `brand:github`, `library:star:235` for a library icon
+ * with a manual colour override, or `sigil` for the generated sigil).
  */
 export const ICON_CUSTOM_DATA_KEY = "Argus.Icon";
 
@@ -142,6 +142,9 @@ export function iconFromKdbx(kdbxItem: KdbxIconHost): Icon {
   }
   const keepassId = kdbxItem.icon ?? Icons.Key;
   const stored = Icon.parse(kdbxItem.customData?.get(ICON_CUSTOM_DATA_KEY)?.value ?? "");
+  if (stored?.kind === "sigil" && keepassId === Icons.Key) {
+    return stored;
+  }
   if (stored?.kind === "brand" && keepassId === BRAND_KEEPASS_ID) {
     return stored;
   }
@@ -163,6 +166,7 @@ export function writeIconToKdbx(kdbxItem: KdbxIconHost, icon: Icon): void {
     kdbxItem.customData?.delete(ICON_CUSTOM_DATA_KEY);
     return;
   }
+  // The generated sigil has no KeePass counterpart either; it keeps the default key.
   kdbxItem.icon =
     icon.kind === "brand" ? BRAND_KEEPASS_ID : (LIBRARY_ICON_KEEPASS_IDS[icon.key] ?? Icons.Key);
   kdbxItem.customData ??= new Map();

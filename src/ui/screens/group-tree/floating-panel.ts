@@ -9,7 +9,7 @@ export interface Anchor {
 
 const FLOATING_GUTTER = 12;
 export const ROW_MENU_WIDTH = 176;
-export const ICON_POPOVER_WIDTH = 300;
+export const ICON_POPOVER_WIDTH = 340;
 
 export function anchorOf(trigger: Element): Anchor {
   const { top, left, bottom } = trigger.getBoundingClientRect();

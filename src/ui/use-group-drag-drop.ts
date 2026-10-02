@@ -38,6 +38,15 @@ export interface GroupRowDragProps {
   onAnimationEnd: () => void;
 }
 
+/** The drag-related props of a row that only takes dropped entries, like "All Items". */
+export interface EntryDropProps {
+  onDragEnter: (event: DragEvent<HTMLElement>) => void;
+  onDragOver: (event: DragEvent<HTMLElement>) => void;
+  onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  onDrop: (event: DragEvent<HTMLElement>) => void;
+  onAnimationEnd: () => void;
+}
+
 export interface GroupDragDrop {
   /** Why the last drop didn't happen, shown at the top of the sidebar. */
   readonly error: string | undefined;
@@ -45,6 +54,11 @@ export interface GroupDragDrop {
   rowClasses(groupId: string): string;
   /** Everything a row needs to take part in both kinds of drag. */
   rowProps(group: Group, parentId: GroupId, siblings: readonly Group[]): GroupRowDragProps;
+  /**
+   * What a row that isn't a group itself needs to take dropped entries into
+   * `groupId`. `rowClasses` knows it by that same id.
+   */
+  entryDropProps(groupId: GroupId): EntryDropProps;
 }
 
 /**
@@ -105,7 +119,7 @@ export function useGroupDragDrop(callbacks: GroupDragDropCallbacks): GroupDragDr
   const [draggingSubtreeIds, setDraggingSubtreeIds] = useState<ReadonlySet<string>>(new Set());
   const [reorderTarget, setReorderTarget] = useState<ReorderTarget | undefined>(undefined);
 
-  function entryDragOver(event: DragEvent<HTMLDivElement>, groupId: string) {
+  function entryDragOver(event: DragEvent<HTMLElement>, groupId: string) {
     if (!event.dataTransfer.types.includes(ENTRY_DRAG_TYPE)) {
       return;
     }
@@ -114,22 +128,22 @@ export function useGroupDragDrop(callbacks: GroupDragDropCallbacks): GroupDragDr
     setEntryDropTargetId(groupId);
   }
 
-  function entryDragLeave(event: DragEvent<HTMLDivElement>, groupId: string) {
+  function entryDragLeave(event: DragEvent<HTMLElement>, groupId: string) {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
       return;
     }
     setEntryDropTargetId((current) => (current === groupId ? undefined : current));
   }
 
-  async function entryDrop(event: DragEvent<HTMLDivElement>, group: Group) {
+  async function entryDrop(event: DragEvent<HTMLElement>, groupId: GroupId) {
     if (!event.dataTransfer.types.includes(ENTRY_DRAG_TYPE)) {
       return;
     }
     event.preventDefault();
     setEntryDropTargetId(undefined);
     const entryId = event.dataTransfer.getData(ENTRY_DRAG_TYPE);
-    if (await drop.run(() => onDropEntry(entryId, group.id), MOVE_ENTRY_FAILED)) {
-      setFlashId(group.id.toString());
+    if (await drop.run(() => onDropEntry(entryId, groupId), MOVE_ENTRY_FAILED)) {
+      setFlashId(groupId.toString());
     }
   }
 
@@ -234,9 +248,20 @@ export function useGroupDragDrop(callbacks: GroupDragDropCallbacks): GroupDragDr
           groupDragLeave(event, groupId);
         },
         onDrop: (event) => {
-          void entryDrop(event, group);
+          void entryDrop(event, group.id);
           void groupDrop(event, group, parentId, siblings);
         },
+        onAnimationEnd: () => setFlashId(undefined),
+      };
+    },
+
+    entryDropProps(groupId: GroupId): EntryDropProps {
+      const id = groupId.toString();
+      return {
+        onDragEnter: (event) => entryDragOver(event, id),
+        onDragOver: (event) => entryDragOver(event, id),
+        onDragLeave: (event) => entryDragLeave(event, id),
+        onDrop: (event) => void entryDrop(event, groupId),
         onAnimationEnd: () => setFlashId(undefined),
       };
     },

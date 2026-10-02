@@ -58,7 +58,7 @@ export function GroupIconPopover({
       className="group-icon-popover"
       style={floatingStyle(anchor, ICON_POPOVER_WIDTH)}
     >
-      <IconPicker value={group.icon} title={group.name} url="" initiallyOpen onChange={onChange} />
+      <IconPicker value={group.icon} title={group.name} url="" alwaysOpen onChange={onChange} />
       {error && <div className="group-composer-error">{error}</div>}
     </div>
   );

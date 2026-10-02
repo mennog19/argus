@@ -106,6 +106,68 @@ function renderSettings(
 }
 
 describe("SettingsScreen", () => {
+  describe("searching", () => {
+    function sectionLabels(container: HTMLElement) {
+      return Array.from(container.querySelectorAll(".detail-section-label")).map(
+        (label) => label.textContent,
+      );
+    }
+
+    it("shows every section until something is typed", () => {
+      const { container } = renderSettings();
+
+      expect(sectionLabels(container)).toEqual([
+        "Vault",
+        "Appearance",
+        "Window",
+        "Updates",
+        "Security",
+        "Auto-type",
+        "Keyboard shortcuts",
+        "Groups",
+        "Entry creation",
+        "Expired entries",
+        "Settings file",
+        "Danger zone",
+      ]);
+    });
+
+    it("narrows to the sections that mention every word typed, in any order or case", async () => {
+      const user = userEvent.setup();
+      const { container } = renderSettings();
+
+      await user.type(
+        screen.getByRole("textbox", { name: "Search settings" }),
+        " Clipboard CLEAR ",
+      );
+
+      expect(sectionLabels(container)).toEqual(["Security"]);
+    });
+
+    it("finds a section by the wording of a setting in it", async () => {
+      const user = userEvent.setup();
+      const { container } = renderSettings();
+
+      await user.type(screen.getByRole("textbox", { name: "Search settings" }), "tray");
+
+      expect(sectionLabels(container)).toEqual(["Window"]);
+    });
+
+    it("says so when nothing matches, and Escape brings everything back", async () => {
+      const user = userEvent.setup();
+      const { container } = renderSettings();
+      const search = screen.getByRole("textbox", { name: "Search settings" });
+
+      await user.type(search, "zzz");
+      expect(screen.getByText('No settings match "zzz".')).toBeInTheDocument();
+      expect(sectionLabels(container)).toEqual([]);
+
+      await user.keyboard("{Escape}");
+      expect(search).toHaveValue("");
+      expect(sectionLabels(container)).toHaveLength(12);
+    });
+  });
+
   it("shows the vault file name and placeholders while file info hasn't loaded yet", () => {
     renderSettings();
 

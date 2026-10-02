@@ -388,6 +388,7 @@ describe("VaultShell", () => {
     const entry = Entry.create({
       title: "GitHub",
       username: "octocat",
+      password: new Password("hunter2"),
       url: "https://github.com",
       notes: "some notes",
       tags: new Tags([new Tag("dev")]),
@@ -469,9 +470,24 @@ describe("VaultShell", () => {
     expect(urlOpener.open).toHaveBeenCalledWith(opened);
   });
 
-  it("toggles password reveal for the selected entry, masked by default", async () => {
+  it("says so when the selected entry has no password, with nothing to reveal or copy", async () => {
     const user = userEvent.setup();
     const entry = Entry.create({ title: "GitHub" });
+    let vault = Vault.create("Mine");
+    vault = vault.addEntry(vault.rootGroup.id, entry);
+
+    renderShell(vault);
+
+    await user.click(screen.getByText("GitHub"));
+
+    expect(screen.getByText("No password · not rated in Password Health")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show password" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy password" })).toBeDisabled();
+  });
+
+  it("toggles password reveal for the selected entry, masked by default", async () => {
+    const user = userEvent.setup();
+    const entry = Entry.create({ title: "GitHub", password: new Password("hunter2") });
     let vault = Vault.create("Mine");
     vault = vault.addEntry(vault.rootGroup.id, entry);
 

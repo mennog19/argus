@@ -8,6 +8,13 @@ describe("Icon", () => {
     expect(Icon.AUTO.toString()).toBe("auto");
   });
 
+  it("has a choice for the generated sigil, apart from automatic", () => {
+    expect(Icon.SIGIL.kind).toBe("sigil");
+    expect(Icon.SIGIL.toString()).toBe("sigil");
+    expect(Icon.parse("sigil")).toBe(Icon.SIGIL);
+    expect(Icon.SIGIL.equals(Icon.AUTO)).toBe(false);
+  });
+
   it("creates library and brand icons", () => {
     expect(Icon.library("star").toString()).toBe("library:star");
     expect(Icon.brand("github").toString()).toBe("brand:github");

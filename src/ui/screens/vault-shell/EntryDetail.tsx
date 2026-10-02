@@ -74,6 +74,9 @@ export function EntryDetail({
     : entry.customFields.values;
   const { busy, error, run } = useAsyncAction();
   const revealLabel = revealed ? "Hide password" : "Show password";
+  // E.g. an account that signs in through another one. Said outright, rather
+  // than shown as a row of dots with nothing behind them.
+  const hasPassword = entry.password.reveal() !== "";
 
   return (
     <div className="detail-content">
@@ -144,31 +147,44 @@ export function EntryDetail({
             clipboard={clipboard}
             clipboardClearSeconds={clipboardClearSeconds}
           />
-          <CopyableFieldRow
-            field="password"
-            label="Password"
-            value={revealed ? entry.password.reveal() : entry.password.toString()}
-            valueClassName="masked"
-            copyLabel="Copy password"
-            copyValue={entry.password.reveal()}
-            clipboard={clipboard}
-            clipboardClearSeconds={clipboardClearSeconds}
-            actions={
-              <button
-                type="button"
-                className="icon-button-small"
-                aria-label={revealLabel}
-                title={revealLabel}
-                onClick={onToggleReveal}
-              >
-                {revealed ? (
-                  <EyeOffIcon size={17} strokeWidth={2.25} />
-                ) : (
-                  <EyeIcon size={17} strokeWidth={2.25} />
-                )}
-              </button>
-            }
-          />
+          {hasPassword ? (
+            <CopyableFieldRow
+              field="password"
+              label="Password"
+              value={revealed ? entry.password.reveal() : entry.password.toString()}
+              valueClassName="masked"
+              copyLabel="Copy password"
+              copyValue={entry.password.reveal()}
+              clipboard={clipboard}
+              clipboardClearSeconds={clipboardClearSeconds}
+              actions={
+                <button
+                  type="button"
+                  className="icon-button-small"
+                  aria-label={revealLabel}
+                  title={revealLabel}
+                  onClick={onToggleReveal}
+                >
+                  {revealed ? (
+                    <EyeOffIcon size={17} strokeWidth={2.25} />
+                  ) : (
+                    <EyeIcon size={17} strokeWidth={2.25} />
+                  )}
+                </button>
+              }
+            />
+          ) : (
+            <CopyableFieldRow
+              field="password"
+              label="Password"
+              value="No password · not rated in Password Health"
+              valueClassName="unset"
+              copyLabel="Copy password"
+              copyValue={undefined}
+              clipboard={clipboard}
+              clipboardClearSeconds={clipboardClearSeconds}
+            />
+          )}
         </div>
 
         {totpConfig && (

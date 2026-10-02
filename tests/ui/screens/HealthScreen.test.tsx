@@ -64,6 +64,46 @@ describe("HealthScreen", () => {
     expect(tileFor("Reused")).toHaveTextContent("0");
   });
 
+  it("leaves entries without a password out of the rating, listing them on their own", async () => {
+    const user = userEvent.setup();
+    const group = Group.create("Personal");
+    const entries: EntryWithGroup[] = [
+      entryIn(group, { title: "Signs in with Google" }),
+      entryIn(group, { title: "Strong Site", password: new Password(STRONG_PASSWORD) }),
+    ];
+
+    render(<HealthScreen entries={entries} onSelectEntry={vi.fn()} />);
+
+    expect(
+      screen.getByText("1 of 1 passwords are healthy. 1 entry has no password and isn't rated."),
+    ).toBeInTheDocument();
+    expect(tileFor("Healthy")).toHaveTextContent("100%");
+    expect(tileFor("Weak")).toHaveTextContent("0");
+    expect(tileFor("No password")).toHaveTextContent("1");
+    expect(screen.getByText("Every password looks healthy.")).toBeInTheDocument();
+    expect(overviewRowFor("Entries without a password")).toHaveTextContent("50%");
+
+    await user.click(tileFor("No password"));
+    expect(screen.getByText("Signs in with Google")).toBeInTheDocument();
+  });
+
+  it("rates nothing when no entry has a password", () => {
+    const group = Group.create("Personal");
+    const entries: EntryWithGroup[] = [
+      entryIn(group, { title: "Signs in with Google" }),
+      entryIn(group, { title: "Signs in with Apple" }),
+    ];
+
+    render(<HealthScreen entries={entries} onSelectEntry={vi.fn()} />);
+
+    expect(
+      screen.getByText(
+        "0 of 0 passwords are healthy. 2 entries have no password and aren't rated.",
+      ),
+    ).toBeInTheDocument();
+    expect(tileFor("Healthy")).toHaveTextContent("0%");
+  });
+
   it("opens on an overview of every category instead of one category's entries", () => {
     const group = Group.create("Personal");
     const entries: EntryWithGroup[] = [
