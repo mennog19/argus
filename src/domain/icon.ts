@@ -1,4 +1,4 @@
-export type IconKind = "auto" | "library" | "brand" | "custom";
+export type IconKind = "auto" | "sigil" | "library" | "brand" | "custom";
 
 const KEY_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -8,8 +8,9 @@ const MAX_HUE = 359;
 
 /**
  * Which icon an entry or group shows. `auto` lets the UI decide (brand logo
- * for a known site, otherwise a generated sigil); `library` and `brand` are
- * explicit choices identified by a catalog key. The domain only validates the
+ * for a known site, otherwise a generated sigil); `sigil` insists on the
+ * generated sigil even where a brand logo would match; `library` and `brand`
+ * are explicit choices identified by a catalog key. The domain only validates the
  * shape — which keys exist is up to the UI's catalogs, so unknown keys (e.g.
  * written by a newer version) survive a round trip untouched. `custom` points
  * at one of the vault's own image icons by its (lowercase UUID) id.
@@ -20,6 +21,7 @@ const MAX_HUE = 359;
  */
 export class Icon {
   static readonly AUTO = new Icon("auto", "", undefined);
+  static readonly SIGIL = new Icon("sigil", "", undefined);
 
   private constructor(
     readonly kind: IconKind,
@@ -46,6 +48,9 @@ export class Icon {
   static parse(value: string): Icon | undefined {
     if (value === "auto") {
       return Icon.AUTO;
+    }
+    if (value === "sigil") {
+      return Icon.SIGIL;
     }
     const match = /^(library|brand|custom):([^:]+)(?::(\d+))?$/.exec(value);
     if (!match || !KEY_PATTERN.test(match[2])) {
@@ -88,8 +93,8 @@ export class Icon {
   }
 
   toString(): string {
-    if (this.kind === "auto") {
-      return "auto";
+    if (this.kind === "auto" || this.kind === "sigil") {
+      return this.kind;
     }
     const suffix = this.hue === undefined ? "" : `:${this.hue}`;
     return `${this.kind}:${this.key}${suffix}`;

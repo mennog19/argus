@@ -608,6 +608,28 @@ describe("GroupTree", () => {
       expect(row).not.toHaveClass("drop-flash");
     });
 
+    it("takes an entry out of its group when it's dropped on All Items", async () => {
+      const onDropEntry = vi.fn().mockResolvedValue(undefined);
+      const { root } = buildTree();
+      render(<GroupTree {...baseProps(root, { onDropEntry })} />);
+      const allItems = screen.getByRole("button", { name: /all items/i });
+
+      fireEvent.dragEnter(allItems, { dataTransfer: entryTransfer("abc") });
+      fireEvent.dragOver(allItems, { dataTransfer: entryTransfer("abc") });
+      expect(allItems).toHaveClass("drop-target");
+
+      dragLeave(allItems, null);
+      expect(allItems).not.toHaveClass("drop-target");
+
+      fireEvent.drop(allItems, { dataTransfer: entryTransfer("abc") });
+
+      expect(onDropEntry).toHaveBeenCalledWith("abc", root.id);
+      await vi.waitFor(() => expect(allItems).toHaveClass("drop-flash"));
+
+      fireEvent(allItems, new Event("webkitAnimationEnd", { bubbles: true }));
+      expect(allItems).not.toHaveClass("drop-flash");
+    });
+
     it("shows an error when the move fails, and clears it after a later successful drop", async () => {
       const onDropEntry = vi
         .fn()

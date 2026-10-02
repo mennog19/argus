@@ -22,6 +22,7 @@ interface GroupTreeProps {
   groupDeleteMode: GroupDeleteMode;
   /** True while an entry from the list is being dragged, so groups can show they accept drops. */
   entryDragActive: boolean;
+  /** `groupId` is the root group's when the entry was dropped on "All Items", taking it out of its group. */
   onDropEntry: (entryId: string, groupId: GroupId) => Promise<void>;
   /**
    * Reparents `groupId` into `targetParentId`, positioned before `beforeId`
@@ -76,8 +77,12 @@ export function GroupTree({
       <div className="sidebar-section-label">Vault</div>
       <button
         type="button"
-        className={`sidebar-row${selectedGroupId === allItemsId ? " active" : ""}`}
+        className={`sidebar-row accepts-entries${selectedGroupId === allItemsId ? " active" : ""}${drag.rowClasses(
+          rootGroup.id.toString(),
+        )}`}
         onClick={() => onSelect(allItemsId)}
+        // Entries with no group live in the root group, so that's where a drop here puts one.
+        {...drag.entryDropProps(rootGroup.id)}
       >
         <span>All Items</span>
         <span className="sidebar-row-count">{allItemsCount}</span>

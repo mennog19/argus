@@ -15,12 +15,12 @@ function Harness({
   initial = Icon.AUTO,
   url = "",
   onChange = () => {},
-  initiallyOpen = false,
+  alwaysOpen = false,
 }: {
   initial?: Icon;
   url?: string;
   onChange?: (icon: Icon) => void;
-  initiallyOpen?: boolean;
+  alwaysOpen?: boolean;
 }) {
   const [icon, setIcon] = useState(initial);
   return (
@@ -29,7 +29,7 @@ function Harness({
       title="Title"
       url={url}
       brands={brands}
-      initiallyOpen={initiallyOpen}
+      alwaysOpen={alwaysOpen}
       onChange={(next) => {
         setIcon(next);
         onChange(next);
@@ -92,11 +92,12 @@ describe("IconPicker", () => {
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Change icon" }));
 
-    await user.type(screen.getByRole("searchbox", { name: "Search icons" }), "travel");
+    await user.type(screen.getByRole("searchbox", { name: "Search icons and brands" }), "travel");
     expect(screen.getByRole("button", { name: "Luggage" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Star" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generated symbol" })).not.toBeInTheDocument();
 
-    await user.type(screen.getByRole("searchbox", { name: "Search icons" }), "zzz");
+    await user.type(screen.getByRole("searchbox", { name: "Search icons and brands" }), "zzz");
     expect(screen.getByText('Nothing matches "travelzzz".')).toBeInTheDocument();
   });
 
@@ -107,7 +108,11 @@ describe("IconPicker", () => {
     await user.click(screen.getByRole("button", { name: "Change icon" }));
     await user.click(screen.getByRole("tab", { name: "Brands" }));
 
-    await user.type(screen.getByRole("searchbox", { name: "Search brands" }), "notion.so");
+    expect(screen.queryByRole("button", { name: "Star" })).not.toBeInTheDocument();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search icons and brands" }),
+      "notion.so",
+    );
     expect(screen.queryByRole("button", { name: "GitHub" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Notion" }));
     expect(onChange).toHaveBeenCalledWith(Icon.brand("notion"));
@@ -177,8 +182,76 @@ describe("IconPicker", () => {
     expect(onChange).toHaveBeenCalledWith(Icon.library("luggage", 235));
   });
 
-  it("starts with the grid already expanded when initiallyOpen is set", () => {
-    render(<Harness initiallyOpen />);
+  it("searches the icons and the brands at once, from either tab", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await user.click(screen.getByRole("button", { name: "Change icon" }));
+
+    const search = screen.getByRole("searchbox", { name: "Search icons and brands" });
+    await user.type(search, "git");
+    expect(screen.getByRole("button", { name: "GitHub" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "GitHub" }));
+    expect(onChange).toHaveBeenCalledWith(Icon.brand("github"));
+
+    await user.click(screen.getByRole("tab", { name: "Brands" }));
+    await user.clear(search);
+    await user.type(search, "travel");
+    expect(screen.getByRole("button", { name: "Luggage" })).toBeInTheDocument();
+  });
+
+  it("offers the generated symbol in place of a brand logo that matched by itself", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness url="https://github.com" onChange={onChange} />);
+    expect(screen.getByText("Automatic · GitHub")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change icon" }));
+    await user.click(screen.getByRole("button", { name: "Generated symbol" }));
+
+    expect(onChange).toHaveBeenCalledWith(Icon.SIGIL);
+    expect(screen.getByRole("button", { name: "Generated symbol" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.getByText("Generated symbol", { selector: ".icon-picker-current-name" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Icons" })).toHaveAttribute("aria-selected", "true");
+
+    await user.click(screen.getByRole("button", { name: "Use automatic" }));
+    expect(screen.getByText("Automatic · GitHub")).toBeInTheDocument();
+  });
+
+  it("finds the generated symbol by searching for it", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Change icon" }));
+
+    await user.type(screen.getByRole("searchbox", { name: "Search icons and brands" }), "eye");
+    expect(screen.getByRole("button", { name: "Generated symbol" })).toBeInTheDocument();
+  });
+
+  it("closes the grid on Escape", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Change icon" }));
+
+    await user.type(screen.getByRole("searchbox", { name: "Search icons and brands" }), "st");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("tab", { name: "Icons" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change icon" })).toBeInTheDocument();
+  });
+
+  it("keeps the grid showing, with no button to close it, when alwaysOpen is set", async () => {
+    const user = userEvent.setup();
+    render(<Harness alwaysOpen />);
+    expect(screen.getByRole("tab", { name: "Icons" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("searchbox", { name: "Search icons and brands" }));
+    await user.keyboard("{Escape}");
     expect(screen.getByRole("tab", { name: "Icons" })).toBeInTheDocument();
   });
 

@@ -99,6 +99,19 @@ describe("checkPasswordHealth", () => {
     expect(report.weak).toEqual([weak]);
     expect(report.fair).toEqual([fair]);
     expect(report.strong).toEqual([strong]);
+    expect(report.noPassword).toEqual([]);
+  });
+
+  it("sets entries with no password aside instead of calling them weak or reused", () => {
+    const first = entryWithPassword("");
+    const second = entryWithPassword("");
+    const weak = entryWithPassword("short");
+
+    const report = checkPasswordHealth([first, second, weak], policy);
+
+    expect(report.noPassword).toEqual([first, second]);
+    expect(report.duplicates).toEqual([]);
+    expect(report.weak).toEqual([weak]);
   });
 
   it("gives reuse priority over strength, excluding a weak-and-reused entry from `weak`", () => {

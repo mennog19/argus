@@ -9,7 +9,12 @@ export type PasswordStrength = "weak" | "fair" | "strong";
 export interface PasswordHealthReport {
   /** Groups of two or more entries that share the same non-empty password. */
   readonly duplicates: readonly (readonly Entry[])[];
-  /** Entries not already counted under `duplicates`, by strength tier. */
+  /**
+   * Entries with no password at all, e.g. ones that sign in through another
+   * account. There's nothing to rate, so they're kept out of the tiers.
+   */
+  readonly noPassword: readonly Entry[];
+  /** Entries not already counted under `duplicates` or `noPassword`, by strength tier. */
   readonly weak: readonly Entry[];
   readonly fair: readonly Entry[];
   readonly strong: readonly Entry[];
@@ -65,7 +70,7 @@ export function findDuplicatePasswords(entries: readonly Entry[]): Entry[][] {
  * combined report. Reuse takes priority over strength: an entry whose
  * password is reused elsewhere is only counted under `duplicates`, even if
  * that password would otherwise also be weak, so every entry lands in
- * exactly one category.
+ * exactly one category. An entry without a password isn't rated at all.
  */
 export function checkPasswordHealth(
   entries: readonly Entry[],
@@ -74,11 +79,16 @@ export function checkPasswordHealth(
   const duplicates = findDuplicatePasswords(entries);
   const reusedIds = new Set(duplicates.flat().map((entry) => entry.id.toString()));
 
+  const noPassword: Entry[] = [];
   const weak: Entry[] = [];
   const fair: Entry[] = [];
   const strong: Entry[] = [];
   for (const entry of entries) {
     if (reusedIds.has(entry.id.toString())) {
+      continue;
+    }
+    if (entry.password.reveal() === "") {
+      noPassword.push(entry);
       continue;
     }
     const tier = passwordStrength(entry.password, policy);
@@ -91,5 +101,5 @@ export function checkPasswordHealth(
     }
   }
 
-  return { duplicates, weak, fair, strong };
+  return { duplicates, noPassword, weak, fair, strong };
 }

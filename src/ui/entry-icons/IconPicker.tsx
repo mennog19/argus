@@ -1,4 +1,4 @@
-import { ChangeEvent, CSSProperties, useState } from "react";
+import { ChangeEvent, CSSProperties, KeyboardEvent, ReactNode, useState } from "react";
 import { CustomIcon, Icon } from "../../domain";
 import { useAsyncAction } from "../use-async-action";
 import { BRAND_ICONS, BrandCatalog } from "./brand-icons";
@@ -11,6 +11,17 @@ import { HUES, sigilSeed } from "./sigil";
 
 type Tab = "library" | "brands" | "custom";
 
+interface Option {
+  id: string;
+  label: string;
+  choose: () => void;
+  pressed: boolean;
+  tile: ReactNode;
+}
+
+const SIGIL_LABEL = "Generated symbol";
+const SIGIL_KEYWORDS = ["generated", "symbol", "sigil", "eye", "default"];
+
 interface IconPickerProps {
   value: Icon;
   title: string;
@@ -21,8 +32,11 @@ interface IconPickerProps {
    */
   onChange: (icon: Icon, added?: CustomIcon) => void;
   brands?: BrandCatalog;
-  /** Starts with the library/brand grid already expanded, skipping the "Change icon" click. */
-  initiallyOpen?: boolean;
+  /**
+   * Keeps the library/brand grid showing, with no button to fold it away —
+   * for a host that is itself a popover and closes as a whole.
+   */
+  alwaysOpen?: boolean;
 }
 
 function matches(query: string, words: readonly string[]): boolean {
@@ -56,10 +70,11 @@ export function IconPicker({
   url,
   onChange,
   brands = BRAND_ICONS,
-  initiallyOpen = false,
+  alwaysOpen = false,
 }: IconPickerProps) {
   const library = useCustomIcons();
-  const [open, setOpen] = useState(initiallyOpen);
+  const [toggledOpen, setToggledOpen] = useState(false);
+  const open = alwaysOpen || toggledOpen;
   const [tab, setTab] = useState<Tab>(initialTab(value));
   const [query, setQuery] = useState("");
   // Uploads not saved yet; they reach the vault through `onChange`'s owner.
@@ -95,7 +110,7 @@ export function IconPicker({
         description = resolved.icon.name || "Custom image";
         break;
       default:
-        description = "Automatic";
+        description = value.kind === "sigil" ? SIGIL_LABEL : "Automatic";
     }
   }
 
@@ -129,36 +144,74 @@ export function IconPicker({
     }
   }
 
-  const options =
-    tab === "library"
-      ? LIBRARY_ICONS.filter((icon) =>
-          matches(normalizedQuery, [icon.key, icon.label, ...icon.keywords]),
-        ).map((icon) => ({
-          id: icon.key,
-          label: icon.label,
-          choose: () => onChange(Icon.library(icon.key, currentHue)),
-          pressed: value.kind === "library" && value.key === icon.key,
-          tile: <EntryTile resolved={{ kind: "library", icon, seed, hue: currentHue }} />,
-        }))
-      : tab === "brands"
-        ? brands.all
-            .filter((brand) =>
-              matches(normalizedQuery, [brand.slug, brand.title, ...brand.domains]),
-            )
-            .map((brand) => ({
-              id: brand.slug,
-              label: brand.title,
-              choose: () => onChange(Icon.brand(brand.slug)),
-              pressed: value.kind === "brand" && value.key === brand.slug,
-              tile: <EntryTile resolved={{ kind: "brand", icon: brand }} />,
-            }))
-        : customIcons.values.map((icon) => ({
-            id: icon.id,
-            label: icon.name || "Custom image",
-            choose: () => chooseCustom(icon),
-            pressed: value.kind === "custom" && value.key === icon.id,
-            tile: <EntryTile resolved={{ kind: "custom", icon }} />,
-          }));
+  /**
+   * The generated sigil leads the library: picking it is how an entry whose
+   * name or site matches a brand gets its own symbol back instead of the logo.
+   */
+  function libraryOptions(): Option[] {
+    const sigil: Option = {
+      id: "sigil",
+      label: SIGIL_LABEL,
+      choose: () => onChange(Icon.SIGIL),
+      pressed: value.kind === "sigil",
+      tile: <EntryTile resolved={{ kind: "sigil", seed }} />,
+    };
+    return [
+      ...(matches(normalizedQuery, SIGIL_KEYWORDS) ? [sigil] : []),
+      ...LIBRARY_ICONS.filter((icon) =>
+        matches(normalizedQuery, [icon.key, icon.label, ...icon.keywords]),
+      ).map((icon) => ({
+        id: `library:${icon.key}`,
+        label: icon.label,
+        choose: () => onChange(Icon.library(icon.key, currentHue)),
+        pressed: value.kind === "library" && value.key === icon.key,
+        tile: <EntryTile resolved={{ kind: "library", icon, seed, hue: currentHue }} />,
+      })),
+    ];
+  }
+
+  function brandOptions(): Option[] {
+    return brands.all
+      .filter((brand) => matches(normalizedQuery, [brand.slug, brand.title, ...brand.domains]))
+      .map((brand) => ({
+        id: `brand:${brand.slug}`,
+        label: brand.title,
+        choose: () => onChange(Icon.brand(brand.slug)),
+        pressed: value.kind === "brand" && value.key === brand.slug,
+        tile: <EntryTile resolved={{ kind: "brand", icon: brand }} />,
+      }));
+  }
+
+  function customOptions(): Option[] {
+    return customIcons.values.map((icon) => ({
+      id: icon.id,
+      label: icon.name || "Custom image",
+      choose: () => chooseCustom(icon),
+      pressed: value.kind === "custom" && value.key === icon.id,
+      tile: <EntryTile resolved={{ kind: "custom", icon }} />,
+    }));
+  }
+
+  // A search looks through the icons and the brands at once, whichever of
+  // those two tabs it was typed on.
+  function currentOptions(): Option[] {
+    if (tab === "custom") {
+      return customOptions();
+    }
+    if (normalizedQuery !== "") {
+      return [...libraryOptions(), ...brandOptions()];
+    }
+    return tab === "library" ? libraryOptions() : brandOptions();
+  }
+
+  const options = currentOptions();
+
+  // Escape folds the grid away again. A host popover closes itself instead.
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      setToggledOpen(false);
+    }
+  }
 
   function renderEmpty() {
     if (tab === "custom") {
@@ -168,7 +221,7 @@ export function IconPicker({
   }
 
   return (
-    <div className="icon-picker">
+    <div className="icon-picker" onKeyDown={handleKeyDown}>
       <div className="icon-picker-current">
         <EntryTile resolved={resolved} size="lg" />
         <div className="icon-picker-current-text">
@@ -181,14 +234,16 @@ export function IconPicker({
               Use automatic
             </button>
           )}
-          <button
-            type="button"
-            className="btn-secondary"
-            aria-expanded={open}
-            onClick={() => setOpen((isOpen) => !isOpen)}
-          >
-            {open ? "Done" : "Change icon"}
-          </button>
+          {!alwaysOpen && (
+            <button
+              type="button"
+              className="btn-secondary"
+              aria-expanded={open}
+              onClick={() => setToggledOpen((isOpen) => !isOpen)}
+            >
+              {open ? "Done" : "Change icon"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -263,8 +318,8 @@ export function IconPicker({
               <input
                 type="search"
                 className="field-input icon-picker-search"
-                placeholder={tab === "library" ? "Search icons" : "Search brands"}
-                aria-label={tab === "library" ? "Search icons" : "Search brands"}
+                placeholder="Search icons and brands"
+                aria-label="Search icons and brands"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
