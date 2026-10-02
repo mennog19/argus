@@ -178,6 +178,20 @@ export function isolateAppData(): () => void {
   };
 }
 
+/**
+ * The text on the real Windows clipboard, read from outside the app the way
+ * any other program would; empty when the clipboard holds no text.
+ */
+export function clipboardText(): string {
+  const output = execFileSync(
+    join(systemTool("WindowsPowerShell"), "v1.0", "powershell.exe"),
+    ["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard -Raw"],
+    { encoding: "utf8" },
+  );
+  // PowerShell ends what it prints with a line break of its own.
+  return output.replace(/\r?\n$/, "");
+}
+
 /** A KeePass-written fixture vault, as a path in the repository. */
 export function fixturePath(name: string): string {
   return join(REPO_ROOT, "tests", "fixtures", "keepass", name);

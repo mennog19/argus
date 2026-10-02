@@ -262,9 +262,9 @@ cargo test
 cargo audit          # install once with: cargo install cargo-audit --locked
 ```
 
-`pnpm test:e2e` launches the real app and drives it through WebDriver: it opens a copy of a fixture vault, adds an entry, and checks the entry is in the file and still there after locking. It needs a release build (`pnpm tauri build --no-bundle`) and `tauri-driver` (`cargo install tauri-driver --locked`); the Edge WebDriver matching your WebView2 runtime is downloaded into `e2e/.drivers` on first use. Close Argus before running it. Your own app settings are set aside for the run and put back afterwards.
+`pnpm test:e2e` launches the real app and drives it through WebDriver: it opens a copy of a fixture vault, adds an entry, checks the entry is in the file and still there after locking, and checks a copied password is wiped from the clipboard. It needs a release build (`pnpm tauri build --no-bundle`) and `tauri-driver` (`cargo install tauri-driver --locked`); the Edge WebDriver matching your WebView2 runtime is downloaded into `e2e/.drivers` on first use. Close Argus before running it. Your own app settings are set aside for the run and put back afterwards.
 
-`cargo test` includes tests that copy to the real clipboard, so it replaces whatever your clipboard held.
+`cargo test` and `pnpm test:e2e` both copy to the real clipboard, so they replace whatever your clipboard held.
 
 The KDBX round-trip tests use vaults written by KeePass 2 itself, in `tests/fixtures/keepass/`. To regenerate them (needs KeePass 2.x installed):
 
@@ -283,7 +283,7 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-The release workflow runs CI, builds and signs both installers, and attaches them to a draft GitHub Release with their SHA-256 checksums and the `latest.json` update feed. Review the draft and publish it. Users with the update check on are offered it from their next launch.
+The release workflow runs CI, builds and signs both installers, and attaches them to a draft GitHub Release with their SHA-256 checksums and the `latest.json` update feed. Go through the [release checklist](docs/release-checklist.md) with the draft's installers, which covers what the automated tests can't reach (the installers, auto-type, auto-lock, the updater), then publish it. Users with the update check on are offered it from their next launch.
 
 A local `pnpm tauri build` doesn't produce updater signatures and needs no key. To build signed installers the way the release does, set `TAURI_SIGNING_PRIVATE_KEY` and add `--ci --config src-tauri/tauri.release.conf.json`. Without `--ci`, a key with no password leaves the build waiting at a password prompt.
 

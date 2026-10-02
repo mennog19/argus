@@ -5,7 +5,14 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { KdbxVaultRepository } from "../src/infrastructure/kdbx-vault-repository";
 import { collectAllEntries } from "../src/ui/vault-browsing";
-import { appExecutable, DRIVER_URL, fixturePath, isolateAppData, startDriver } from "./harness";
+import {
+  appExecutable,
+  clipboardText,
+  DRIVER_URL,
+  fixturePath,
+  isolateAppData,
+  startDriver,
+} from "./harness";
 import { Locator, WebDriverSession } from "./webdriver";
 
 /** Must match `$MasterPassword` in `scripts/generate-keepass-fixtures.ps1`. */
@@ -17,6 +24,10 @@ const MASTER_PASSWORD_BOX: Locator = { css: "input[aria-label='Master password']
 const UNLOCK_BUTTON: Locator = { xpath: "//button[normalize-space()='Unlock']" };
 const LOCK_BUTTON: Locator = { css: "button[aria-label='Lock vault']" };
 const LOCKED_HEADING: Locator = { xpath: "//h1[normalize-space()='Unlock your vault']" };
+const COPY_PASSWORD_BUTTON: Locator = { css: "button[aria-label='Copy password']" };
+
+/** The copy and the wipe are both a command away from the click that asks for them. */
+const CLIPBOARD_POLL = { timeout: 10_000, interval: 500 };
 
 function entryRow(title: string): Locator {
   return { xpath: `//div[@class='entry-row-title'][normalize-space()='${title}']` };
@@ -137,5 +148,26 @@ describe.skipIf(process.platform !== "win32")("Argus, end to end", () => {
     await app.click(UNLOCK_BUTTON);
 
     await app.waitFor(entryRow(NEW_ENTRY.title));
+  });
+
+  it("copies a password to the clipboard and wipes it when the countdown runs out", async () => {
+    await app.click(entryRow(NEW_ENTRY.title));
+    await app.click(COPY_PASSWORD_BUTTON);
+
+    await expect.poll(clipboardText, CLIPBOARD_POLL).toBe(NEW_ENTRY.password);
+
+    // The default countdown, 20 seconds: the bar is there for as long as it runs.
+    await app.waitUntilGone({ css: ".clipboard-clear-bar" });
+    await expect.poll(clipboardText, CLIPBOARD_POLL).toBe("");
+  });
+
+  it("wipes a copied password straight away when the vault locks", async () => {
+    await app.click(COPY_PASSWORD_BUTTON);
+    await expect.poll(clipboardText, CLIPBOARD_POLL).toBe(NEW_ENTRY.password);
+
+    await app.click(LOCK_BUTTON);
+    await app.waitFor(LOCKED_HEADING);
+
+    await expect.poll(clipboardText, CLIPBOARD_POLL).toBe("");
   });
 });
