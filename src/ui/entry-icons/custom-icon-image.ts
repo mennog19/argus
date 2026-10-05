@@ -1,7 +1,7 @@
 import { CustomIcon } from "../../domain";
 
 /** Uploaded images are scaled down to fit this many pixels a side, as KeePassXC does. */
-export const CUSTOM_ICON_MAX_SIZE = 128;
+const CUSTOM_ICON_MAX_SIZE = 128;
 
 /** Anything bigger is almost certainly not meant as an icon. */
 export const CUSTOM_ICON_MAX_FILE_BYTES = 10 * 1024 * 1024;

@@ -5,7 +5,7 @@ import { Vault } from "./vault";
 
 export type MergeFieldKey = "title" | "username" | "password" | "url" | "totp";
 
-export interface FieldDifference {
+interface FieldDifference {
   readonly field: MergeFieldKey;
   readonly targetValue: string;
   readonly sourceValue: string;

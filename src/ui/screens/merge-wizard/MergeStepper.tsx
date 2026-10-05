@@ -1,6 +1,6 @@
 import { CheckIcon } from "../../icons";
 
-export interface MergeStepLabel {
+interface MergeStepLabel {
   label: string;
   /** Shown as a badge; omitted for steps that aren't a list of entries. */
   count?: number;

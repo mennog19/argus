@@ -4,7 +4,7 @@ import { useAsyncAction } from "../../use-async-action";
 import { toggleMember } from "../../toggle-member";
 import { Anchor } from "./floating-panel";
 
-export type Editor =
+type Editor =
   | { kind: "add"; parentId: GroupId }
   | { kind: "rename"; group: Group }
   | { kind: "delete"; group: Group };
@@ -15,7 +15,7 @@ export type Editor =
  * being laid out inline in the ~200px sidebar column, which is too narrow
  * for either to fit. Only one is ever open at a time.
  */
-export type Floating =
+type Floating =
   { kind: "menu"; group: Group; anchor: Anchor } | { kind: "icon"; group: Group; anchor: Anchor };
 
 export interface GroupTreeCallbacks {

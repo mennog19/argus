@@ -5,7 +5,7 @@ import { GROUP_DRAG_TYPE } from "./group-drag";
 import { useAsyncAction } from "./use-async-action";
 
 /** Which part of a row a dragged group is currently hovering over. */
-export type DropZone = "before" | "after" | "into";
+type DropZone = "before" | "after" | "into";
 
 /** Which row a dragged group is currently hovering over, and where on it. */
 interface ReorderTarget {

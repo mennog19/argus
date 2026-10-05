@@ -17,7 +17,7 @@ export interface FormLayout {
   readonly hasPasswordField: boolean;
 }
 
-export type AutoTypeFormField = "username" | "password";
+type AutoTypeFormField = "username" | "password";
 
 /** A fully resolved instruction for the OS adapter: no entry data left to look up. */
 export type AutoTypeStep =
