@@ -34,6 +34,11 @@ pub enum AutoTypeStep {
         text: String,
     },
     Submit,
+    /// Waits for the field to appear: the password page of a two-step login
+    /// loads a moment after the username page is submitted.
+    AwaitField {
+        field: FormField,
+    },
 }
 
 /// Which login fields the target window has. Mirrors `FormLayout` in
@@ -313,7 +318,7 @@ mod platform {
         CapturedWindow, FieldInfo, FormField, FormLayout, Target,
     };
     use std::thread::sleep;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use windows::core::PWSTR;
     use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, MAX_PATH};
     use windows::Win32::System::Com::{
@@ -358,6 +363,17 @@ mod platform {
     /// nothing has been seen, look again this many times, this far apart.
     const LOCATE_ATTEMPTS: u32 = 8;
     const LOCATE_RETRY: Duration = Duration::from_millis(150);
+
+    /// How long an `AwaitField` step waits for its field, and how often it
+    /// looks. Generous: the next page of a login can sit behind a network
+    /// round trip and a page transition.
+    const AWAIT_FIELD_TIMEOUT: Duration = Duration::from_secs(10);
+    const AWAIT_FIELD_POLL: Duration = Duration::from_millis(200);
+
+    /// Let a field that just appeared finish its entrance before focusing it.
+    /// Login pages animate the next step in and grab focus for themselves once
+    /// it lands; focusing earlier gets overruled.
+    const AWAIT_FIELD_SETTLE: Duration = Duration::from_millis(300);
 
     /// Looks for the address bar this many times before giving up on it. It
     /// is part of the browser's own UI, so it's normally there at once; the
@@ -601,6 +617,46 @@ mod platform {
             true
         }
 
+        /// Waits until `field` is on screen, giving up after
+        /// `AWAIT_FIELD_TIMEOUT` or as soon as `hwnd` leaves the foreground.
+        ///
+        /// Only the window is checked while waiting, not its title: a page
+        /// mid-navigation briefly shows a placeholder title. The caller checks
+        /// the title again before typing anything.
+        fn await_field(&self, hwnd: HWND, field: FormField) -> Result<(), String> {
+            let name = match field {
+                FormField::Username => "username",
+                FormField::Password => "password",
+            };
+            let started = Instant::now();
+            loop {
+                // SAFETY: plain Win32 query.
+                if unsafe { GetForegroundWindow() } != hwnd {
+                    return Err(
+                        "The target window is no longer in front; auto-type was stopped".into(),
+                    );
+                }
+                // The tree is rebuilt while the page changes, so a failed
+                // scan only means "not yet".
+                if let Ok(form) = self.scan(hwnd) {
+                    let found = match field {
+                        FormField::Username => form.username.is_some(),
+                        FormField::Password => form.password.is_some(),
+                    };
+                    if found {
+                        sleep(AWAIT_FIELD_SETTLE);
+                        return Ok(());
+                    }
+                }
+                if started.elapsed() >= AWAIT_FIELD_TIMEOUT {
+                    return Err(format!(
+                        "The {name} field never appeared; auto-type stopped after the first step"
+                    ));
+                }
+                sleep(AWAIT_FIELD_POLL);
+            }
+        }
+
         /// Puts the caret in `field` with any existing text selected, so what
         /// is typed next replaces it rather than being appended to it.
         fn focus_field(&self, hwnd: HWND, field: FormField) -> Result<(), String> {
@@ -682,18 +738,22 @@ mod platform {
             check_address(target, current.as_deref())?;
         }
 
-        // Created on the first `Focus` step, so COM is only touched when
-        // there is a field to find.
+        // Created on the first step that needs it, so COM is only touched
+        // when there is a field to find.
         let mut uia: Option<Uia> = None;
 
         for step in steps {
-            // Every step sends keystrokes (a `Focus` step sends Ctrl+A), so
-            // look again right before each one.
-            // SAFETY: plain Win32 queries; a stale `hwnd` just yields an
-            // empty title, which fails the check.
-            let (foreground, title) =
-                unsafe { (GetForegroundWindow().0 as isize, window_title(hwnd)) };
-            check_target(target, foreground, &title)?;
+            // Every other step sends keystrokes (a `Focus` step sends
+            // Ctrl+A), so look again right before each one. Waiting sends
+            // nothing and checks the window itself; the page is mid-navigation
+            // then, and its title may not have settled yet.
+            if !matches!(step, AutoTypeStep::AwaitField { .. }) {
+                // SAFETY: plain Win32 queries; a stale `hwnd` just yields an
+                // empty title, which fails the check.
+                let (foreground, title) =
+                    unsafe { (GetForegroundWindow().0 as isize, window_title(hwnd)) };
+                check_target(target, foreground, &title)?;
+            }
 
             match step {
                 AutoTypeStep::Focus { field } => {
@@ -702,6 +762,14 @@ mod platform {
                     }
                     if let Some(uia) = &uia {
                         uia.focus_field(hwnd, *field)?;
+                    }
+                }
+                AutoTypeStep::AwaitField { field } => {
+                    if uia.is_none() {
+                        uia = Some(Uia::new()?);
+                    }
+                    if let Some(uia) = &uia {
+                        uia.await_field(hwnd, *field)?;
                     }
                 }
                 AutoTypeStep::Text { text } => send(&unicode_inputs(text))?,
@@ -944,6 +1012,8 @@ mod tests {
         let json = r#"[
             {"kind":"focus","field":"username"},
             {"kind":"text","text":"menno"},
+            {"kind":"submit"},
+            {"kind":"awaitField","field":"password"},
             {"kind":"focus","field":"password"},
             {"kind":"submit"}
         ]"#;
@@ -958,6 +1028,10 @@ mod tests {
                 },
                 AutoTypeStep::Text {
                     text: "menno".into()
+                },
+                AutoTypeStep::Submit,
+                AutoTypeStep::AwaitField {
+                    field: FormField::Password
                 },
                 AutoTypeStep::Focus {
                     field: FormField::Password

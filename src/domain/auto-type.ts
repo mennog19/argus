@@ -24,7 +24,13 @@ export type AutoTypeStep =
   /** Puts the caret in the named field with its existing text selected. */
   | { readonly kind: "focus"; readonly field: AutoTypeFormField }
   | { readonly kind: "text"; readonly text: string }
-  | { readonly kind: "submit" };
+  | { readonly kind: "submit" }
+  /**
+   * Waits for the named field to appear, as the second page of a two-step
+   * login does a moment after the first is submitted. Fails the run when it
+   * never shows up.
+   */
+  | { readonly kind: "awaitField"; readonly field: AutoTypeFormField };
 
 export interface AutoTypeCredentials {
   readonly username: string;
@@ -43,9 +49,10 @@ export class AutoTypeNoFieldsError extends Error {
  * The steps that fill exactly the fields `layout` has, then press Enter.
  *
  * A password field with no username field is the second step of a two-step
- * login; a username field with no password field is the first. Either way only
- * what's present is filled. A field whose value the entry doesn't have is left
- * untouched rather than cleared. Throws `AutoTypeNoFieldsError` when there's
+ * login: only the password is filled. A username field with no password field
+ * is the first: the username is submitted, then the steps wait for the
+ * password page to load and fill that too. A field whose value the entry
+ * doesn't have is left untouched rather than cleared. Throws `AutoTypeNoFieldsError` when there's
  * nothing to fill: typing at whatever happens to have focus is exactly the
  * guess this exists to avoid.
  */
@@ -60,6 +67,19 @@ export function autoTypeSteps(
   }
   if (layout.hasPasswordField && credentials.password !== "") {
     steps.push({ kind: "focus", field: "password" }, { kind: "text", text: credentials.password });
+  }
+  if (
+    layout.hasUsernameField &&
+    !layout.hasPasswordField &&
+    credentials.username !== "" &&
+    credentials.password !== ""
+  ) {
+    steps.push(
+      { kind: "submit" },
+      { kind: "awaitField", field: "password" },
+      { kind: "focus", field: "password" },
+      { kind: "text", text: credentials.password },
+    );
   }
 
   if (steps.length === 0) {

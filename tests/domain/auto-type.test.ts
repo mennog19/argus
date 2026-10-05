@@ -20,10 +20,31 @@ describe("autoTypeSteps", () => {
     );
   });
 
-  it("only fills the username on a username-only page, like the first step of a login", () => {
+  it("submits the username on a username-only page, then waits for the password page and fills it", () => {
     expect(autoTypeSteps({ hasUsernameField: true, hasPasswordField: false }, CREDENTIALS)).toEqual(
-      [{ kind: "focus", field: "username" }, { kind: "text", text: "menno" }, { kind: "submit" }],
+      [
+        { kind: "focus", field: "username" },
+        { kind: "text", text: "menno" },
+        { kind: "submit" },
+        { kind: "awaitField", field: "password" },
+        { kind: "focus", field: "password" },
+        { kind: "text", text: "hunter2" },
+        { kind: "submit" },
+      ],
     );
+  });
+
+  it("stops after the username on a username-only page when the entry has no password", () => {
+    expect(
+      autoTypeSteps(
+        { hasUsernameField: true, hasPasswordField: false },
+        { ...CREDENTIALS, password: "" },
+      ),
+    ).toEqual([
+      { kind: "focus", field: "username" },
+      { kind: "text", text: "menno" },
+      { kind: "submit" },
+    ]);
   });
 
   it("leaves the username field alone when the entry has no username", () => {
