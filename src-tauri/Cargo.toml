@@ -25,7 +25,9 @@ tauri-plugin-persisted-scope = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-global-shortcut = "2"
-tauri-plugin-updater = "2"
+# The "zip" feature (default) only handles .zip / AppImage .tar.gz update bundles;
+# releases ship raw NSIS/MSI installers, and zip 4.x carries RUSTSEC-2026-0367..0369.
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls", "system-proxy"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 percent-encoding = "2"
